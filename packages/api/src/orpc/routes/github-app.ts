@@ -14,6 +14,10 @@ import {
   GitHubRepositoryRequestError,
   listGitHubInstallationRepositories,
 } from "../../core/github-app/repositories.js"
+import {
+  GitHubProjectConfigRequestError,
+  inspectGitHubProjectConfig,
+} from "../../core/github-app/project-config.js"
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
 
@@ -41,6 +45,18 @@ const repositoryErrors = {
   GITHUB_REPOSITORIES_UNAVAILABLE: {
     status: 502,
     message: "GitHub repositories could not be loaded. Try again.",
+  },
+  GITHUB_REPOSITORY_NOT_ACCESSIBLE: {
+    status: 404,
+    message: "This repository is not available through your GitHub installation.",
+  },
+  GITHUB_REPOSITORY_CONTENTS_FORBIDDEN: {
+    status: 403,
+    message: "GitHub denied access to this repository. The app needs Contents read-only permission.",
+  },
+  GITHUB_PROJECT_CONFIG_UNAVAILABLE: {
+    status: 502,
+    message: "The repository configuration could not be inspected. Try again.",
   },
 }
 
@@ -177,6 +193,98 @@ const listRepositories = base
     }
   })
 
+const inspectConfiguration = base
+  .input(
+    z.object({
+      slug: z.string().min(1),
+      repositoryId: z.number().int().positive(),
+      page: z.number().int().min(1).max(10_000),
+    })
+  )
+  .errors(repositoryErrors)
+  .use(authGuard)
+  .handler(async ({ context, input, errors }) => {
+    const organization = await findOrganizationForMember(
+      context.user.id,
+      input.slug
+    )
+    if (!organization || !hasManagingRole(organization.role)) {
+      throw errors.ORGANIZATION_ACCESS_DENIED()
+    }
+
+    const [installation] = await db
+      .select({ installationId: githubAppInstallation.installationId })
+      .from(githubAppInstallation)
+      .where(eq(githubAppInstallation.organizationId, organization.id))
+      .limit(1)
+    if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
+
+    let accessToken: string
+    try {
+      accessToken = await getGitHubUserAccessToken(context.user.id)
+    } catch {
+      throw errors.GITHUB_ACCOUNT_REQUIRED()
+    }
+
+    let repositoryPage
+    try {
+      repositoryPage = await listGitHubInstallationRepositories({
+        installationId: installation.installationId,
+        accessToken,
+        page: input.page,
+      })
+    } catch (error) {
+      if (error instanceof GitHubRepositoryRequestError) {
+        if (error.status === 401) throw errors.GITHUB_ACCOUNT_REQUIRED()
+        if (error.status === 403 || error.status === 404) {
+          throw errors.GITHUB_INSTALLATION_ACCESS_DENIED()
+        }
+      }
+      throw errors.GITHUB_REPOSITORIES_UNAVAILABLE()
+    }
+
+    const repository = repositoryPage.repositories.find(
+      (candidate) => candidate.id === input.repositoryId
+    )
+    if (!repository) throw errors.GITHUB_REPOSITORY_NOT_ACCESSIBLE()
+
+    if (!repository.defaultBranch) {
+      return {
+        repository: {
+          id: repository.id,
+          fullName: repository.fullName,
+          defaultBranch: null,
+        },
+        commitSha: null,
+        configuration: { status: "no_default_branch" as const },
+      }
+    }
+
+    try {
+      const inspection = await inspectGitHubProjectConfig({
+        fullName: repository.fullName,
+        defaultBranch: repository.defaultBranch,
+        accessToken,
+      })
+      return {
+        repository: {
+          id: repository.id,
+          fullName: repository.fullName,
+          defaultBranch: repository.defaultBranch,
+        },
+        ...inspection,
+      }
+    } catch (error) {
+      if (error instanceof GitHubProjectConfigRequestError) {
+        if (error.status === 401) throw errors.GITHUB_ACCOUNT_REQUIRED()
+        if (error.status === 403) {
+          throw errors.GITHUB_REPOSITORY_CONTENTS_FORBIDDEN()
+        }
+      }
+      throw errors.GITHUB_PROJECT_CONFIG_UNAVAILABLE()
+    }
+  })
+
 export const disconnect = base
   .input(z.object({ slug: z.string() }))
   .errors(deniedErrors)
@@ -199,5 +307,8 @@ export const disconnect = base
 export const githubAppRouter = {
   status,
   disconnect,
-  repositories: { list: listRepositories },
+  repositories: {
+    list: listRepositories,
+    inspectConfiguration,
+  },
 }

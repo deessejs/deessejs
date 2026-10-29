@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
+import { GitHubProjectConfigReview } from "@/components/organizations/projects/github-project-config-review"
 import { orpcBrowser } from "@/lib/orpc-browser"
 import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 
@@ -25,6 +26,13 @@ type GitHubRepositoryPage = Awaited<
 >
 
 type GitHubRepository = GitHubRepositoryPage["repositories"][number]
+type RepositorySelection = { repository: GitHubRepository; page: number }
+type ProjectConfigInspection = Awaited<
+  ReturnType<
+    ORPCBrowserClient["githubApp"]["repositories"]["inspectConfiguration"]
+  >
+>
+type ProjectConfigInspectionQuery = UseQueryResult<ProjectConfigInspection, Error>
 type RepositoryQuery = UseQueryResult<GitHubRepositoryPage, Error>
 
 function githubRepositoriesQueryOptions(organizationSlug: string, page: number) {
@@ -39,6 +47,31 @@ function githubRepositoriesQueryOptions(organizationSlug: string, page: number) 
   })
 }
 
+function githubRepositoryConfigQueryOptions(
+  organizationSlug: string,
+  selection: RepositorySelection | null
+) {
+  return queryOptions({
+    queryKey: [
+      "github-app",
+      "project-config",
+      organizationSlug,
+      selection?.repository.id ?? null,
+      selection?.page ?? null,
+    ],
+    queryFn: () => {
+      if (!selection) throw new Error("Select a repository first.")
+      return orpcBrowser.githubApp.repositories.inspectConfiguration({
+        slug: organizationSlug,
+        repositoryId: selection.repository.id,
+        page: selection.page,
+      })
+    },
+    enabled: selection !== null,
+    retry: false,
+  })
+}
+
 export function GitHubRepositoryBrowser({
   organizationSlug,
   installationAccount,
@@ -49,14 +82,18 @@ export function GitHubRepositoryBrowser({
   settingsPath: string
 }) {
   const [page, setPage] = useState(1)
-  const [selectedRepository, setSelectedRepository] =
-    useState<GitHubRepository | null>(null)
+  const [selection, setSelection] = useState<RepositorySelection | null>(null)
   const repositories = useQuery(
     githubRepositoriesQueryOptions(organizationSlug, page)
   )
+  const configuration = useQuery(
+    githubRepositoryConfigQueryOptions(organizationSlug, selection)
+  )
 
   return (
-    <Card>
+    <div className="flex flex-col gap-6">
+      <ImportSteps currentStep={selection ? 2 : 1} />
+      <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
@@ -74,12 +111,55 @@ export function GitHubRepositoryBrowser({
           query={repositories}
           page={page}
           onPageChange={setPage}
-          selectedRepository={selectedRepository}
-          onSelectRepository={setSelectedRepository}
+          selectedRepository={selection?.repository ?? null}
+          onSelectRepository={(repository) =>
+            setSelection({ repository, page })
+          }
           settingsPath={settingsPath}
         />
       </CardContent>
-    </Card>
+      </Card>
+      <GitHubProjectConfigReview
+        repositoryName={selection?.repository.fullName ?? null}
+        query={configuration}
+        onRetry={() => void configuration.refetch()}
+      />
+    </div>
+  )
+}
+
+function ImportSteps({ currentStep }: { currentStep: 1 | 2 }) {
+  const steps = [
+    { label: "Choose Repository", number: 1 },
+    { label: "Review Configuration", number: 2 },
+    { label: "Confirm Import", number: 3 },
+  ]
+
+  return (
+    <ol
+      className="grid gap-3 sm:grid-cols-3"
+      aria-label="Project import steps"
+    >
+      {steps.map((step) => {
+        const isCurrentStep = step.number === currentStep
+        return (
+          <li
+            key={step.number}
+            aria-current={isCurrentStep ? "step" : undefined}
+            className={
+              isCurrentStep
+                ? "flex items-center gap-3 rounded-lg border border-primary bg-primary/5 p-4"
+                : "flex items-center gap-3 rounded-lg border p-4 text-muted-foreground"
+            }
+          >
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border text-sm font-medium">
+              {step.number}
+            </span>
+            <span className="text-sm font-medium">{step.label}</span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
@@ -242,9 +322,13 @@ function RepositoryListItem({
             </Badge>
             <span>
               Default branch:{" "}
-              <code className="rounded bg-muted px-1 py-0.5 text-foreground">
-                {repository.defaultBranch}
-              </code>
+              {repository.defaultBranch ? (
+                <code className="rounded bg-muted px-1 py-0.5 text-foreground">
+                  {repository.defaultBranch}
+                </code>
+              ) : (
+                <span>No default branch</span>
+              )}
             </span>
           </div>
         </div>
@@ -275,8 +359,8 @@ function SelectedRepositoryMessage({
       role="status"
     >
       <span className="font-medium">{repository.fullName}</span>{" "}
-      is selected. Configuration review is the next step. This repository has
-      not been imported.
+      is selected. Its configuration appears below. This repository has not been
+      imported.
     </p>
   )
 }
