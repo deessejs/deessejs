@@ -1,16 +1,9 @@
 import Link from "next/link"
-import { ArrowLeftIcon, FolderGit2Icon } from "lucide-react"
+import { ArrowLeftIcon } from "lucide-react"
 
-import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
 
+import { GitHubRepositoryBrowser } from "@/components/organizations/projects/github-repository-browser"
 import {
   workspaceOrganizationSettingsPath,
   workspaceProjectsPath,
@@ -31,12 +24,14 @@ export function OrganizationProjectImportPage({
   organizationName,
   canManage,
   installation,
+  githubAccountLinked,
   githubStatusUnavailable,
 }: {
   organizationSlug: string
   organizationName: string
   canManage: boolean
   installation: GitHubInstallation | null
+  githubAccountLinked: boolean
   githubStatusUnavailable: boolean
 }) {
   const settingsPath = workspaceOrganizationSettingsPath(organizationSlug)
@@ -59,31 +54,74 @@ export function OrganizationProjectImportPage({
       </header>
 
       {!canManage ? (
-        <p className="rounded-md border p-4 text-sm text-muted-foreground" role="status">
+        <p
+          className="rounded-md border p-4 text-sm text-muted-foreground"
+          role="status"
+        >
           Only organization owners and admins can import projects.
         </p>
       ) : (
         <>
           <ImportSteps />
-          {githubStatusUnavailable ? (
-            <p
-              className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
-              role="alert"
-            >
-              GitHub connection status could not be loaded. Refresh this page to
-              try again.
-            </p>
-          ) : installation ? (
-            <RepositoryDiscoveryState
-              installation={installation}
-              settingsPath={settingsPath}
-            />
-          ) : (
-            <ConnectGitHubState settingsPath={settingsPath} />
-          )}
+          <ImportContent
+            organizationSlug={organizationSlug}
+            installation={installation}
+            githubAccountLinked={githubAccountLinked}
+            githubStatusUnavailable={githubStatusUnavailable}
+            settingsPath={settingsPath}
+          />
         </>
       )}
     </div>
+  )
+}
+
+function ImportContent({
+  organizationSlug,
+  installation,
+  githubAccountLinked,
+  githubStatusUnavailable,
+  settingsPath,
+}: {
+  organizationSlug: string
+  installation: GitHubInstallation | null
+  githubAccountLinked: boolean
+  githubStatusUnavailable: boolean
+  settingsPath: string
+}) {
+  if (githubStatusUnavailable) {
+    return (
+      <p
+        className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
+        role="alert"
+      >
+        GitHub connection status could not be loaded. Refresh this page to try
+        again.
+      </p>
+    )
+  }
+
+  if (!installation) {
+    return (
+      <ConnectGitHubState
+        settingsPath={settingsPath}
+        connection="installation"
+      />
+    )
+  }
+
+  if (!githubAccountLinked) {
+    return (
+      <ConnectGitHubState settingsPath={settingsPath} connection="account" />
+    )
+  }
+
+  return (
+    <GitHubRepositoryBrowser
+      organizationSlug={organizationSlug}
+      installationAccount={installation.accountLogin}
+      settingsPath={settingsPath}
+    />
   )
 }
 
@@ -113,65 +151,36 @@ function ImportSteps() {
   )
 }
 
-function ConnectGitHubState({ settingsPath }: { settingsPath: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Connect a GitHub App installation</CardTitle>
-        <CardDescription>
-          Connect GitHub to this organization before choosing a repository.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button asChild>
-          <Link href={settingsPath}>Connect GitHub</Link>
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
-
-function RepositoryDiscoveryState({
-  installation,
+function ConnectGitHubState({
   settingsPath,
+  connection,
 }: {
-  installation: GitHubInstallation
   settingsPath: string
+  connection: "account" | "installation"
 }) {
+  const isAccountConnection = connection === "account"
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <CardTitle>Choose a GitHub Repository</CardTitle>
-            <CardDescription>
-              Select a repository to inspect its DeesseJS project configuration.
-            </CardDescription>
-          </div>
-          <Badge variant="secondary">
-            Connected to {installation.accountLogin}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed px-6 py-12 text-center">
-          <FolderGit2Icon
-            className="size-8 text-muted-foreground"
-            aria-hidden
-          />
+    <section className="rounded-lg border p-6">
+      <div className="flex flex-col items-start gap-3">
+        <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold">
-            Repository discovery is the next step
+            {isAccountConnection
+              ? "Connect your GitHub account"
+              : "Install the GitHub App"}
           </h2>
-          <p className="max-w-lg text-sm text-muted-foreground">
-            The GitHub installation is connected. The repository list will
-            appear here when the dashboard can load repositories authorized for
-            your GitHub account.
+          <p className="text-sm text-muted-foreground">
+            {isAccountConnection
+              ? "Repository access is checked against your GitHub account and the organization installation."
+              : "Install the GitHub App on a GitHub account before choosing a repository."}
           </p>
-          <Button variant="outline" asChild>
-            <Link href={settingsPath}>Manage GitHub connection</Link>
-          </Button>
         </div>
-      </CardContent>
-    </Card>
+        <Button asChild>
+          <Link href={settingsPath}>
+            {isAccountConnection ? "Connect GitHub account" : "Manage GitHub"}
+          </Link>
+        </Button>
+      </div>
+    </section>
   )
 }
