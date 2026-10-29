@@ -116,21 +116,28 @@ export function OrganizationProfile({
   async function handleSubmit(values: OrganizationProfileValues) {
     const savedValues = { ...values, logo: values.logo.trim() }
     setSubmitting(true)
-    const { error } = await authClient.organization.update({
-      organizationId: organization.id,
-      data: { name: savedValues.name, logo: savedValues.logo || null },
-    })
-    setSubmitting(false)
+    try {
+      const { error } = await authClient.organization.update({
+        organizationId: organization.id,
+        data: { name: savedValues.name, logo: savedValues.logo || null },
+      })
 
-    if (error) {
-      toast.error(error.message ?? "Could not update organization")
-      return
+      if (error) {
+        toast.error(error.message ?? "Could not update organization")
+        return
+      }
+
+      form.reset(savedValues)
+      setLogoPreview(savedValues.logo)
+      toast.success("Organization profile saved")
+      router.refresh()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update organization"
+      )
+    } finally {
+      setSubmitting(false)
     }
-
-    form.reset(savedValues)
-    setLogoPreview(savedValues.logo)
-    toast.success("Organization profile saved")
-    router.refresh()
   }
 
   const workspacePath = `/${organization.slug}`
