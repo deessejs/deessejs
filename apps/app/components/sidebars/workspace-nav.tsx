@@ -44,7 +44,10 @@ export function WorkspaceNav() {
   return (
     <>
       {groups.map((group) => (
-        <SidebarGroup key={group.label}>
+        <SidebarGroup
+          key={group.label}
+          className={group.label === "Settings" ? "mt-auto" : undefined}
+        >
           <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarMenu>
             {group.entries.map((entry) => {
