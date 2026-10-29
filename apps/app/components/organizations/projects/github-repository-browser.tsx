@@ -3,7 +3,7 @@
 import { useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
+import { queryOptions, useQuery } from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
 import { CheckIcon, ExternalLinkIcon } from "lucide-react"
 
@@ -27,6 +27,18 @@ type GitHubRepositoryPage = Awaited<
 type GitHubRepository = GitHubRepositoryPage["repositories"][number]
 type RepositoryQuery = UseQueryResult<GitHubRepositoryPage, Error>
 
+function githubRepositoriesQueryOptions(organizationSlug: string, page: number) {
+  return queryOptions({
+    queryKey: ["github-app", "repositories", organizationSlug, page],
+    queryFn: () =>
+      orpcBrowser.githubApp.repositories.list({
+        slug: organizationSlug,
+        page,
+      }),
+    retry: false,
+  })
+}
+
 export function GitHubRepositoryBrowser({
   organizationSlug,
   installationAccount,
@@ -39,15 +51,9 @@ export function GitHubRepositoryBrowser({
   const [page, setPage] = useState(1)
   const [selectedRepository, setSelectedRepository] =
     useState<GitHubRepository | null>(null)
-  const repositories = useQuery({
-    queryKey: ["github-app", "repositories", organizationSlug, page],
-    queryFn: () =>
-      orpcBrowser.githubApp.repositories.list({
-        slug: organizationSlug,
-        page,
-      }),
-    retry: false,
-  })
+  const repositories = useQuery(
+    githubRepositoriesQueryOptions(organizationSlug, page)
+  )
 
   return (
     <Card>
