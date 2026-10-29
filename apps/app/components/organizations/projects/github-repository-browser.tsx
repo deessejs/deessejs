@@ -45,23 +45,28 @@ function githubRepositoryConfigQueryOptions(
   organizationSlug: string,
   selection: RepositorySelection | null
 ) {
+  const repositoryId = selection?.repository.id ?? null
+  const page = selection?.page ?? null
+
   return queryOptions({
     queryKey: [
       "github-app",
       "project-config",
       organizationSlug,
-      selection?.repository.id ?? null,
-      selection?.page ?? null,
+      repositoryId,
+      page,
     ],
     queryFn: () => {
-      if (!selection) throw new Error("Select a repository first.")
+      if (repositoryId === null || page === null) {
+        throw new Error("Select a repository first.")
+      }
       return orpcBrowser.githubApp.repositories.inspectConfiguration({
         slug: organizationSlug,
-        repositoryId: selection.repository.id,
-        page: selection.page,
+        repositoryId,
+        page,
       })
     },
-    enabled: selection !== null,
+    enabled: repositoryId !== null && page !== null,
     retry: false,
   })
 }
