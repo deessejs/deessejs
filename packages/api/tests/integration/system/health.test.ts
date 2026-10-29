@@ -15,9 +15,10 @@
  * surfaces as a 404 with the notFound envelope, which is also
  * asserted in `routing/not-found.test.ts`.
  */
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { inject } from "vitest"
 
+import { auth } from "@workspace/auth"
 import { api } from "../../../src/index.js"
 
 const POSTGRES_READY = inject("postgres:ready") === true
@@ -29,6 +30,21 @@ describe("GET /api/v1/health", () => {
     const body = await res.json()
     expect(body.status).toBe("ok")
     expect(typeof body.timestamp).toBe("string")
+  })
+
+  it("does not resolve a session when session storage is unavailable", async () => {
+    const getSession = vi
+      .spyOn(auth.api, "getSession")
+      .mockRejectedValue(new Error("Session storage is unavailable"))
+
+    try {
+      const res = await api.request("/api/v1/health")
+
+      expect(res.status).toBe(200)
+      expect(getSession).not.toHaveBeenCalled()
+    } finally {
+      getSession.mockRestore()
+    }
   })
 })
 
