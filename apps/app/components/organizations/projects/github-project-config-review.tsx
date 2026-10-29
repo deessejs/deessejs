@@ -196,7 +196,7 @@ function InvalidConfigurationResult({
   commitSha,
 }: {
   diagnostics: InvalidProjectConfig["diagnostics"]
-  commitSha: string
+  commitSha: string | null
 }) {
   return (
     <div
@@ -205,15 +205,17 @@ function InvalidConfigurationResult({
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="destructive">Invalid configuration</Badge>
-        <code className="break-all text-xs text-muted-foreground">{commitSha}</code>
+        {commitSha ? (
+          <code className="break-all text-xs text-muted-foreground">{commitSha}</code>
+        ) : null}
       </div>
       <p className="text-sm text-muted-foreground">
         Fix these validation issues in the repository before importing it.
       </p>
       <ul className="flex flex-col gap-2">
-        {diagnostics.map((diagnostic, index) => (
+        {diagnostics.map((diagnostic) => (
           <li
-            key={`${diagnostic.code}-${diagnostic.path.join(".")}-${index}`}
+            key={`${diagnostic.code}-${diagnostic.path.join(".") || "deesse.json"}-${diagnostic.message}`}
             className="text-sm"
           >
             <code className="rounded bg-muted px-1 py-0.5">
