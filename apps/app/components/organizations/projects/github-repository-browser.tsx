@@ -27,12 +27,6 @@ type GitHubRepositoryPage = Awaited<
 
 type GitHubRepository = GitHubRepositoryPage["repositories"][number]
 type RepositorySelection = { repository: GitHubRepository; page: number }
-type ProjectConfigInspection = Awaited<
-  ReturnType<
-    ORPCBrowserClient["githubApp"]["repositories"]["inspectConfiguration"]
-  >
->
-type ProjectConfigInspectionQuery = UseQueryResult<ProjectConfigInspection, Error>
 type RepositoryQuery = UseQueryResult<GitHubRepositoryPage, Error>
 
 function githubRepositoriesQueryOptions(organizationSlug: string, page: number) {
