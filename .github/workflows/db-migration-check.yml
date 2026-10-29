@@ -70,18 +70,19 @@ jobs:
 
       # Canonical table check: count must be 13 and the names must
       # match the Better Auth + organization plugin output, the
-      # organization provisioning table, the two template catalog tables,
-      # and the two GitHub App connection tables (device_code is snake_case
-      # in the regenerated schema: see PR #239 for the rationale).
+      # organization provisioning table, the template catalog and
+      # publication tables, and the two GitHub App connection tables
+      # (device_code is snake_case in the regenerated schema: see PR #239
+      # for the rationale).
       #
       # The ORDER BY pins COLLATE "C" so the expected string is byte
       # order and does not depend on the collation the server was
       # initialised with. Under "C", '_' (0x5F) sorts before 's'
-      # (0x73), so template_repository_snapshots precedes templates.
+      # (0x73), so all template_* tables precede templates.
       - name: Verify table set
         run: |
           set -euo pipefail
-          EXPECTED='account|device_code|github_app_installation|github_user_connection|invitation|member|organization|organization_provisioning|session|template_repository_snapshots|templates|user|verification'
+          EXPECTED='account|device_code|github_app_installation|github_user_connection|invitation|member|organization|organization_provisioning|session|template_publications|template_repository_snapshots|templates|user|verification'
           ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name COLLATE \"C\") FROM information_schema.tables WHERE table_schema = 'public'")
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Expected: $EXPECTED"

@@ -604,6 +604,13 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(11)
         expect(
           requests.filter((request) =>
+            request.includes(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
+            )
+          ).length
+        ).toBe(11)
+        expect(
+          requests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/resolve"
             )

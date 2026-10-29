@@ -101,6 +101,12 @@ function appResponse(requestUrl, method) {
       json: { templates: [template, legacyCatalogTemplate] },
     })
   }
+  if (
+    requestUrl.pathname === "/api/v1/rpc/templates/community/list" &&
+    method === "POST"
+  ) {
+    return jsonResponse({ json: { templates: [] } })
+  }
   return null
 }
 
