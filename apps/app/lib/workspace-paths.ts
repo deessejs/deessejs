@@ -40,6 +40,26 @@ export const workspaceProjectHomePath = (
   projectId: string
 ): string => `${workspaceProjectsPath(slug)}/${projectId}/home`
 
+/** The project named by a project-scoped workspace route, if any. */
+export const workspaceProjectFromPathname = (
+  pathname: string
+): { organizationSlug: string; projectId: string } | null => {
+  const [organizationSlug, section, projectId] = pathname
+    .split("/")
+    .filter(Boolean)
+
+  if (
+    !organizationSlug ||
+    section !== "projects" ||
+    !projectId ||
+    projectId === "import"
+  ) {
+    return null
+  }
+
+  return { organizationSlug, projectId }
+}
+
 /** The GitHub project import flow for the organization. */
 export const workspaceProjectImportPath = (slug: string): string =>
   `${workspaceProjectsPath(slug)}/import`
