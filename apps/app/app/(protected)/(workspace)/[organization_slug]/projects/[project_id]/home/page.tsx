@@ -18,8 +18,15 @@ import { orpc } from "@/lib/orpc"
 import { readWorkspaceOrganization } from "@/lib/workspace-organization"
 import { workspaceProjectsPath } from "@/lib/workspace-paths"
 
+type ProjectStatus =
+  | "valid"
+  | "needs_revalidation"
+  | "configuration_invalid"
+  | "access_unavailable"
+  | "check_failed"
+
 const projectStatus: Record<
-  string,
+  ProjectStatus,
   {
     label: string
     variant: "default" | "secondary" | "destructive" | "outline"
@@ -58,8 +65,7 @@ export default async function ProjectHomePage({
       }),
   ])
   const { project } = result
-  const status =
-    projectStatus[project.status] ?? projectStatus.needs_revalidation
+  const status = projectStatus[project.status]
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
