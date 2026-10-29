@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeftIcon, CheckIcon, CircleIcon, FolderGit2Icon } from "lucide-react"
+import { ArrowLeftIcon, FolderGit2Icon } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -18,8 +18,6 @@ import {
 
 type GitHubInstallation = {
   accountLogin: string
-  accountType: string
-  connectedAt: string
 }
 
 const steps = [
@@ -87,19 +85,20 @@ export function OrganizationProjectImportPage({
           again.
         </p>
       ) : installation ? (
-        <RepositoryDiscoveryState installation={installation} />
+        <RepositoryDiscoveryState
+          installation={installation}
+          settingsPath={workspaceOrganizationSettingsPath(organizationSlug)}
+        />
       ) : (
-        <ConnectGitHubState organizationSlug={organizationSlug} />
+        <ConnectGitHubState
+          settingsPath={workspaceOrganizationSettingsPath(organizationSlug)}
+        />
       )}
     </div>
   )
 }
 
-function ConnectGitHubState({
-  organizationSlug,
-}: {
-  organizationSlug: string
-}) {
+function ConnectGitHubState({ settingsPath }: { settingsPath: string }) {
   return (
     <Card>
       <CardHeader>
@@ -110,9 +109,7 @@ function ConnectGitHubState({
       </CardHeader>
       <CardContent>
         <Button asChild>
-          <Link href={workspaceOrganizationSettingsPath(organizationSlug)}>
-            Connect GitHub
-          </Link>
+          <Link href={settingsPath}>Connect GitHub</Link>
         </Button>
       </CardContent>
     </Card>
@@ -121,8 +118,10 @@ function ConnectGitHubState({
 
 function RepositoryDiscoveryState({
   installation,
+  settingsPath,
 }: {
   installation: GitHubInstallation
+  settingsPath: string
 }) {
   return (
     <Card>
@@ -154,16 +153,10 @@ function RepositoryDiscoveryState({
             your GitHub account.
           </p>
           <Button variant="outline" asChild>
-            <Link href={workspaceProjectsPathFromAccount(installation)}>
-              View GitHub installation
-            </Link>
+            <Link href={settingsPath}>Manage GitHub connection</Link>
           </Button>
         </div>
       </CardContent>
     </Card>
   )
-}
-
-function workspaceProjectsPathFromAccount(_installation: GitHubInstallation) {
-  return "https://github.com/apps/deessejs"
 }
