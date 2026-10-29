@@ -1,6 +1,6 @@
 {
   "name": "create-deesse-app",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": false,
   "description": "Initialize a new DeesseJS project from the current main of deessejs/saas-template.",
   "keywords": [

@@ -1,5 +1,12 @@
 # @workspace/cookies
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [ebd1cd2]
+  - @workspace/ui@0.1.0
+
 ## 0.0.1
 
 ### Patch Changes
