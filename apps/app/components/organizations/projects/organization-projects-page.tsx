@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
+import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -16,6 +17,7 @@ import {
 
 import { workspaceProjectImportPath } from "@/lib/workspace-paths"
 import { organizationProjectsQueryOptions } from "@/lib/github-projects-query"
+import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 
 export type OrganizationProject = {
   id: string
@@ -34,6 +36,10 @@ export type OrganizationProject = {
     | "check_failed"
   lastCheckedAt: string | null
 }
+
+type OrganizationProjectsResult = Awaited<
+  ReturnType<ORPCBrowserClient["githubApp"]["projects"]["list"]>
+>
 
 const projectStatus: Record<
   OrganizationProject["status"],
@@ -65,7 +71,7 @@ export function OrganizationProjectsPage({
   const projectsQuery = useQuery({
     ...organizationProjectsQueryOptions(organizationSlug),
     initialData: { projects: projects ?? [] },
-    initialDataUpdatedAt: projects === null ? 0 : Date.now(),
+    initialDataUpdatedAt: 0,
   })
 
   return (
@@ -87,28 +93,53 @@ export function OrganizationProjectsPage({
         ) : null}
       </header>
 
-      {projectsQuery.isPending ||
-      (projects === null && projectsQuery.isFetching) ? (
-        <p className="rounded-md border p-4 text-sm text-muted-foreground">
-          Loading projects…
-        </p>
-      ) : projectsQuery.isError ? (
-        <p
-          className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
-          role="alert"
-        >
-          Projects could not be loaded. Refresh this page to try again.
-        </p>
-      ) : projectsQuery.data.projects.length === 0 ? (
-        <EmptyProjects
-          organizationSlug={organizationSlug}
-          canManage={canManage}
-        />
-      ) : (
-        <ProjectList projects={projectsQuery.data.projects} />
-      )}
+      <ProjectsQueryState
+        query={projectsQuery}
+        initialLoad={projects === null}
+        organizationSlug={organizationSlug}
+        canManage={canManage}
+      />
     </div>
   )
+}
+
+function ProjectsQueryState({
+  query,
+  initialLoad,
+  organizationSlug,
+  canManage,
+}: {
+  query: UseQueryResult<OrganizationProjectsResult, Error>
+  initialLoad: boolean
+  organizationSlug: string
+  canManage: boolean
+}) {
+  if (query.isPending || (initialLoad && query.isFetching)) {
+    return (
+      <p className="rounded-md border p-4 text-sm text-muted-foreground">
+        Loading projects…
+      </p>
+    )
+  }
+  if (query.isError) {
+    return (
+      <p
+        className="rounded-md border border-destructive/30 p-4 text-sm text-destructive"
+        role="alert"
+      >
+        Projects could not be loaded. Refresh this page to try again.
+      </p>
+    )
+  }
+  if (query.data.projects.length === 0) {
+    return (
+      <EmptyProjects
+        organizationSlug={organizationSlug}
+        canManage={canManage}
+      />
+    )
+  }
+  return <ProjectList projects={query.data.projects} />
 }
 
 function EmptyProjects({
