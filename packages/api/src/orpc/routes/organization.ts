@@ -1,7 +1,10 @@
 import type { ORPCError } from "@orpc/server"
+import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import { assertOrganizationName } from "@workspace/auth/organization/policy"
+import { db } from "@workspace/database"
+import { invitation, user } from "@workspace/database/schema"
 
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
@@ -40,6 +43,15 @@ const accessDeniedErrors = {
     message: "You cannot access this organization.",
   },
 }
+
+const invitationSummary = z.object({
+  id: z.string(),
+  email: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  inviterName: z.string(),
+})
 
 /**
  * Reads the organization the caller named, if they belong to it.
@@ -114,6 +126,53 @@ export const settings = base
   })
   .output(organizationSummary)
   .handler(async ({ context }) => context.organization)
+
+/** Pending invitations are visible to owners and admins only. */
+export const pendingInvitations = base
+  .input(z.object({ slug: z.string() }))
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED,
+    )
+    if (!hasManagingRole(org.role)) {
+      throw options.errors.ORGANIZATION_ACCESS_DENIED()
+    }
+    return options.next({
+      context: { ...options.context, organization: org },
+    })
+  })
+  .output(z.array(invitationSummary))
+  .handler(async ({ context }) => {
+    const rows = await db
+      .select({
+        id: invitation.id,
+        email: invitation.email,
+        status: invitation.status,
+        createdAt: invitation.createdAt,
+        expiresAt: invitation.expiresAt,
+        inviterName: user.name,
+      })
+      .from(invitation)
+      .innerJoin(user, eq(invitation.inviterId, user.id))
+      .where(
+        and(
+          eq(invitation.organizationId, context.organization.id),
+          eq(invitation.status, "pending"),
+        ),
+      )
+      .orderBy(desc(invitation.createdAt))
+      .limit(100)
+
+    return rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    }))
+  })
 
 /**
  * The state of the caller's active organization.
@@ -281,6 +340,7 @@ export const create = base
 export const organizationRouter = {
   bySlug,
   settings,
+  pendingInvitations,
   active,
   create,
 }
