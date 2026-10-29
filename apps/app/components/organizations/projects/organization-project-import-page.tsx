@@ -2,6 +2,13 @@ import Link from "next/link"
 import { ArrowLeftIcon } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 
 import { GitHubRepositoryBrowser } from "@/components/organizations/projects/github-repository-browser"
 import {
@@ -161,26 +168,26 @@ function ConnectGitHubState({
   const isAccountConnection = connection === "account"
 
   return (
-    <section className="rounded-lg border p-6">
-      <div className="flex flex-col items-start gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-base font-semibold">
-            {isAccountConnection
-              ? "Connect your GitHub account"
-              : "Install the GitHub App"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isAccountConnection
-              ? "Repository access is checked against your GitHub account and the organization installation."
-              : "Install the GitHub App on a GitHub account before choosing a repository."}
-          </p>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {isAccountConnection
+            ? "Connect your GitHub account"
+            : "Install the GitHub App"}
+        </CardTitle>
+        <CardDescription>
+          {isAccountConnection
+            ? "Repository access is checked against your GitHub account and the organization installation."
+            : "Install the GitHub App on a GitHub account before choosing a repository."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <Button asChild>
           <Link href={settingsPath}>
             {isAccountConnection ? "Connect GitHub account" : "Manage GitHub"}
           </Link>
         </Button>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   )
 }
