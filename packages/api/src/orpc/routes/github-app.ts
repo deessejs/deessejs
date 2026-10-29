@@ -552,8 +552,8 @@ const importProject = base
         status: "valid",
         commitSha: inspection.commitSha,
         formatVersion: configuration.formatVersion,
-        pathCount: Object.keys(configuration.paths ?? {}).length,
-        aliasCount: Object.keys(configuration.aliases ?? {}).length,
+        pathCount: configuration.pathCount,
+        aliasCount: configuration.aliasCount,
         checkedAt,
       })
 
