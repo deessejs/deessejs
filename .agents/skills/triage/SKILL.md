@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Triage DeesseJS GitHub issues by assessing completeness, classification, and labels. Keep analysis requests read-only; make issue updates only when the user asks for triage.
+description: Triage DeesseJS GitHub issues by inspecting the relevant code, assessing evidence and completeness, and recommending labels. Keep analysis read-only; update issues only when asked to triage.
 ---
 
 # Triage a GitHub issue
@@ -26,6 +26,18 @@ Read its title, body, state, author, labels, and relevant comments. Use the issu
 - **Other:** check that the request and desired outcome are clear enough to act on.
 
 The bug and feature `area` dropdowns are issue-body fields, not GitHub labels. Infer the corresponding `area:*` label from the selected value or issue content, then add it only if that label exists and is missing. Use the current issue forms and live repository labels instead of assuming this list is complete; the templates may lag behind the monorepo's workspaces.
+
+## Investigate the code
+
+For any issue about application behavior, a defect, or missing functionality, inspect the repository before deciding its status or recommending a fix. Do not stop at the issue description, labels, or a matching symbol name.
+
+1. Use the root `AGENTS.md` and `WORKSPACES.md` to identify the owning workspace and its source of truth. Read that workspace's `AGENTS.md` before interpreting its conventions.
+2. Search by both the reported behavior and relevant names. Read the owning implementation, then follow its callers, consumers, and boundaries far enough to explain the reported behavior. For cross-workspace flows, check the relevant contracts, API routes, clients, schemas, or configuration.
+3. Inspect relevant existing tests and documentation for expected behavior and coverage. Treat tests and comments as evidence to compare with current implementation, not as proof that the current code behaves correctly.
+4. For a feature request, check whether the capability already exists under another name or through an existing contract before calling it missing. Identify the affected workspaces and constraints without designing or implementing the feature.
+5. Report concrete file paths and, when available, line references. Separate observed issue evidence, confirmed code behavior, and hypotheses. Static inspection alone does not confirm a runtime root cause; state what evidence is missing.
+
+Triage is investigation and routing, not implementation. Do not edit source code, prepare a fix, or create a PR while triaging. Do not run tests unless the user asks for verification; identify relevant existing tests and state when runtime behavior remains unverified.
 
 Search the repository's open and closed issues using distinctive symptoms, error text, or the requested outcome. Treat similar titles as leads, not proof; link a duplicate only when the underlying problem clearly matches. Check for explicit dependencies and link them.
 
