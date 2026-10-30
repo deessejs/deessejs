@@ -3,15 +3,15 @@ title: Commands Reference
 description: The DeesseJS CLI command reference.
 ---
 
-This page documents every command in the public CLI surface. The full surface stays small on purpose: four top-level commands plus a three-command `auth` group. Adding to either counts as a breaking change and goes through the release train.
+The CLI has five top-level commands: `list`, `info`, `init`, `block`, and `auth`. The `block` and `auth` command groups each have their own subcommands. Use `deessejs --help` or `deessejs <command> --help` to see the options available in the installed version. `deessejs --version` prints the installed version.
 
-Every command accepts `--json` for scripts. With this flag, the CLI skips prompts, spinners, and colour, then writes one JSON object to stdout. Errors use `{ ok: false, code, message, hint }`. The exit code follows the rules below, regardless of `--json`.
+Commands with `--json` write machine-readable output to stdout and suppress progress spinners. Each command documents its success and error shapes. The process exit code reports whether the command succeeded.
 
 ---
 
 ## `deessejs list`
 
-Fetch the template registry and render it as a table.
+Fetch templates from the public registry, including published community templates, and render them as a table.
 
 ```bash
 deessejs list
@@ -19,19 +19,19 @@ deessejs list
 
 ### Flags
 
-| Flag                | Effect                                                                              |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| `--category <name>` | Filter to a single category. Unknown categories yield an empty list (not an error). |
-| `--json`            | Emit `{ templates: TemplateV1[] }` instead of a table.                              |
+| Flag                | Effect                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `--category <name>` | Filter to a single category. Unknown categories yield an empty list (not an error).               |
+| `--json`            | Emit `{ templates: [...] }` instead of a table. The array includes published community templates. |
 
 ### Output
 
-A coloured table with one row per template: slug, owner/repo, short description, category. The footer prints the count and a hint about `--category` and `--json`.
+The table columns are `slug`, `name`, `category`, and `license`. The footer prints the count and a hint about `--category` and `--json`.
 
 ### Exit codes
 
 - `0`: success.
-- `1`: `network_error` (registry unreachable after retries), `parse_error` (registry response didn't match the v1 contract), `internal`.
+- `1`: `network_error` (registry could not be reached), `parse_error` (registry response did not match the v1 contract), `internal`.
 
 ### Examples
 
@@ -56,7 +56,7 @@ deessejs info https://github.com/owner/repository --ref main
 
 | Argument               | Description                                                            |
 | ---------------------- | ---------------------------------------------------------------------- |
-| `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
+| `<slug-or-github-url>` | Catalog template identifier, or a GitHub URL that uses HTTPS and points to the repository root. |
 
 ### Flags
 
@@ -70,6 +70,8 @@ deessejs info https://github.com/owner/repository --ref main
 A catalog slug and a direct GitHub URL show the same descriptor fields. The output includes the title, name, description, project type, version, optional author, license, category, labels, and source repository. JSON output includes the complete normalized descriptor.
 
 Both input forms require a valid root `deesse-template.json`. For a catalog slug, the CLI uses a lightweight lookup instead of fetching the GitHub-enriched template listing. The `info` command reads the descriptor through GitHub's Contents API without downloading or inventorying the full repository. It checks the descriptor schema, declared repository, and include/exclude patterns. The command exits with an error if GitHub returns no descriptor or an invalid one. The `init` command resolves an immutable commit and checks any declared source ref before copying files.
+
+Community templates use their approved source revision automatically. Passing `--ref` for a community template is rejected.
 
 The formatted view ends with the matching install command:
 
@@ -98,43 +100,43 @@ deessejs init https://github.com/owner/repository
 
 | Argument               | Description                                                            |
 | ---------------------- | ---------------------------------------------------------------------- |
-| `<slug-or-github-url>` | Catalog template identifier, or HTTPS URL to a GitHub repository root. |
+| `<slug-or-github-url>` | Catalog template identifier, or a GitHub URL that uses HTTPS and points to the repository root. |
 
 ### Flags
 
-| Flag             | Effect                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| `--pm <name>`    | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`.                                 |
-| `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`.              |
-| `--ref <branch>` | Git ref to use. Default: the repository's default branch.                                               |
-| `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images.                                        |
-| `--force`        | Use an existing empty target directory. The CLI never removes existing files.                           |
-| `--verbose`      | Show template resolution details and the package manager's full output during installation.             |
-| `--json`         | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
+| Flag             | Effect                                                                                                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--pm <name>`    | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`.                                                                                                                                                     |
+| `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`.                                                                                                                                  |
+| `--ref <branch>` | Git ref to use. Default: the repository's default branch.                                                                                                                                                                   |
+| `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images.                                                                                                                                                            |
+| `--force`        | Use an existing empty target directory. Existing files stay intact.                                                                                                                                                          |
+| `--verbose`      | Show template resolution details and the package manager's full output during installation.                                                                                                                                 |
+| `--json`         | When the CLI skips installation, emit `{ ok, slug, dir, ref, installed }`. Otherwise include `packageManager` (the detected name, or `null` if none appears). A handled CLI error emits `{ ok: false, code, message, hint }`. |
 
 ### Package manager detection
 
 When you omit `--pm`, the CLI checks the generated project in this order:
 
 1. The `packageManager` field in `package.json` (Corepack convention, such as `pnpm@9.0.0` or `bun@1.1.0`). The CLI uses the leading tool name and ignores the version.
-2. lockfile presence: `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun, `yarn.lock` → yarn, `package-lock.json` → npm.
+2. The CLI checks these files in order: `pnpm-lock.yaml` selects pnpm, `bun.lockb` selects bun, `yarn.lock` selects yarn, and `package-lock.json` selects npm.
 
-If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` explicitly.
+If neither source identifies a package manager, the CLI creates the project without installing dependencies. Human-readable output asks you to install them manually. Pass `--pm <name>` to choose a package manager and run its install command.
 
 ### Behaviour
 
-1. Resolve a catalog slug through the registry, or parse a GitHub repository URL directly.
-2. Resolve the requested ref to an immutable GitHub commit and download its source archive.
-3. Require `deesse-template.json`. Check its schema and use its include/exclude patterns to choose project files. Catalog slugs and direct URLs follow the same process. The CLI has no clone fallback.
-4. Choose the target directory (`./<slug>` for catalog entries or `./<repository>` for direct URLs), unless you set `--dir`.
-5. Copy the selected files into the target directory. If that directory already exists and you omit `--force`, the CLI aborts with `target_exists`.
-6. Detect the package manager and run its install command. The CLI supports `pnpm install`, `npm install`, `yarn install`, and `bun install`. By default, it hides installer output. Pass `--verbose` to show it with the resolved source, ref, target path, commit, and selected file count. The CLI also reports these details when `--no-install` skips installation.
+1. Resolve a catalog slug through the registry, or parse a GitHub repository URL directly. Published community templates use their approved revision and reject `--ref`.
+2. Resolve the requested ref to an immutable GitHub commit, then download its source archive.
+3. Require `deesse-template.json` and check its contents. Use its include and exclude patterns to select project files. Both input forms follow this path, with no clone fallback.
+4. Choose the target directory (`./<slug>` for catalog entries or `./<repository>` for direct URLs), unless you pass `--dir`.
+5. Materialize the selected files. If the directory exists and you didn't pass `--force`, the CLI returns `target_exists`. With `--force`, the CLI expects an existing empty target directory.
+6. Detect the package manager and run its install command (`pnpm install`, `npm install`, `yarn install`, or `bun install`). The CLI hides install output by default. Pass `--verbose` to show it. If the CLI finds no manager, project creation still succeeds and installation stops. Verbose output also reports the resolved source, ref, target directory, commit, and number of selected files, even when `--no-install` skips installation.
 
 ### Exit codes
 
 - `0`: success (created + installed, or created only if `--no-install`).
 - `1`: public codes (`not_found`, `network_error`, `parse_error`).
-- `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`.
+- `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `materialize_failed`, `install_failed`, `internal`.
 
 ### Examples
 
@@ -157,6 +159,8 @@ deessejs init next-app-starter --json --no-install | tee clone-result.json
 
 ---
 
+The `block` command group has separate [`info` and `check` commands](/docs/cli-blocks) for inspecting block manifests and validating their source files.
+
 ## `deessejs auth`
 
 Subcommand group for the device-flow sign-in. See [CLI: Authentication](/docs/cli-auth) for the full walkthrough including troubleshooting.
@@ -169,57 +173,58 @@ Browser-based device-flow sign-in. Writes `~/.deessejs/auth.json` on success.
 deessejs auth login
 ```
 
-| Flag     | Effect                                                                                 |
-| -------- | -------------------------------------------------------------------------------------- |
-| `--json` | Emit `{ ok: true, user }` on success, `{ ok: false, code, message, hint }` on failure. |
+| Flag     | Effect                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| `--json` | Emit `{ ok: true, user }` on success. A handled `CliError` uses `{ ok: false, code, message }`. |
 
-Exit codes: `0` on success, `1` on any failure (`network_error`, `cli_device_denied`, `cli_device_expired`, `internal`).
+Exit codes: `0` on success and `1` on failure. Denying the request produces `cli_device_denied`; an expired, rejected, or otherwise unusable device flow produces `cli_device_expired`. Unexpected failures use the CLI's general error handler.
 
 ### `deessejs auth status`
 
-read-only diagnostic. Validates the cached bearer against the server and prints one of three terminal states (no session, valid, stale). Always exits `0`.
+Read-only diagnostic. Validates the stored bearer against the server and prints one of three states: no session, valid session, or stale session. These three states exit `0`; a request or server failure exits `1`.
 
 ```bash
 deessejs auth status
 ```
 
-| Flag     | Effect                                                                                                                          |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `--json` | Emit `{ ok, user?, fetchedAt? }`, `{ ok: false, reason: "no_session" }`, or `{ ok: false, reason: "session_invalid", stored }`. |
+| Flag     | Effect                                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--json` | Emit `{ ok: true, user, fetchedAt }`, `{ ok: false, reason: "no_session" }`, or `{ ok: false, reason: "session_invalid", stored }` for the three normal states. A request failure exits nonzero. |
 
 ### `deessejs auth logout`
 
-Invalidate the server-side session and delete the local token file. The CLI always deletes the local file, even if the server-side sign-out fails.
+Attempt to invalidate the server-side session, then delete the local token file. A non-2xx response still clears the local file and is reported as a warning in human-readable mode. A network failure also clears the local file, then exits with an error.
 
 ```bash
 deessejs auth logout
 ```
 
-| Flag     | Effect                                                                                             |
-| -------- | -------------------------------------------------------------------------------------------------- |
-| `--json` | Emit `{ ok: true }` on success, `{ ok: true, reason: "no_session" }` if nothing existed to revoke. |
+| Flag     | Effect                                                                                                                              |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--json` | Emit `{ ok: true }` on success or when no session exists. A non-2xx sign-out response still counts as local sign-out success. |
 
-Exit codes: always `0`. A non-2xx from the server's sign-out endpoint logs but doesn't change the exit code. Local cleanup remains the user-facing outcome.
+Exit code `0` means local sign-out finished, even if the server returned non-2xx. Exit code `1` means the request failed at the transport level. The CLI removes the local token in both cases.
 
 ---
 
 ## Error codes reference
 
-The CLI returns only the error codes listed below. Treat this closed list as part of the public API. Adding a code counts as a breaking change. Use these values in your scripts:
+These public error codes are intended for scripting. Some internal errors are also included in JSON output and may change between releases.
 
-| Code                 | Meaning                                                       | Remediation                                                            |
-| -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `not_found`          | A slug, template, or other identifier doesn't exist           | Check the spelling or run `deessejs list` to see available identifiers |
-| `network_error`      | Network request failed after retries                          | Check connectivity and retry. The CLI already retries three times with jitter. |
-| `parse_error`        | Server response didn't match the v1 contract                  | Likely a server-side regression. Open an issue.                        |
-| `cli_outdated`       | Server requires a newer CLI                                    | Run `npm install -g @deessejs@latest`                                  |
-| `cli_device_denied`  | You denied the device-flow request in the browser             | Re-run `deessejs auth login` and select Approve                        |
-| `cli_device_expired` | The 30-minute device-code window elapsed                      | Re-run `deessejs auth login`                                           |
+| Code                 | Meaning                                             | Remediation                                                         |
+| -------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| `not_found`          | A requested identifier doesn't exist               | Check spelling or run `deessejs list`                            |
+| `network_error`      | Network request failed                              | Check connectivity, then retry                                      |
+| `parse_error`        | Server response didn't match the v1 contract        | Likely a server-side regression. Open an issue.                     |
+| `cli_device_denied`  | You denied the device-flow request in the browser   | Re-run `deessejs auth login` and select Approve                     |
+| `cli_device_expired` | The 30-minute device-code window elapsed            | Re-run `deessejs auth login`                                        |
 
-With `--json`, the CLI may also return internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`). Treat these codes as implementation details. Their behavior may change without notice.
+Internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `block_invalid`, `materialize_failed`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`. They may change without notice.
 
-Every error response on `--json` carries a `hint` field with a human-readable remediation hint. Print it before exiting.
+Most command-specific JSON errors include a `hint`. Auth commands use the shapes described in the authentication section. Unexpected failures go through the general human-readable error handler.
+
+When `list` or catalog-based `init` fetches the registry, the CLI compares the installed version with the server's lowest supported version. A lower version triggers an upgrade warning on the standard error stream, then the command continues. This best-effort check never fails the command.
 
 ## Global flags
 
-No global `--api-url` flag exists. The CLI always calls `https://app.deessejs.com/api/v1`. Integration tests can use custom base URLs. Production commands use the production host.
+The CLI has no global `--api-url` flag. By default, it uses `https://app.deessejs.com/api/v1` as the API base URL. Set `DEESSEJS_API_URL` to use another host.

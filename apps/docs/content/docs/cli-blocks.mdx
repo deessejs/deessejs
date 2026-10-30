@@ -1,0 +1,131 @@
+---
+title: Blocks
+description: Inspect DeesseJS block descriptors with the CLI.
+---
+
+The CLI can inspect a block descriptor and check that its declared source files and package manifests exist. These read-only commands leave project files and dependencies untouched.
+
+## `deessejs block info <source>`
+
+Read `deesse-block.json` and show the block metadata, declared capabilities, package outputs, and package dependencies.
+
+```bash
+# Inspect a block in the current directory
+deessejs block info .
+
+# Inspect a block in a public GitHub repository
+deessejs block info https://github.com/owner/repository/tree/main/path/to/block
+```
+
+Pass `<source>` as a local block directory or a public GitHub repository URL. A GitHub URL can point to the repository root or a directory under `/tree/<ref>/`. Use `--ref <git-ref>` to select a Git ref for a GitHub source. The CLI rejects `--ref` with a local directory.
+
+The block directory must contain `deesse-block.json`. `block info` checks the descriptor, then reads each declared package's `package.json` and displays its name, version, dependencies, and dev dependencies. It doesn't fetch every source asset listed in the descriptor. Run `block check` to check those assets.
+
+### Flags
+
+| Flag              | Effect                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--ref <git-ref>` | Inspect a GitHub ref. Defaults to the ref in the URL or the repository's default branch.                                                                     |
+| `--json`          | Emit `{ ok: true, command: "block info", descriptor, source, packages }` on success. Errors use `{ ok: false, command: "block info", code, message, hint }`. |
+
+## `deessejs block check [source]`
+
+Check a block descriptor and all source assets it declares. By default, the command uses the current directory.
+
+```bash
+deessejs block check
+deessejs block check ./path/to/block
+deessejs block check https://github.com/owner/repository/tree/main/path/to/block
+deessejs block check https://github.com/owner/repository --ref feature/block-update
+```
+
+The check examines the descriptor structure, package and file mappings, package manifests, and every declared source file. If the descriptor passes but assets are missing or invalid, the command returns diagnostics. A missing descriptor, inaccessible source, or other fatal source error returns a command error.
+
+### Flags
+
+| Flag              | Effect                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `--ref <git-ref>` | Check a GitHub ref. Defaults to the ref in the URL or the repository's default branch.  |
+| `--json`          | Emit the check result as JSON. The result sets `ok` to `false` when diagnostics occur. |
+
+### Results and exit codes
+
+- `0`: the descriptor and declared files passed validation.
+- `1`: the check found diagnostics or couldn't access the source.
+
+The JSON result for a completed check has this shape:
+
+```json
+{
+  "ok": true,
+  "command": "block check",
+  "source": { "type": "local", "path": "/path/to/block" },
+  "descriptor": {
+    "$schema": "https://app.deessejs.com/schema/block/v1.json",
+    "formatVersion": 1,
+    "name": "example-block",
+    "version": "1.0.0",
+    "description": "An example integration block",
+    "provides": [
+      { "capability": "auth", "provider": "example", "package": "web" }
+    ],
+    "install": {
+      "packages": [{ "id": "web", "path": "apps/web" }],
+      "files": [
+        {
+          "from": "files/package.json",
+          "to": { "package": "web", "path": "package.json" }
+        }
+      ]
+    }
+  },
+  "filesDeclared": 1,
+  "filesChecked": 1,
+  "packages": [
+    {
+      "id": "web",
+      "path": "apps/web",
+      "name": "@example/web",
+      "dependencies": {},
+      "devDependencies": {}
+    }
+  ],
+  "diagnostics": []
+}
+```
+
+Invalid descriptor fields produce diagnostics, set `ok` to `false`, and return exit code `1`. If a fatal error prevents completion, the CLI returns `{ ok: false, command: "block check", code, message, hint }`. Invalid sources return `block_invalid`. A missing GitHub repository returns `not_found`. Network failures return `network_error`.
+
+## Block descriptor outline
+
+Each block source contains a `deesse-block.json` manifest. The manifest names the block, its capabilities, output packages, and files to copy into those packages. `install.files[].from` paths start from the block source. Each `to` entry names a declared package and a relative destination path.
+
+```json
+{
+  "$schema": "https://app.deessejs.com/schema/block/v1.json",
+  "formatVersion": 1,
+  "name": "example-block",
+  "version": "1.0.0",
+  "description": "An example integration block",
+  "provides": [
+    { "capability": "auth", "provider": "example", "package": "web" }
+  ],
+  "install": {
+    "packages": [{ "id": "web", "path": "apps/web" }],
+    "files": [
+      {
+        "from": "files/package.json",
+        "to": { "package": "web", "path": "package.json" }
+      },
+      {
+        "from": "files/src/example.ts",
+        "to": { "package": "web", "path": "src/example.ts" }
+      }
+    ],
+    "environment": [],
+    "manualSteps": []
+  }
+}
+```
+
+Every declared package must map to a `package.json` file. Use safe relative paths, and give each destination and package identifier a unique value. The [Block Descriptor v1 schema](https://app.deessejs.com/schema/block/v1.json) defines the descriptor rules.
