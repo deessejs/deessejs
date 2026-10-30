@@ -14,7 +14,7 @@ export default function ProfilePage() {
 		>
 			<SettingsCard
 				title="Public profile"
-				description="Your name and avatar. The avatar upload is a placeholder for V1."
+				description="Manage your name and uploaded avatar."
 			>
 				<ProfileHeaderCard />
 			</SettingsCard>

@@ -158,6 +158,13 @@ export const serverInputShape = {
 
   PARENT_DOMAIN: z.string().min(1).optional(),
 
+  // Private R2 bucket for application-managed user and organization avatars.
+  R2_ACCOUNT_ID: z.string().min(1).optional(),
+  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  R2_AVATARS_BUCKET: z.string().min(1).optional(),
+  CRON_SECRET: z.string().min(32).optional(),
+
   // Test-only override for the email-verification-on-invitation
   // contract. The default is "true"; the production startup guard in
   // `packages/auth/src/organization/plugin.ts` refuses to start the
@@ -178,6 +185,20 @@ export const serverInputShape = {
 
 export const serverSchema = z.object(serverInputShape).superRefine(
   (data, ctx) => {
+    const r2Configuration = [
+      data.R2_ACCOUNT_ID,
+      data.R2_ACCESS_KEY_ID,
+      data.R2_SECRET_ACCESS_KEY,
+      data.R2_AVATARS_BUCKET,
+    ]
+    if (r2Configuration.some(Boolean) && !r2Configuration.every(Boolean)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "R2 avatar storage configuration must be provided together.",
+        path: ["R2_ACCOUNT_ID"],
+      })
+    }
+
     const githubAppConfiguration = [
       data.GITHUB_APP_CLIENT_ID,
       data.GITHUB_APP_CLIENT_SECRET,

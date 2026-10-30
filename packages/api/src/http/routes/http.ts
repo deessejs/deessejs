@@ -1,13 +1,25 @@
 import { sql } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
+import { timingSafeEqual } from "node:crypto"
+import { Readable } from "node:stream"
 import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
+import {
+  member,
+  organizationAvatars,
+  storageObjects,
+  userAvatars,
+} from "@workspace/database/schema"
 import { serverEnv } from "@workspace/env/server"
+import { alias } from "drizzle-orm/pg-core"
 import projectSchema from "@workspace/registry/schema/project/v1.json"
 import type { Hono } from "hono"
 import { VERSION, MIN_SUPPORTED_VERSION } from "../../constants/version.js"
 import type { ApiEnv } from "../env.js"
 import { rateLimit } from "../middleware/rate-limit.js"
 import { mountGitHubAppSetup } from "./github-app.js"
+import { cleanupAvatars } from "../../core/avatars/lifecycle.js"
+import { getAvatarStorage } from "../../core/avatars/storage.js"
 
 /**
  * Direct HTTP routes that do not go through oRPC:
@@ -24,7 +36,7 @@ import { mountGitHubAppSetup } from "./github-app.js"
 export const mountHttp = (api: Hono<ApiEnv>): void => {
   // Liveness — cheap, always 200 unless the process is dead.
   api.get("/health", (c) =>
-    c.json({ status: "ok", timestamp: new Date().toISOString() }),
+    c.json({ status: "ok", timestamp: new Date().toISOString() })
   )
 
   // Public project configuration schema. The app domain rewrites the
@@ -32,27 +44,23 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
   api.get("/schema/project/v1.json", (c) => {
     c.header(
       "Cache-Control",
-      "public, max-age=3600, stale-while-revalidate=86400",
+      "public, max-age=3600, stale-while-revalidate=86400"
     )
     return c.json(projectSchema)
   })
 
   // Server version probe — public, no auth, rate-limited. Cached
   // for 10 minutes because the values change only at release time.
-  api.get(
-    "/version",
-    rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE),
-    (c) => {
-      c.header(
-        "Cache-Control",
-        "public, max-age=600, stale-while-revalidate=86400",
-      )
-      return c.json({
-        version: VERSION,
-        minSupported: MIN_SUPPORTED_VERSION,
-      })
-    },
-  )
+  api.get("/version", rateLimit(serverEnv.RATE_LIMIT_PER_MINUTE), (c) => {
+    c.header(
+      "Cache-Control",
+      "public, max-age=600, stale-while-revalidate=86400"
+    )
+    return c.json({
+      version: VERSION,
+      minSupported: MIN_SUPPORTED_VERSION,
+    })
+  })
 
   // Readiness — pings Postgres. db.execute throws on connection
   // failure (ECONNREFUSED, ETIMEDOUT, pool exhaustion); the catch
@@ -64,6 +72,102 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     } catch {
       return c.json({ status: "not ready" }, 503)
     }
+  })
+
+  api.get("/images/:objectId", async (c) => {
+    const viewer = c.get("user")
+    const objectId = c.req.param("objectId")
+    if (!viewer || !/^[0-9a-f-]{36}$/i.test(objectId)) {
+      return c.notFound()
+    }
+
+    const [personal] = await db
+      .select({
+        userId: userAvatars.userId,
+        objectKey: storageObjects.objectKey,
+      })
+      .from(userAvatars)
+      .innerJoin(storageObjects, eq(storageObjects.id, userAvatars.objectId))
+      .where(
+        and(
+          eq(userAvatars.objectId, objectId),
+          eq(storageObjects.state, "ready")
+        )
+      )
+      .limit(1)
+    let allowed = personal?.userId === viewer.id
+
+    if (!allowed && personal) {
+      const ownerMembership = alias(member, "avatar_owner_membership")
+      const sharedOrganization = await db
+        .select({ id: member.id })
+        .from(member)
+        .innerJoin(
+          ownerMembership,
+          eq(member.organizationId, ownerMembership.organizationId)
+        )
+        .innerJoin(userAvatars, eq(userAvatars.userId, ownerMembership.userId))
+        .where(
+          and(eq(member.userId, viewer.id), eq(userAvatars.objectId, objectId))
+        )
+        .limit(1)
+      allowed = sharedOrganization.length > 0
+    }
+
+    const [organizationAvatar] = personal
+      ? []
+      : await db
+          .select({
+            organizationId: organizationAvatars.organizationId,
+            objectKey: storageObjects.objectKey,
+          })
+          .from(organizationAvatars)
+          .innerJoin(
+            storageObjects,
+            eq(storageObjects.id, organizationAvatars.objectId)
+          )
+          .innerJoin(
+            member,
+            eq(member.organizationId, organizationAvatars.organizationId)
+          )
+          .where(
+            and(
+              eq(organizationAvatars.objectId, objectId),
+              eq(storageObjects.state, "ready"),
+              eq(member.userId, viewer.id)
+            )
+          )
+          .limit(1)
+
+    if (!allowed && !organizationAvatar) return c.notFound()
+    const objectKey = personal?.objectKey ?? organizationAvatar?.objectKey
+    if (!objectKey) return c.notFound()
+
+    const object = await getAvatarStorage().getObject(objectKey)
+    if (!object.body) return c.notFound()
+    c.header("Cache-Control", "private, no-store")
+    c.header("Content-Type", "image/webp")
+    c.header("X-Content-Type-Options", "nosniff")
+    if (object.contentLength !== undefined) {
+      c.header("Content-Length", String(object.contentLength))
+    }
+    return c.body(Readable.toWeb(object.body))
+  })
+
+  api.get("/internal/avatars/cleanup", async (c) => {
+    const secret = serverEnv.CRON_SECRET
+    if (!secret) return c.json({ error: "Cleanup is not configured." }, 503)
+    const authorization = c.req.header("authorization") ?? ""
+    const provided = Buffer.from(authorization.replace(/^Bearer\s+/i, ""))
+    const expected = Buffer.from(secret)
+    if (
+      !/^Bearer\s+/i.test(authorization) ||
+      provided.byteLength !== expected.byteLength ||
+      !timingSafeEqual(provided, expected)
+    ) {
+      return c.json({ error: "Unauthorized." }, 401)
+    }
+    return c.json(await cleanupAvatars())
   })
 
   // Better Auth — login, signup, session, etc.

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -17,6 +18,15 @@ import { Input } from "@workspace/ui/components/input"
 import { CopyIcon } from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
+import { orpcBrowser } from "@/lib/orpc-browser"
+
+const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
+const organizationAvatarQueryOptions = (slug: string) =>
+  queryOptions({
+    queryKey: ["organization", "avatar", slug],
+    queryFn: () => orpcBrowser.organization.avatar.get({ slug }),
+    retry: false,
+  })
 
 const organizationProfileSchema = z.object({
   name: z
@@ -78,6 +88,139 @@ type OrganizationProfile = {
   role: string
 }
 
+function OrganizationAvatar({
+  slug,
+  name,
+  logo,
+  canManage,
+}: {
+  slug: string
+  name: string
+  logo: string | null
+  canManage: boolean
+}) {
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
+  const avatarQuery = organizationAvatarQueryOptions(slug)
+  const avatar = useQuery(avatarQuery)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+
+  async function handleAvatarChange(file: File | undefined) {
+    if (!file) return
+    const contentType = avatarContentTypes.find((type) => type === file.type)
+    if (!contentType) {
+      toast.error("Choose a JPEG, PNG, or WebP image.")
+      return
+    }
+    setAvatarBusy(true)
+    try {
+      const upload = await orpcBrowser.organization.avatar.createUpload({
+        slug,
+        contentType,
+        byteSize: file.size,
+      })
+      const response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        headers: upload.requiredHeaders,
+        body: file,
+      })
+      if (!response.ok) throw new Error("Could not upload this image.")
+      await orpcBrowser.organization.avatar.complete({
+        slug,
+        uploadId: upload.uploadId,
+      })
+      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
+      toast.success("Organization avatar updated")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update avatar"
+      )
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarBusy(true)
+    try {
+      await orpcBrowser.organization.avatar.remove({ slug })
+      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
+      toast.success("Uploaded organization avatar removed")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not remove avatar"
+      )
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  const initials = name.trim().slice(0, 2).toUpperCase() || "?"
+  const avatarUrl = avatar.data?.imageUrl ?? logo ?? ""
+
+  return (
+    <>
+      <div className="flex items-center gap-4">
+        <Avatar className="size-16 rounded-lg">
+          {(avatar.data?.imageUrl || isSafeLogoPreview(logo ?? "")) && (
+            <AvatarImage
+              src={avatarUrl}
+              alt={`${name} logo`}
+              referrerPolicy="no-referrer"
+            />
+          )}
+          <AvatarFallback className="rounded-lg text-xl">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h2 className="text-lg font-semibold">{name}</h2>
+          <p className="text-sm text-muted-foreground">Organization profile</p>
+        </div>
+      </div>
+
+      {canManage ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            ref={avatarInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={avatarBusy}
+            aria-label="Choose an organization avatar"
+            onChange={(event) => {
+              void handleAvatarChange(event.currentTarget.files?.[0]).then(
+                () => undefined
+              )
+              event.currentTarget.value = ""
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={avatarBusy}
+            onClick={() => avatarInputRef.current?.click()}
+          >
+            {avatarBusy ? "Saving..." : "Change avatar"}
+          </Button>
+          {avatar.data?.imageUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              disabled={avatarBusy}
+              onClick={() => void handleAvatarRemove().then(() => undefined)}
+            >
+              Remove upload
+            </Button>
+          )}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 function CopyButton({ value, label }: { value: () => string; label: string }) {
   return (
     <Button
@@ -113,6 +256,7 @@ export function OrganizationProfile({
     defaultValues: { name: organization.name, logo: organization.logo ?? "" },
   })
   const logoField = form.register("logo")
+
   async function handleSubmit(values: OrganizationProfileValues) {
     const savedValues = { ...values, logo: values.logo.trim() }
     setSubmitting(true)
@@ -141,28 +285,14 @@ export function OrganizationProfile({
   }
 
   const workspacePath = `/${organization.slug}`
-  const initials = organization.name.trim().slice(0, 2).toUpperCase() || "?"
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Avatar className="size-16 rounded-lg">
-          {isSafeLogoPreview(logoPreview) && (
-            <AvatarImage
-              src={logoPreview}
-              alt={`${organization.name} logo`}
-              referrerPolicy="no-referrer"
-            />
-          )}
-          <AvatarFallback className="rounded-lg text-xl">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h2 className="text-lg font-semibold">{organization.name}</h2>
-          <p className="text-sm text-muted-foreground">Organization profile</p>
-        </div>
-      </div>
+      <OrganizationAvatar
+        slug={organization.slug}
+        name={organization.name}
+        logo={logoPreview}
+        canManage={canManage}
+      />
 
       {canManage ? (
         <form
