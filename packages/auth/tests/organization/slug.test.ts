@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   ORGANIZATION_SLUG_CANDIDATE_LIMIT,
   organizationSlugCandidates,
+  organizationSlugCandidatesFromSlug,
   slugifyOrganizationName,
 } from "../../src/organization/policy.js"
 import { RESERVED_SLUGS } from "../../src/organization/reserved-slugs.js"
@@ -26,9 +27,7 @@ describe("slugifyOrganizationName", () => {
   it("keeps the letters a name has in another script", () => {
     // The diacritics go, the letters stay: the slug is still the
     // name, in the shape the format accepts.
-    expect(slugifyOrganizationName("Société Générale")).toBe(
-      "societe-generale",
-    )
+    expect(slugifyOrganizationName("Société Générale")).toBe("societe-generale")
   })
 
   it("falls back to a token when the name normalizes to nothing", () => {
@@ -46,7 +45,7 @@ describe("slugifyOrganizationName", () => {
   it("is deterministic", () => {
     expect(slugifyOrganizationName("A")).toBe(slugifyOrganizationName("A"))
     expect(slugifyOrganizationName("日本語")).toBe(
-      slugifyOrganizationName("日本語"),
+      slugifyOrganizationName("日本語")
     )
   })
 
@@ -113,7 +112,7 @@ describe("organizationSlugCandidates", () => {
   it("is bounded", () => {
     for (const name of ["Acme", "Admin", "日本語", "A"]) {
       expect(organizationSlugCandidates(name).length).toBeLessThanOrEqual(
-        ORGANIZATION_SLUG_CANDIDATE_LIMIT,
+        ORGANIZATION_SLUG_CANDIDATE_LIMIT
       )
     }
   })
@@ -131,5 +130,31 @@ describe("organizationSlugCandidates", () => {
     for (const candidate of candidates) {
       expect(candidate.length).toBeLessThanOrEqual(38)
     }
+  })
+})
+
+describe("organizationSlugCandidatesFromSlug", () => {
+  it("tries the proposed slug before numbered collision forms", () => {
+    expect(organizationSlugCandidatesFromSlug("acme-studio")).toEqual([
+      "acme-studio",
+      "acme-studio-2",
+      "acme-studio-3",
+      "acme-studio-4",
+      "acme-studio-5",
+      "acme-studio-6",
+      "acme-studio-7",
+      "acme-studio-8",
+      "acme-studio-9",
+      "acme-studio-10",
+    ])
+  })
+
+  it("moves past a reserved proposal", () => {
+    expect(organizationSlugCandidatesFromSlug("admin")[0]).toBe("admin-2")
+  })
+
+  it("rejects proposals that do not satisfy the slug format", () => {
+    expect(organizationSlugCandidatesFromSlug("A slug")).toEqual([])
+    expect(organizationSlugCandidatesFromSlug("a")).toEqual([])
   })
 })

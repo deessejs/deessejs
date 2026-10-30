@@ -45,34 +45,15 @@ const POSTGRES_READY = inject("postgres:ready") === true
 const SESSION_COOKIE_NAME = "better-auth.session_token"
 
 /**
- * How the creation behaves when the test needs it to fail, or to
- * wait.
+ * How the creation behaves when the test needs it to fail.
  *
- * The plugin's create writes the organization, then its membership,
- * then the active selection, and there is no way to make the
- * membership insertion fail from the outside. The compensation and
- * the reconciliation are the code under test, so the test replaces
- * the wrapper and drives the failure it needs.
- *
- * The active selection can also be held, so the test can observe the
- * account while a recovery is running.
+ * There is no way to make the membership insertion fail from the
+ * outside. The compensation and the reconciliation are the code under
+ * test, so the test replaces the wrapper and drives the failure it needs.
  */
 const wrapper = vi.hoisted(() => {
-  let markEntered: () => void = () => {}
-  let release: () => void = () => {}
-  const entered = new Promise<void>((resolve) => {
-    markEntered = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
   return {
     mode: "real" as "real" | "fail-before" | "fail-after",
-    setActive: "real" as "real" | "hold" | "fail",
-    markEntered,
-    release,
-    entered,
-    gate,
   }
 })
 
@@ -92,12 +73,9 @@ vi.mock("@workspace/auth/organization/create", async (importOriginal) => {
       }
       if (wrapper.mode === "fail-after") {
         const { db: database } = await import("@workspace/database")
-        const { organization: organizations } = await import(
-          "@workspace/database/schema"
-        )
-        await database
-          .insert(organizations)
-          .values({
+        const { organization: organizations } =
+          await import("@workspace/database/schema")
+        await database.insert(organizations).values({
             id: `org-mock-${randomUUID()}`,
             name: input.name,
             slug: input.slug,
@@ -107,19 +85,6 @@ vi.mock("@workspace/auth/organization/create", async (importOriginal) => {
         throw new Error("The creation failed after it wrote the organization.")
       }
       return original.createOrganization(input)
-    },
-    setActiveOrganization: async (input: {
-      organizationId: string
-      headers: Headers
-    }) => {
-      if (wrapper.setActive === "fail") {
-        throw new Error("The active selection could not be restored.")
-      }
-      if (wrapper.setActive === "hold") {
-        wrapper.markEntered()
-        await wrapper.gate
-      }
-      return original.setActiveOrganization(input)
     },
   }
 })
@@ -142,8 +107,6 @@ const createdOrganizations: string[] = []
 
 afterEach(async () => {
   wrapper.mode = "real"
-  wrapper.setActive = "real"
-  wrapper.release()
   const users = createdUsers.splice(0)
   const organizations = createdOrganizations.splice(0)
   if (users.length > 0) {
@@ -200,7 +163,7 @@ type Actor = {
 /** Creates a user and a session for it, and returns the caller's cookie. */
 const createActor = async (
   activeOrganizationId?: string,
-  emailVerified = true,
+  emailVerified = true
 ): Promise<Actor> => {
   const id = uniqueId("user")
   const email = `${id}@example.com`
@@ -225,7 +188,9 @@ const createActor = async (
 type CreatedOrganization = { id: string; slug: string }
 
 /** Creates an organization nobody belongs to yet. */
-const createOrganization = async (name = "Acme"): Promise<CreatedOrganization> => {
+const createOrganization = async (
+  name = "Acme"
+): Promise<CreatedOrganization> => {
   const id = uniqueId("org")
   const slug = uniqueId("acme")
   await db.insert(organization).values({
@@ -241,7 +206,7 @@ const createOrganization = async (name = "Acme"): Promise<CreatedOrganization> =
 /** Creates an organization under an exact slug, and tracks it. */
 const createOrganizationWithSlug = async (
   name: string,
-  slug: string,
+  slug: string
 ): Promise<CreatedOrganization> => {
   const id = uniqueId("org")
   await db.insert(organization).values({
@@ -276,7 +241,7 @@ const createMarkedOrganization = async (input: {
 const addMember = async (
   organizationId: string,
   userId: string,
-  role: string,
+  role: string
 ): Promise<void> => {
   await db.insert(member).values({
     id: uniqueId("member"),
@@ -313,7 +278,7 @@ type RpcResult = { status: number; body: Record<string, unknown> }
 const rpc = async (
   path: string[],
   data: unknown,
-  cookie?: string,
+  cookie?: string
 ): Promise<RpcResult> => {
   const headers: Record<string, string> = {
     "content-type": "application/json",
@@ -324,7 +289,10 @@ const rpc = async (
     headers,
     body: JSON.stringify({ json: data }),
   })
-  return { status: res.status, body: (await res.json()) as Record<string, unknown> }
+  return {
+    status: res.status,
+    body: (await res.json()) as Record<string, unknown>,
+  }
 }
 
 /** The error carried by a refused call. */
@@ -333,7 +301,7 @@ const errorOf = (body: Record<string, unknown>) =>
 
 /** The organization the session points at, read back from the table. */
 const activeOrganizationIdOf = async (
-  userId: string,
+  userId: string
 ): Promise<string | null> => {
   const rows = await db
     .select({ activeOrganizationId: session.activeOrganizationId })
@@ -401,7 +369,7 @@ const readBody = async (res: Response): Promise<unknown> => {
 const native = async (
   path: string,
   body: unknown,
-  cookie: string,
+  cookie: string
 ): Promise<{ status: number; body: unknown }> => {
   const res = await api.request(`/api/v1/auth${path}`, {
     method: "POST",
@@ -418,7 +386,7 @@ const native = async (
 /** Reads one of the native auth endpoints. */
 const nativeRead = async (
   path: string,
-  cookie: string,
+  cookie: string
 ): Promise<{ status: number; body: unknown }> => {
   const res = await api.request(`/api/v1/auth${path}`, {
     method: "GET",
@@ -450,7 +418,7 @@ describe("organization procedures", () => {
       const res = await rpc(
         ["organization", "bySlug"],
         { slug: org.slug },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -470,7 +438,7 @@ describe("organization procedures", () => {
       const res = await rpc(
         ["organization", "bySlug"],
         { slug: org.slug },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(403)
@@ -484,12 +452,12 @@ describe("organization procedures", () => {
       const forbidden = await rpc(
         ["organization", "bySlug"],
         { slug: org.slug },
-        actor.cookie,
+        actor.cookie
       )
       const unknown = await rpc(
         ["organization", "bySlug"],
         { slug: uniqueId("acme") },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(unknown.status).toBe(forbidden.status)
@@ -507,7 +475,7 @@ describe("organization procedures", () => {
       const res = await rpc(
         ["organization", "settings"],
         { slug: org.slug },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(403)
@@ -523,7 +491,7 @@ describe("organization procedures", () => {
         const res = await rpc(
           ["organization", "settings"],
           { slug: org.slug },
-          actor.cookie,
+          actor.cookie
         )
 
         expect(res.status).toBe(200)
@@ -540,7 +508,7 @@ describe("organization procedures", () => {
         const res = await rpc(
           ["organization", "settings"],
           { slug: org.slug },
-          actor.cookie,
+          actor.cookie
         )
 
         expect(res.status).toBe(200)
@@ -579,7 +547,7 @@ describe("organization procedures", () => {
       await db
         .delete(member)
         .where(
-          and(eq(member.organizationId, org.id), eq(member.userId, actor.id)),
+          and(eq(member.organizationId, org.id), eq(member.userId, actor.id))
         )
 
       const res = await rpc(["organization", "active"], null, actor.cookie)
@@ -597,7 +565,7 @@ describe("organization procedures", () => {
       const res = await rpc(
         ["organization", "bySlug"],
         { slug: theirs.slug },
-        actor.cookie,
+        actor.cookie
       )
       expect(res.status).toBe(403)
 
@@ -613,7 +581,7 @@ describe("organization procedures", () => {
       const res = await rpc(
         ["organization", "bySlug"],
         { slug: 42 },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(400)
@@ -625,13 +593,10 @@ describe("organization procedures", () => {
       const actor = await createActor(org.id)
       await addMember(org.id, actor.id, "owner")
 
-      for (const endpoint of [
-        "get-organization",
-        "get-full-organization",
-      ]) {
+      for (const endpoint of ["get-organization", "get-full-organization"]) {
         const res = await api.request(
           `/api/v1/auth/organization/${endpoint}?organizationSlug=${org.slug}`,
-          { headers: { cookie: actor.cookie } },
+          { headers: { cookie: actor.cookie } }
         )
 
         expect(res.status).toBe(404)
@@ -677,7 +642,7 @@ describe("the organization's own endpoints", () => {
       const res = await native(
         "/organization/set-active",
         { organizationId: org.id },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -702,12 +667,12 @@ describe("the organization's own endpoints", () => {
       const res = await native(
         "/organization/set-active",
         { organizationId: theirs.id },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(403)
       expect((res.body as { code: string }).code).toBe(
-        "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION",
+        "USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION"
       )
       // The plugin clears the selection before it refuses, so the
       // caller's next entry point lands on the empty state. This is
@@ -736,7 +701,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -759,12 +724,12 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "A" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
       expect((res.body.json as { slug: string }).slug).toMatch(
-        /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/,
+        /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/
       )
     })
 
@@ -774,12 +739,12 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "日本語" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
       expect((res.body.json as { slug: string }).slug).toMatch(
-        /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/,
+        /^[a-z0-9](?:[a-z0-9-]{0,36}[a-z0-9])$/
       )
     })
 
@@ -789,7 +754,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: " Acme " },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(400)
@@ -804,7 +769,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -817,42 +782,47 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Admin" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
       expect((res.body.json as { slug: string }).slug).not.toBe("admin")
     })
 
-    it("ignores a slug the caller sends", async () => {
+    it("uses the caller's slug as a proposal", async () => {
       const actor = await createActor()
 
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme", slug: "chosen-by-the-caller" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
-      expect((res.body.json as { slug: string }).slug).toBe("acme")
+      expect((res.body.json as { slug: string }).slug).toBe(
+        "chosen-by-the-caller"
+      )
     })
 
-    it("makes the new organization the active one", async () => {
-      const actor = await createActor()
+    it("preserves the active organization when creating another", async () => {
+      const current = await createOrganization("Current")
+      const actor = await createActor(current.id)
+      await addMember(current.id, actor.id, "owner")
 
       const created = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
       const organizationId = (created.body.json as { id: string }).id
+      expect(organizationId).not.toBe(current.id)
 
       const res = await rpc(["organization", "active"], null, actor.cookie)
 
       expect(res.status).toBe(200)
       expect(res.body.json).toMatchObject({
         status: "active",
-        organization: { id: organizationId, slug: "acme" },
+        organization: { id: current.id, slug: current.slug },
       })
     })
 
@@ -878,7 +848,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(500)
@@ -898,7 +868,7 @@ describe("organization creation", () => {
       const res = await native(
         "/organization/create",
         { name: "Acme", slug: "acme-native" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(404)
@@ -910,12 +880,12 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(403)
       expect(errorOf(res.body).code).toBe(
-        "ORGANIZATION_EMAIL_VERIFICATION_REQUIRED",
+        "ORGANIZATION_EMAIL_VERIFICATION_REQUIRED"
       )
       const rows = await db
         .select({ id: organization.id })
@@ -933,7 +903,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(500)
@@ -955,7 +925,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(500)
@@ -979,7 +949,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -991,7 +961,9 @@ describe("organization creation", () => {
     })
 
     it("adopts an organization an interrupted attempt completed", async () => {
-      const actor = await createActor()
+      const current = await createOrganization("Current")
+      const actor = await createActor(current.id)
+      await addMember(current.id, actor.id, "owner")
       const operationId = uniqueId("op")
       await createOperation({
         id: operationId,
@@ -1010,7 +982,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -1023,13 +995,12 @@ describe("organization creation", () => {
         .where(eq(organization.name, "Acme"))
       expect(rows).toHaveLength(1)
 
-      // And the session points at the adopted organization, so the
-      // next entry point does not send the caller back to the empty
-      // state.
+      // Recovery adopts the organization without changing the
+      // caller's existing active selection.
       const active = await rpc(["organization", "active"], null, actor.cookie)
       expect(active.body.json).toMatchObject({
         status: "active",
-        organization: { id: orphan.id },
+        organization: { id: current.id },
       })
     })
 
@@ -1052,7 +1023,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
@@ -1079,7 +1050,7 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(409)
@@ -1097,7 +1068,7 @@ describe("organization creation", () => {
       const created = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
       const organizationId = (created.body.json as { id: string }).id
 
@@ -1114,9 +1085,8 @@ describe("organization creation", () => {
 
     it("refuses a creation whose marker names no pending operation", async () => {
       const actor = await createActor()
-      const { createOrganization: createThroughPlugin } = await import(
-        "@workspace/auth/organization/create"
-      )
+      const { createOrganization: createThroughPlugin } =
+        await import("@workspace/auth/organization/create")
 
       await expect(
         createThroughPlugin({
@@ -1124,7 +1094,7 @@ describe("organization creation", () => {
           slug: uniqueId("acme"),
           marker: uniqueId("op"),
           headers: new Headers({ cookie: actor.cookie }),
-        }),
+        })
       ).rejects.toThrow()
 
       const rows = await db
@@ -1148,16 +1118,15 @@ describe("organization creation", () => {
         .set({ status: "superseded" })
         .where(eq(organizationProvisioning.id, operationId))
 
-      const { createOrganization: createThroughPlugin } = await import(
-        "@workspace/auth/organization/create"
-      )
+      const { createOrganization: createThroughPlugin } =
+        await import("@workspace/auth/organization/create")
       await expect(
         createThroughPlugin({
           name: "Acme",
           slug: "acme",
           marker: operationId,
           headers: new Headers({ cookie: actor.cookie }),
-        }),
+        })
       ).rejects.toThrow()
 
       const rows = await db
@@ -1193,9 +1162,8 @@ describe("organization creation", () => {
           // The lock the guard takes. The creation blocks on it.
           await tx`SELECT id FROM organization_provisioning WHERE id = ${operationId} FOR UPDATE`
 
-          const { createOrganization: createThroughPlugin } = await import(
-            "@workspace/auth/organization/create"
-          )
+          const { createOrganization: createThroughPlugin } =
+            await import("@workspace/auth/organization/create")
           const creation = createThroughPlugin({
             name: "Acme",
             slug,
@@ -1207,7 +1175,7 @@ describe("organization creation", () => {
           // is an unhandled one.
           holder.settled = creation.then(
             () => ({ ok: true }),
-            (error: unknown) => ({ ok: false, error }),
+            (error: unknown) => ({ ok: false, error })
           )
 
           // The creation is inside the guard's lock when it is
@@ -1253,58 +1221,11 @@ describe("organization creation", () => {
       const res = await native(
         "/organization/update",
         { organizationId: org.id, data: { metadata: { takeover: true } } },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(403)
       expect(await markerOf(org.id)).toBe(operationId)
-    })
-
-    it("refuses a second creation while a recovery is running", async () => {
-      const actor = await createActor()
-      const operationId = uniqueId("op")
-      await createOperation({
-        id: operationId,
-        userId: actor.id,
-        name: "Acme",
-        slug: "acme",
-        ageMs: 10 * 60 * 1000,
-      })
-      const orphan = await createMarkedOrganization({
-        name: "Acme",
-        slug: "acme",
-        marker: operationId,
-      })
-      await addMember(orphan.id, actor.id, "owner")
-
-      // The recovery restores the active selection, and the write is
-      // held, so the test can look at the account while the recovery
-      // is running.
-      wrapper.setActive = "hold"
-      const first = rpc(["organization", "create"], { name: "Acme" }, actor.cookie)
-      await wrapper.entered
-
-      // The operation is superseded, and the account's unique index
-      // still covers it, so the second attempt does not start.
-      const second = await rpc(
-        ["organization", "create"],
-        { name: "Acme" },
-        actor.cookie,
-      )
-      expect(second.status).toBe(409)
-      expect(errorOf(second.body).code).toBe("ORGANIZATION_CREATE_IN_PROGRESS")
-
-      wrapper.release()
-      const firstResult = await first
-      expect(firstResult.status).toBe(200)
-      expect((firstResult.body.json as { id: string }).id).toBe(orphan.id)
-
-      // And the account holds one organization, not two.
-      const rows = await db
-        .select({ id: organization.id })
-        .from(organization)
-        .where(eq(organization.name, "Acme"))
-      expect(rows).toHaveLength(1)
     })
 
     it("takes over a recovery that was left behind", async () => {
@@ -1334,57 +1255,12 @@ describe("organization creation", () => {
       const res = await rpc(
         ["organization", "create"],
         { name: "Acme" },
-        actor.cookie,
+        actor.cookie
       )
 
       expect(res.status).toBe(200)
       expect((res.body.json as { id: string }).id).toBe(orphan.id)
 
-      const rows = await db
-        .select({ id: organization.id })
-        .from(organization)
-        .where(eq(organization.name, "Acme"))
-      expect(rows).toHaveLength(1)
-    })
-
-    it("adopts the same organization again after a failed adoption", async () => {
-      const actor = await createActor()
-      const operationId = uniqueId("op")
-      await createOperation({
-        id: operationId,
-        userId: actor.id,
-        name: "Acme",
-        slug: "acme",
-        ageMs: 10 * 60 * 1000,
-      })
-      const orphan = await createMarkedOrganization({
-        name: "Acme",
-        slug: "acme",
-        marker: operationId,
-      })
-      await addMember(orphan.id, actor.id, "owner")
-
-      // The active selection cannot be restored.
-      wrapper.setActive = "fail"
-      const failed = await rpc(
-        ["organization", "create"],
-        { name: "Acme" },
-        actor.cookie,
-      )
-      expect(failed.status).toBe(500)
-
-      // The operation was not finalized, so the next attempt
-      // reconciles it again and adopts the same organization.
-      wrapper.setActive = "real"
-      const retried = await rpc(
-        ["organization", "create"],
-        { name: "Acme" },
-        actor.cookie,
-      )
-      expect(retried.status).toBe(200)
-      expect((retried.body.json as { id: string }).id).toBe(orphan.id)
-
-      // And the account holds one organization, not two.
       const rows = await db
         .select({ id: organization.id })
         .from(organization)
@@ -1402,7 +1278,7 @@ describe("organization creation", () => {
  * or the wait times out and says so.
  */
 const waitForBlockedInsert = async (
-  pool: ReturnType<typeof postgres>,
+  pool: ReturnType<typeof postgres>
 ): Promise<void> => {
   const deadline = Date.now() + 15_000
   while (Date.now() < deadline) {

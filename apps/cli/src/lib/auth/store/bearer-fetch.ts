@@ -7,12 +7,10 @@ import { resolveBaseURL } from "./better-auth-client.js"
 /**
  * Minimal bearer-token fetch for the CLI.
  *
- * Used only by auth status and auth logout, both of which
- * need to call Better Auth endpoints with a bearer token
- * read from ~/.deessejs/auth.json. The typed client
- * (apps/cli/src/lib/auth/store/better-auth-client.ts) does
- * not support this case: it sends the bearer via its
- * cookie-based session, not a caller-supplied token.
+ * Used by auth status/logout and organization commands that call Better
+ * Auth endpoints with the bearer token read from auth.json. The typed
+ * Better Auth client handles the device flow; protected management calls
+ * supply this CLI session token explicitly.
  *
  * The helper injects two headers:
  *   - User-Agent: DeesseJS CLI/<version> (the V1 label

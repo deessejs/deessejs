@@ -117,3 +117,25 @@ const link = new RPCLink({
 export type ORPCClient = RouterClient<typeof appRouter>
 
 export const orpc: ORPCClient = createORPCClient(link)
+
+/**
+ * Create a per-command oRPC client for protected management procedures.
+ * The token is held only in the request header and never enters procedure
+ * input, output, or diagnostics.
+ */
+export function createAuthenticatedORPCClient(accessToken: string): ORPCClient {
+  const authenticatedLink = new RPCLink({
+    url: new URL(API_RPC_PATH, resolveBaseURL()).toString(),
+    headers: () => ({ authorization: `Bearer ${accessToken}` }),
+    plugins: [
+      new RetryAfterPlugin(),
+      new ClientRetryPlugin({
+        default: {
+          retry: 3,
+          shouldRetry: ({ error }) => isTransientNetworkError(error),
+        },
+      }),
+    ],
+  })
+  return createORPCClient(authenticatedLink)
+}
