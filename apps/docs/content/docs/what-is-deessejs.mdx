@@ -1,16 +1,16 @@
 ---
-title: What's DeesseJS?
+title: What DeesseJS offers
 description: A short orientation.
 icon: CircleQuestionMark
 ---
 
-DeesseJS is a **template registry and starter framework** for shipping production-ready apps across web, mobile, edge, and AI surfaces. It's not a SaaS product, an ORM, or a UI library. It's a curated set of opinionated starters that share the same cross-cutting contracts.
+DeesseJS provides a **template registry and starter framework** for teams shipping production-ready apps across web, mobile, edge, and AI. Its curated starters share cross-cutting contracts. DeesseJS doesn't provide a SaaS product, a database mapping library, or a UI library.
 
 ## Two Ideas: Surfaces and Contracts
 
-Every DeesseJS template can be described along two axes.
+Every DeesseJS template has two defining axes.
 
-**Surfaces** are the targets you ship to.
+A surface describes a template's target platform.
 
 - Web (Next.js, Astro)
 - Mobile (Expo, React Native)
@@ -18,30 +18,30 @@ Every DeesseJS template can be described along two axes.
 - AI agents (Vercel eve, OpenAI-compatible runtimes)
 - Desktop (Electron, Tauri)
 
-**Contracts** are the cross-cutting concerns every app needs.
+Contracts cover needs shared across each app.
 
 - Auth (Better Auth with email + GitHub OAuth + device flow)
-- Database (drizzle ORM on Postgres)
+- Database (drizzle for Postgres)
 - Email (Resend in prod, console in dev)
 - Storage (S3-compatible)
-- Cookies (GDPR consent banner + Zustand store)
+- Cookies (General Data Protection Regulation (GDPR) consent banner and Zustand store)
 - Payments (Stripe via Better Auth)
 
-A template is one **surface × N contracts**. `next-app-starter` is `web` × `{auth, database, email, cookies}`. `expo-starter` is `mobile` × `{auth, database}`. The contracts share the same wiring in every template, so once you learn one you know them all.
+Each template combines one **surface** with a set of contracts. For example, `next-app-starter` combines `web` with `{auth, database, email, cookies}`. `expo-starter` combines `mobile` with `{auth, database}`. Every template uses the same contract wiring, so the patterns carry across projects.
 
-## What DeesseJS is
+## DeesseJS at a glance
 
-- A **public registry** of templates, browsable in the CLI and on the web.
+- A **public registry** of templates you can browse in the CLI and on the web.
 - A **published CLI** (`@deessejs/cli`) for scaffolding, browsing, and signing in.
-- A **monorepo of contracts**: the auth, database, and email packages version, test, and share across every starter.
-- A **device-flow authentication** path that ties the CLI to a web session without ever holding a password.
+- A **monorepo of contracts**: auth, database, and email packages that version, test, and share across every starter.
+- A **device-flow authentication** path that connects the CLI to a web session without storing a password.
 
-## What DeesseJS isn't
+## What DeesseJS lacks
 
-- **Not a framework.** DeesseJS templates build on Next.js, Expo, Astro, and similar runtimes. You adopt a surface's framework, not DeesseJS itself.
-- **Not a hosting platform.** Templates scaffold locally and deploy wherever you deploy.
-- **Not an ORM or UI library.** drizzle, Tailwind, shadcn/ui, Better Auth are all third-party dependencies you opt into per template.
-- **Not locked in.** A DeesseJS scaffolded project has no runtime dependency on DeesseJS infrastructure. You can fork a template repo and walk away.
+- **No bundled framework.** DeesseJS templates use Next.js, Expo, Astro, and similar runtimes. Choose the framework that fits your target surface.
+- **No hosting platform.** Templates create project files locally. Deploy them wherever you choose.
+- **No database or UI library.** Templates can include third-party dependencies such as drizzle, Tailwind, shadcn/ui, and Better Auth.
+- **No lock-in.** Projects created from templates don't depend on DeesseJS services at runtime. Fork a template repository and continue independently.
 
 ## Where to go next
 
