@@ -3,25 +3,26 @@ title: Introduction
 description: The DeesseJS CLI.
 ---
 
-The `@deessejs/cli` package (`deessejs` on npm) helps you discover and scaffold DeesseJS templates, then sign in to use authenticated CLI features. Install the CLI once. Use it to create projects from the templates.
+The `@deessejs/cli` npm package provides the `deessejs` command for discovering and scaffolding templates, inspecting blocks, and signing in to the DeesseJS server. Your generated project is independent of the CLI after scaffolding.
 
 ## What the CLI does
 
 - **Browse the registry**: `deessejs list` shows every template, optionally filtered by category.
 - **Inspect a template**: `deessejs info <slug>` prints metadata plus the install line.
 - **Scaffold a template**: `deessejs init <slug-or-github-url>` uses the repository's `deesse-template.json`, detects the package manager, and installs dependencies.
-- **Sign in**: `deessejs auth login` opens the browser for a device-flow approval. The CLI caches the resulting token at `~/.deessejs/auth.json`.
+- **Inspect and validate blocks**: `deessejs block info` reads block metadata; `deessejs block check` validates a local or GitHub block source.
+- **Sign in**: `deessejs auth login` opens the browser for a device-flow approval. The CLI stores the resulting token at `~/.deessejs/auth.json`.
 
-That lists the full public surface. Adding new top-level commands or flags counts as a breaking change and goes through a release-train review.
+Use `deessejs --help` to see the top-level commands and `deessejs <command> --help` for command options. `deessejs --version` prints the installed version.
 
 ## Install
 
 ```bash
 # Use once, no install
-npx deessejs@latest init <slug>
+npx --yes @deessejs/cli@latest init <slug>
 
 # Or install globally
-npm install -g @deessejs
+npm install -g @deessejs/cli
 deessejs init <slug>
 ```
 
@@ -33,6 +34,8 @@ The CLI publishes to npm with provenance from its GitHub Actions release workflo
 - **GitHub access**: required by `init` to download the repository archive and read its descriptor.
 - **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. `init` picks one based on the generated project. Override with `--pm <name>`.
 
+The CLI uses `https://app.deessejs.com` by default. Set `DEESSEJS_API_URL` to use another API host, for example in development or integration environments.
+
 ## What the CLI doesn't do
 
 - It doesn't host templates. They live in GitHub repositories, and the CLI uses each repository's descriptor to select files.
@@ -41,5 +44,6 @@ The CLI publishes to npm with provenance from its GitHub Actions release workflo
 
 ## Where to go next
 
-- [CLI: Authentication](/docs/cli-auth): sign in once for features that hit the API.
+- [CLI: Authentication](/docs/cli-auth): use the optional device sign-in commands.
 - [CLI: Commands Reference](/docs/cli-commands): every flag, every exit code.
+- [CLI: Blocks](/docs/cli-blocks): inspect and validate block descriptors.

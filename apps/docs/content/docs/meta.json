@@ -8,6 +8,7 @@
     "---CLI---",
     "cli-introduction",
     "cli-auth",
-    "cli-commands"
+    "cli-commands",
+    "cli-blocks"
   ]
 }
