@@ -16,6 +16,7 @@ import {
 } from "../utils/detect-pm.js"
 import { spawn } from "../utils/spawn.js"
 import { materializeTemplatePlan } from "../utils/materialize.js"
+import { resolveProjectConfig } from "../utils/project-config.js"
 import {
   resolveTemplateSource,
   type TemplateSource,
@@ -145,6 +146,20 @@ async function createTemplateProject(
     throw error
   }
 
+  const projectConfig = resolveProjectConfig(plan).match({
+    ok: (value) => value,
+    err: (error) => {
+      throw templateInvalid(template.slug, error.message, error)
+    },
+  })
+  const projectPlan = projectConfig.plan
+  logVerbose(
+    verbose,
+    projectConfig.generated
+      ? 'Generated a default "deesse.json"'
+      : 'Using the template\'s validated "deesse.json"'
+  )
+
   downloadSpinner?.succeed("Template downloaded")
   logVerbose(verbose, `Resolved commit: ${plan.source.revision}`)
   logVerbose(
@@ -159,7 +174,7 @@ async function createTemplateProject(
     ? ora("Creating project files…").start()
     : undefined
   try {
-    await materializeTemplatePlan(plan, dir, { force })
+    await materializeTemplatePlan(projectPlan, dir, { force })
     const revision = plan.source.revision
     createSpinner?.succeed("Project files created")
     return revision
@@ -207,14 +222,17 @@ async function runInitCommand(
   options: InitCommandOptions
 ): Promise<void> {
   try {
-    const state = await prepareTemplate(slugOrUrl, options)
+    const state = await loadTemplateState(slugOrUrl, options)
     await installAndReport(state, options)
   } catch (error) {
     reportInitError(error, options.json ?? false)
   }
 }
 
-async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
+async function loadTemplateState(
+  slugOrUrl: string,
+  options: InitCommandOptions
+) {
   const { template, directRepository } = await resolveTemplateSource(slugOrUrl)
   const projectName =
     directRepository?.repo ?? template.templateSlug ?? template.slug
@@ -240,7 +258,7 @@ async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
 }
 
 async function installAndReport(
-  state: Awaited<ReturnType<typeof prepareTemplate>>,
+  state: Awaited<ReturnType<typeof loadTemplateState>>,
   options: InitCommandOptions
 ): Promise<void> {
   const { template, dir, revision } = state

@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
-    "@deessejs/fp": "^1.0.0",
+    "@deessejs/fp": "^5.0.1",
     "@orpc/client": "^1.14.7",
     "@orpc/server": "^1.14.7",
     "better-auth": "^1.7.7",
@@ -70,6 +70,6 @@
     "vitest": "^2.1.5"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.14.0"
   }
 }
