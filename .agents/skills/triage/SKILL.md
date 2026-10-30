@@ -9,8 +9,8 @@ Use this skill for issues in `deessejs/deessejs`. Review the issue against the r
 
 ## Choose the requested mode
 
-- **Analyze/review:** fetch the issue and report its type, missing information, likely area, blockers, and suggested labels. Do not change labels, comment, assign, or close it.
-- **Triage/label:** after fetching and assessing it, apply only justified labels and post one concise public triage comment. Do not assign, close, or otherwise change the issue unless asked.
+- **Analyze/review:** fetch the issue and report its GitHub issue type, custom issue fields, missing information, likely area, blockers, and suggested labels. Do not change the type, fields, labels, comment, assign, or close it.
+- **Triage:** after fetching and assessing it, set the justified GitHub issue type, custom issue field values, and labels, then post one concise public triage comment. Do not assign or close the issue unless asked.
 
 Use the GitHub tools available in this session. If they cannot perform the needed operation, use an authenticated `gh` CLI. Confirm the repository is `deessejs/deessejs` and inspect the issue's current labels before making changes. Verify proposed label names against the repository's live label list; do not create labels.
 
@@ -26,6 +26,39 @@ Read its title, body, state, author, labels, and relevant comments. Use the issu
 - **Other:** check that the request and desired outcome are clear enough to act on.
 
 The bug and feature `area` dropdowns are issue-body fields, not GitHub labels. Infer the corresponding `area:*` label from the selected value or issue content, then add it only if that label exists and is missing. Use the current issue forms and live repository labels instead of assuming this list is complete; the templates may lag behind the monorepo's workspaces.
+
+## GitHub issue type and custom fields
+
+Treat GitHub's native issue type, repository labels, organization-level issue fields, issue-body form fields, and GitHub Projects fields as separate metadata. A label such as `enhancement` does not set the native issue type. A value written in the issue body, such as `Priority: P2 (Medium)`, does not prove that a matching custom field exists or is set.
+
+Inspect the native issue type with `gh issue view ISSUE --json issueType` when the installed CLI supports that JSON field. Otherwise, use `gh api 'repos/{owner}/{repo}/issues/{issue_number}' --jq '.type.name'`. Read the organization's configured type names with `gh api 'orgs/{org}/issue-types' --paginate`. Choose only an available type supported by the request: for example, a request for new behavior may map to a configured feature type, while a test-only task may map to `Task`. Do not guess when the available types or issue intent are unclear. On an explicit mutating triage, set a justified type using `gh issue edit ISSUE --type "TYPE NAME"`; if the installed CLI does not support that flag, use `gh api --method PATCH 'repos/{owner}/{repo}/issues/{issue_number}' -F type="TYPE NAME"`. Remove an incorrect type only when justified, using `gh issue edit ISSUE --remove-type`. Re-read the native issue type after editing. In review-only mode, report the recommendation without changing it.
+
+Inspect organization-level custom issue fields and their valid options, then inspect the issue's current values before deciding whether any field should change:
+
+```sh
+gh api 'orgs/{org}/issue-fields' --paginate
+gh api 'repos/{owner}/{repo}/issues/{issue_number}/issue-field-values' --paginate
+```
+
+Use only fields defined for the repository's organization and values valid for their data types/options. Map an issue-body answer to a custom field only when the field's meaning and value clearly match. Preserve fields outside the triage decision. If field definitions or existing values cannot be read due to permissions or API availability, report that limitation and do not guess or overwrite.
+
+The GitHub CLI has no `gh issue edit` flag for organization-level issue fields. Use `gh api` with the REST endpoints. To add values without replacing existing values, send `POST` with an `issue_field_values` JSON body. To update/set values using `PUT`, first fetch the current values and include every value that should remain, because `PUT` replaces the full set. Use `DELETE` only to clear a specific field value when the triage decision justifies it. For example, save the complete intended value set in `field-values.json`, then run:
+
+```sh
+gh api --method PUT 'repos/{owner}/{repo}/issues/{issue_number}/issue-field-values' --input field-values.json
+```
+
+The request body shape is:
+
+```json
+{
+  "issue_field_values": [
+    { "field_id": 123, "value": "Medium" }
+  ]
+}
+```
+
+Use the field ID from the organization field definitions. For `single_select`, `value` is the exact configured option name; use the documented value type for text, number, date, and multi-select fields. An empty `issue_field_values` array clears all values, so never send one as a shortcut to clear a single field. A specific field can be removed with `gh api --method DELETE 'repos/{owner}/{repo}/issues/{issue_number}/issue-field-values/{issue_field_id}'`. These endpoints are for organization issue fields, not GitHub Projects fields. Re-fetch the issue fields after a mutation to verify the result.
 
 ## Investigate the code
 
@@ -70,6 +103,6 @@ Do not label an issue `duplicate`, `invalid`, or `wontfix` based only on a hunch
 
 ## Comment
 
-For a mutating triage, first check whether an equivalent triage comment already exists; do not post duplicates. Post one brief comment with the issue type, area, status, and decision. Include priority only when supported. For `needs-info`, list the specific missing details. For `status:blocked`, link the blocking issue or dependency. For a duplicate, link the matching issue and explain the relationship. Keep comments factual, respectful, and free of sensitive details. Do not post a comment for review-only requests unless asked.
+For a mutating triage, first check whether an equivalent triage comment already exists; do not post duplicates. Write a brief human explanation of the decision and the evidence that matters. Do not include a structured inventory of metadata or label lines such as `Type: enhancement`, `Status: status:ready`, `Area: area:app`, or `Priority: priority:medium`. The type, field values, and labels belong in their GitHub metadata. For `needs-info`, list the specific missing details. For `status:blocked`, link the blocking issue or dependency. For a duplicate, link the matching issue and explain the relationship. Keep comments factual, respectful, and free of sensitive details. Do not post a comment for review-only requests unless asked.
 
-After changes, summarize the labels added and the comment posted. If no changes were justified, say why.
+After changes, summarize the GitHub issue type, custom fields, labels, and comment that changed. If no changes were justified, say why.
