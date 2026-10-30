@@ -212,10 +212,13 @@ export function organizationSlugCandidates(name: string): string[] {
 
 /**
  * The candidates a CLI-proposed slug may use, in the order they are tried.
- * The server remains authoritative: invalid and reserved candidates are
- * skipped, and collisions fall through to a bounded numeric suffix.
+ * The server remains authoritative: malformed proposals are rejected,
+ * reserved candidates are skipped, and collisions fall through to a
+ * bounded numeric suffix.
  */
 export function organizationSlugCandidatesFromSlug(slug: string): string[] {
+  if (!SLUG_FORMAT.test(slug)) return []
+
   const candidates: string[] = []
 
   for (
