@@ -39,6 +39,7 @@ jobs:
           reporter: github-pr-check
           filter_mode: nofilter
           fail_level: any
+          fail_on_error: true
           min_alert_level: suggestion
           level: error
         env:
