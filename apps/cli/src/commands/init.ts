@@ -3,11 +3,6 @@ import { Command } from "commander"
 import ora from "ora"
 import pc from "picocolors"
 import {
-  PROJECT_CONFIG_SCHEMA_URL,
-  parseProjectConfig,
-  type TemplateInstallationPlan,
-} from "@workspace/registry/v1"
-import {
   CliError,
   installFailed,
   internal,
@@ -21,6 +16,7 @@ import {
 } from "../utils/detect-pm.js"
 import { spawn } from "../utils/spawn.js"
 import { materializeTemplatePlan } from "../utils/materialize.js"
+import { prepareProjectConfig } from "../utils/project-config.js"
 import {
   resolveTemplateSource,
   type TemplateSource,
@@ -76,64 +72,6 @@ function printMissingPackageManagerNotice(): void {
       "Skipping install. Install dependencies manually inside the project directory.\n"
     )
   )
-}
-
-function prepareProjectConfig(
-  plan: TemplateInstallationPlan,
-  templateSlug: string,
-  verbose: boolean
-): TemplateInstallationPlan {
-  const projectConfig = plan.files.find((file) =>
-    process.platform === "win32"
-      ? file.path.toLowerCase() === "deesse.json"
-      : file.path === "deesse.json"
-  )
-
-  if (!projectConfig) {
-    const generatedConfig = {
-      $schema: PROJECT_CONFIG_SCHEMA_URL,
-      formatVersion: 1,
-    }
-    logVerbose(verbose, 'Generated a default "deesse.json"')
-    return {
-      ...plan,
-      files: [
-        ...plan.files,
-        {
-          path: "deesse.json",
-          contents: new TextEncoder().encode(
-            `${JSON.stringify(generatedConfig, null, 2)}\n`
-          ),
-        },
-      ],
-    }
-  }
-
-  let config: unknown
-  try {
-    config = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(projectConfig.contents)
-    )
-  } catch (error) {
-    throw templateInvalid(
-      templateSlug,
-      `the root "deesse.json" could not be read as UTF-8 JSON: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
-
-  const parsedConfig = parseProjectConfig(config)
-  if (!parsedConfig.success) {
-    const detail = parsedConfig.diagnostics
-      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
-      .join("\n")
-    throw templateInvalid(
-      templateSlug,
-      `the root "deesse.json" is invalid:\n${detail}`
-    )
-  }
-
-  logVerbose(verbose, 'Using the template\'s validated "deesse.json"')
-  return plan
 }
 
 async function installDependencies(
@@ -208,7 +146,14 @@ async function createTemplateProject(
     throw error
   }
 
-  const projectPlan = prepareProjectConfig(plan, template.slug, verbose)
+  const projectConfig = prepareProjectConfig(plan, template.slug)
+  const projectPlan = projectConfig.plan
+  logVerbose(
+    verbose,
+    projectConfig.generated
+      ? 'Generated a default "deesse.json"'
+      : 'Using the template\'s validated "deesse.json"'
+  )
 
   downloadSpinner?.succeed("Template downloaded")
   logVerbose(verbose, `Resolved commit: ${plan.source.revision}`)
