@@ -16,6 +16,9 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `deessejs auth login`                | Runs the device-authorization flow against the server.            |
 | `deessejs auth status`               | Prints the identity stored on this machine.                       |
 | `deessejs auth logout`               | Signs out and clears the stored token.                            |
+| `deessejs organization list`         | Lists the signed-in user's organizations.                         |
+| `deessejs organization info <slug>`  | Shows details for one of the user's organizations.                 |
+| `deessejs organization create <name>` | Creates an organization through the authenticated provisioning API. |
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms require a valid root `deesse-template.json` and use it to select files. There is no Git clone fallback. `--force` permits an existing empty target directory and never deletes existing files.
 

@@ -47,7 +47,7 @@ Five entries, and the order matters:
 - Invitations expire after 48 hours.
 - The `beforeCreateOrganization` hook validates the name and the slug, rejects unverified accounts, and stores the provisioning marker in the organization's metadata.
 - **Reserved slugs live in `src/organization/reserved-slugs.ts`.** They cover the top-level route segments, so an organization can never shadow `/account` or `/admin`, plus a few product namespaces. The set is in a module of its own because the request guard reads it to tell an application route from an organization slug, and the guard must not pull Better Auth into the browser bundle. Extend that set there, never in a route.
-- **The native `/organization/create` endpoint is disabled.** The slug is the server's, and the endpoint takes it from the body. `disabledPaths` is applied by the request router, so the server-side call the procedure makes is not affected.
+- **The native `/organization/create` endpoint is disabled.** Direct requests would bypass the marker-protected provisioning operation. The authenticated provisioning procedure validates the CLI's proposed slug, retries collisions, and supplies the pending operation marker. `disabledPaths` applies to HTTP requests, not the server-side call made by that procedure.
 - **The creation carries a marker.** The `beforeCreateOrganization` hook refuses a creation whose metadata is not the marker of a pending provisioning operation, and the `beforeUpdateOrganization` hook refuses an update that would change or remove that marker. The organization metadata belongs to the application.
 
 ## Commands

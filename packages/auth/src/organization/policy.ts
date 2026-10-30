@@ -207,7 +207,18 @@ export function slugifyOrganizationName(name: string): string {
  * caller reports, not an unbounded search.
  */
 export function organizationSlugCandidates(name: string): string[] {
-  const base = slugifyOrganizationName(name)
+  return organizationSlugCandidatesFromSlug(slugifyOrganizationName(name))
+}
+
+/**
+ * The candidates a CLI-proposed slug may use, in the order they are tried.
+ * The server remains authoritative: malformed proposals are rejected,
+ * reserved candidates are skipped, and collisions fall through to a
+ * bounded numeric suffix.
+ */
+export function organizationSlugCandidatesFromSlug(slug: string): string[] {
+  if (!SLUG_FORMAT.test(slug)) return []
+
   const candidates: string[] = []
 
   for (
@@ -217,8 +228,8 @@ export function organizationSlugCandidates(name: string): string[] {
   ) {
     const suffix = attempt === 1 ? "" : `-${attempt}`
     const candidate = suffix
-      ? `${withoutTrailingHyphen(base.slice(0, SLUG_MAX_LENGTH - suffix.length))}${suffix}`
-      : base
+      ? `${withoutTrailingHyphen(slug.slice(0, SLUG_MAX_LENGTH - suffix.length))}${suffix}`
+      : slug
     if (!SLUG_FORMAT.test(candidate)) continue
     if (RESERVED_SLUGS.has(candidate)) continue
     candidates.push(candidate)

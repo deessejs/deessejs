@@ -19,4 +19,6 @@ export {
   printTemplateInfo,
   printBlockInfo,
   printBlockCheck,
+  printOrganizationsTable,
+  printOrganizationInfo,
 } from "./table.js"

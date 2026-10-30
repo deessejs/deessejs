@@ -6,10 +6,7 @@ import {
   organizationProvisioning,
   ORGANIZATION_PROVISIONING_STATUS,
 } from "@workspace/database/schema"
-import {
-  createOrganization as createOrganizationWithPlugin,
-  setActiveOrganization,
-} from "@workspace/auth/organization/create"
+import { createOrganization as createOrganizationWithPlugin } from "@workspace/auth/organization/create"
 import type { CreatedOrganization } from "@workspace/auth/organization/create"
 import {
   beginOperation,
@@ -18,19 +15,18 @@ import {
   findInFlightOperationForUser,
   findMembership,
   readOrganizationMarker,
-  releaseRecovery,
   touchOperation,
   transitionOperation,
 } from "@workspace/auth/organization/provisioning"
 import type { ProvisioningOperation } from "@workspace/auth/organization/provisioning"
-import { organizationSlugCandidates } from "@workspace/auth/organization/policy"
+import { organizationSlugCandidatesFromSlug } from "@workspace/auth/organization/policy"
 
 /**
  * The provisioning of an organization.
  *
  * Creating an organization is not one call. The plugin writes the
- * organization, then its membership, then the caller's active
- * selection, and the process can fail or die between them. The flow
+ * organization and its membership, and the process can fail or die
+ * between them. The flow
  * owns the operation row, the retry, the compensation and the
  * recovery, so a creation either leaves a complete organization
  * behind or leaves nothing at all.
@@ -51,7 +47,8 @@ const PROVISIONING_LEASE_MS = 5 * 60 * 1000
 const SLUG_CONSTRAINT = "organization_slug_unique"
 
 /** The name of the index that serializes the account. */
-const IN_FLIGHT_OPERATION_INDEX = "organization_provisioning_in_flight_user_uidx"
+const IN_FLIGHT_OPERATION_INDEX =
+  "organization_provisioning_in_flight_user_uidx"
 
 /** The SQLSTATE the database raises when the guard refuses an insert. */
 const SUPERSEDED_SQLSTATE = "D0001"
@@ -59,6 +56,7 @@ const SUPERSEDED_SQLSTATE = "D0001"
 /** The failures the flow reports, and the codes the procedure declares. */
 export type ProvisioningFailureCode =
   | "ORGANIZATION_NAME_INVALID"
+  | "ORGANIZATION_SLUG_INVALID"
   | "ORGANIZATION_CREATE_IN_PROGRESS"
   | "ORGANIZATION_CREATE_FAILED"
 
@@ -97,7 +95,9 @@ const codeOf = (error: unknown): string | null => {
 /** The constraint a unique violation names. */
 const constraintOf = (error: unknown): string | null => {
   if (!isRecord(error)) return null
-  return typeof error.constraint_name === "string" ? error.constraint_name : null
+  return typeof error.constraint_name === "string"
+    ? error.constraint_name
+    : null
 }
 
 /** What a refused creation means. */
@@ -117,10 +117,7 @@ const classify = (error: unknown): CreateOutcome => {
   if (code === SUPERSEDED_SQLSTATE) return "superseded"
   if (code === "provisioning_superseded") return "superseded"
   if (code === "ORGANIZATION_ALREADY_EXISTS") return "collision"
-  if (
-    code === "23505" &&
-    constraintOf(error) === SLUG_CONSTRAINT
-  ) {
+  if (code === "23505" && constraintOf(error) === SLUG_CONSTRAINT) {
     return "collision"
   }
   return "failure"
@@ -128,8 +125,13 @@ const classify = (error: unknown): CreateOutcome => {
 
 /** The organization that holds this slug, if there is one. */
 const findOrganizationBySlug = async (
-  slug: string,
-): Promise<{ id: string; name: string; slug: string; createdAt: Date } | null> => {
+  slug: string
+): Promise<{
+  id: string
+  name: string
+  slug: string
+  createdAt: Date
+} | null> => {
   const rows = await db
     .select({
       id: organization.id,
@@ -151,10 +153,7 @@ const findOrganizationBySlug = async (
  * slug for another reason is left alone, and so is the account's
  * existing organization when the attempt never wrote anything.
  */
-const compensate = async (
-  operationId: string,
-  slug: string,
-): Promise<void> => {
+const compensate = async (operationId: string, slug: string): Promise<void> => {
   const org = await findOrganizationBySlug(slug)
   if (org === null) return
   const marker = await readOrganizationMarker(org.id)
@@ -163,9 +162,7 @@ const compensate = async (
   // operation. An attempt that has been taken over does not own the
   // organization anymore, and the attempt that took it over may have
   // adopted it, so the two must not race over the same row.
-  await db
-    .delete(organization)
-    .where(
+  await db.delete(organization).where(
       and(
         eq(organization.id, org.id),
         exists(
@@ -177,12 +174,12 @@ const compensate = async (
                 eq(organizationProvisioning.id, operationId),
                 eq(
                   organizationProvisioning.status,
-                  ORGANIZATION_PROVISIONING_STATUS.pending,
-                ),
-              ),
-            ),
-        ),
-      ),
+                ORGANIZATION_PROVISIONING_STATUS.pending
+              )
+            )
+          )
+      )
+    )
     )
 }
 
@@ -198,15 +195,14 @@ const compensate = async (
  * one to adopt, and null when the flow has to start fresh.
  */
 const reconcile = async (
-  operation: ProvisioningOperation,
-  headers: Headers,
+  operation: ProvisioningOperation
 ): Promise<CreatedOrganization | null> => {
   const org = await findOrganizationBySlug(operation.slug)
   if (org === null) {
     await transitionOperation(
       operation.id,
       ORGANIZATION_PROVISIONING_STATUS.superseded,
-      ORGANIZATION_PROVISIONING_STATUS.failed,
+      ORGANIZATION_PROVISIONING_STATUS.failed
     )
     return null
   }
@@ -216,7 +212,7 @@ const reconcile = async (
     await transitionOperation(
       operation.id,
       ORGANIZATION_PROVISIONING_STATUS.superseded,
-      ORGANIZATION_PROVISIONING_STATUS.failed,
+      ORGANIZATION_PROVISIONING_STATUS.failed
     )
     return null
   }
@@ -230,29 +226,18 @@ const reconcile = async (
     await transitionOperation(
       operation.id,
       ORGANIZATION_PROVISIONING_STATUS.superseded,
-      ORGANIZATION_PROVISIONING_STATUS.failed,
+      ORGANIZATION_PROVISIONING_STATUS.failed
     )
     return null
   }
 
-  // The attempt completed. The organization is adopted, and the
-  // session of the request being answered is pointed at it, because
-  // the attempt may have died before the plugin wrote the selection.
-  //
-  // The session is pointed at the organization BEFORE the operation is
-  // finalized. A failure here leaves the operation in flight, so the
-  // next attempt reconciles it again and adopts the same
-  // organization, instead of creating a second one.
-  try {
-    await setActiveOrganization({ organizationId: org.id, headers })
-  } catch (error) {
-    await releaseRecovery(operation.id, operation.updatedAt)
-    throw error
-  }
+  // Creation preserves the caller's active organization. Recovery must
+  // preserve it too, so adopting the completed organization has no
+  // session-selection side effect.
   await transitionOperation(
     operation.id,
     ORGANIZATION_PROVISIONING_STATUS.superseded,
-    ORGANIZATION_PROVISIONING_STATUS.completed,
+    ORGANIZATION_PROVISIONING_STATUS.completed
   )
   return {
     id: org.id,
@@ -271,8 +256,7 @@ const reconcile = async (
  * cleaned, or closed.
  */
 const takeOver = async (
-  userId: string,
-  headers: Headers,
+  userId: string
 ): Promise<CreatedOrganization | null> => {
   const inFlight = await findInFlightOperationForUser(userId)
   if (inFlight === null) return null
@@ -282,7 +266,7 @@ const takeOver = async (
     // The attempt is running, or its recovery is running.
     throw new OrganizationProvisioningError(
       "ORGANIZATION_CREATE_IN_PROGRESS",
-      "An organization is already being created for this account.",
+      "An organization is already being created for this account."
     )
   }
 
@@ -291,14 +275,11 @@ const takeOver = async (
     // cannot create anything while its leftovers are inspected. The
     // operation stays covered by the account's unique index, so no
     // other attempt starts while the reconciliation runs.
-    const fenced = await fenceStalePendingOperation(
-      inFlight.id,
-      staleBefore,
-    )
+    const fenced = await fenceStalePendingOperation(inFlight.id, staleBefore)
     if (!fenced) {
       throw new OrganizationProvisioningError(
         "ORGANIZATION_CREATE_IN_PROGRESS",
-        "An organization is already being created for this account.",
+        "An organization is already being created for this account."
       )
     }
   } else {
@@ -309,12 +290,12 @@ const takeOver = async (
     if (!claimed) {
       throw new OrganizationProvisioningError(
         "ORGANIZATION_CREATE_IN_PROGRESS",
-        "An organization is already being created for this account.",
+        "An organization is already being created for this account."
       )
     }
   }
 
-  return reconcile(inFlight, headers)
+  return reconcile(inFlight)
 }
 
 /**
@@ -328,18 +309,19 @@ const takeOver = async (
 export async function provisionOrganization(input: {
   userId: string
   name: string
+  slug: string
   headers: Headers
 }): Promise<CreatedOrganization> {
-  const candidates = organizationSlugCandidates(input.name)
+  const candidates = organizationSlugCandidatesFromSlug(input.slug)
   const firstCandidate = candidates[0]
   if (firstCandidate === undefined) {
     throw new OrganizationProvisioningError(
-      "ORGANIZATION_CREATE_FAILED",
-      "The organization could not be created.",
+      "ORGANIZATION_SLUG_INVALID",
+      "That organization slug cannot be used."
     )
   }
 
-  const adopted = await takeOver(input.userId, input.headers)
+  const adopted = await takeOver(input.userId)
   if (adopted !== null) return adopted
 
   const operationId = randomUUID()
@@ -353,10 +335,13 @@ export async function provisionOrganization(input: {
   } catch (error) {
     // The partial unique index refused the insert: another attempt
     // for the same account is running.
-    if (codeOf(error) === "23505" && constraintOf(error) === IN_FLIGHT_OPERATION_INDEX) {
+    if (
+      codeOf(error) === "23505" &&
+      constraintOf(error) === IN_FLIGHT_OPERATION_INDEX
+    ) {
       throw new OrganizationProvisioningError(
         "ORGANIZATION_CREATE_IN_PROGRESS",
-        "An organization is already being created for this account.",
+        "An organization is already being created for this account."
       )
     }
     throw error
@@ -389,11 +374,11 @@ export async function provisionOrganization(input: {
         await transitionOperation(
           operationId,
           ORGANIZATION_PROVISIONING_STATUS.pending,
-          ORGANIZATION_PROVISIONING_STATUS.superseded,
+          ORGANIZATION_PROVISIONING_STATUS.superseded
         )
         throw new OrganizationProvisioningError(
           "ORGANIZATION_CREATE_IN_PROGRESS",
-          "An organization is already being created for this account.",
+          "An organization is already being created for this account."
         )
       }
 
@@ -401,18 +386,18 @@ export async function provisionOrganization(input: {
       await transitionOperation(
         operationId,
         ORGANIZATION_PROVISIONING_STATUS.pending,
-        ORGANIZATION_PROVISIONING_STATUS.failed,
+        ORGANIZATION_PROVISIONING_STATUS.failed
       )
       throw new OrganizationProvisioningError(
         "ORGANIZATION_CREATE_FAILED",
-        "The organization could not be created.",
+        "The organization could not be created."
       )
     }
 
     await transitionOperation(
       operationId,
       ORGANIZATION_PROVISIONING_STATUS.pending,
-      ORGANIZATION_PROVISIONING_STATUS.completed,
+      ORGANIZATION_PROVISIONING_STATUS.completed
     )
     return created
   }
@@ -420,10 +405,10 @@ export async function provisionOrganization(input: {
   await transitionOperation(
     operationId,
     ORGANIZATION_PROVISIONING_STATUS.pending,
-    ORGANIZATION_PROVISIONING_STATUS.failed,
+    ORGANIZATION_PROVISIONING_STATUS.failed
   )
   throw new OrganizationProvisioningError(
     "ORGANIZATION_CREATE_FAILED",
-    "The organization could not be created.",
+    "The organization could not be created."
   )
 }

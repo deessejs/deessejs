@@ -17,6 +17,39 @@ export const printTemplatesTable = (templates: Template[]): void => {
   printAlignedTable([headers, ...rows])
 }
 
+export type OrganizationRow = {
+  id: string
+  name: string
+  slug: string
+  logo: string | null
+}
+
+export type OrganizationInfo = OrganizationRow & { role: string }
+
+export const printOrganizationsTable = (
+  organizations: OrganizationRow[]
+): void => {
+  if (organizations.length === 0) {
+    process.stdout.write(pc.dim("No organizations found.\n"))
+    return
+  }
+  const rows = organizations.map((organization) => [
+    organization.name,
+    organization.slug,
+  ])
+  printAlignedTable([["name", "slug"], ...rows])
+}
+
+export const printOrganizationInfo = (organization: OrganizationInfo): void => {
+  printKeyValueSection("Organization", [
+    ["name", organization.name],
+    ["slug", organization.slug],
+    ["role", organization.role],
+    ["id", organization.id],
+    ["logo", organization.logo ?? "(none)"],
+  ])
+}
+
 export const printTemplateInfo = (
   descriptor: NormalizedTemplateDescriptorV1,
   source: { repository: string }
