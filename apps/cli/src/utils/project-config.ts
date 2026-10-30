@@ -11,28 +11,28 @@ type ProjectConfigPreparation = {
   generated: boolean
 }
 
-function isRootProjectConfig(path: string): boolean {
+const isRootProjectConfig = (path: string): boolean => {
   const normalized = process.platform === "win32" ? path.toLowerCase() : path
   return normalized === "deesse.json"
 }
 
-function findProjectConfig(plan: TemplateInstallationPlan) {
+const findProjectConfig = (plan: TemplateInstallationPlan) => {
   return plan.files.find((file) => isRootProjectConfig(file.path))
 }
 
-function createDefaultConfigFile(): PlannedTemplateFile {
+const createDefaultConfigFile = (): PlannedTemplateFile => {
   const config = { $schema: PROJECT_CONFIG_SCHEMA_URL, formatVersion: 1 }
   const contents = `${JSON.stringify(config, null, 2)}\n`
   return { path: "deesse.json", contents: new TextEncoder().encode(contents) }
 }
 
-function addDefaultProjectConfig(
+const addDefaultProjectConfig = (
   plan: TemplateInstallationPlan
-): TemplateInstallationPlan {
+): TemplateInstallationPlan => {
   return { ...plan, files: [...plan.files, createDefaultConfigFile()] }
 }
 
-function invalidUtf8Config(templateSlug: string, error: unknown): never {
+const invalidUtf8Config = (templateSlug: string, error: unknown): never => {
   const detail = error instanceof Error ? error.message : String(error)
   throw templateInvalid(
     templateSlug,
@@ -40,7 +40,7 @@ function invalidUtf8Config(templateSlug: string, error: unknown): never {
   )
 }
 
-function decodeConfig(contents: Uint8Array, templateSlug: string): string {
+const decodeConfig = (contents: Uint8Array, templateSlug: string): string => {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(contents)
   } catch (error) {
@@ -48,12 +48,12 @@ function decodeConfig(contents: Uint8Array, templateSlug: string): string {
   }
 }
 
-function invalidJsonDetail(error: unknown): string {
+const invalidJsonDetail = (error: unknown): string => {
   if (error instanceof Error && error.name !== "SyntaxError") throw error
   return error instanceof Error ? error.message : String(error)
 }
 
-function parseConfig(contents: Uint8Array, templateSlug: string): unknown {
+const parseConfig = (contents: Uint8Array, templateSlug: string): unknown => {
   try {
     return JSON.parse(decodeConfig(contents, templateSlug))
   } catch (error) {
@@ -64,14 +64,14 @@ function parseConfig(contents: Uint8Array, templateSlug: string): unknown {
   }
 }
 
-function formatDiagnostic(diagnostic: {
+const formatDiagnostic = (diagnostic: {
   code: string
   message: string
-}): string {
+}): string => {
   return `${diagnostic.code}: ${diagnostic.message}`
 }
 
-function validateConfig(contents: Uint8Array, templateSlug: string): void {
+const validateConfig = (contents: Uint8Array, templateSlug: string): void => {
   const result = parseProjectConfig(parseConfig(contents, templateSlug))
   if (result.success) return
   const details = result.diagnostics.map(formatDiagnostic).join("\n")
@@ -81,21 +81,21 @@ function validateConfig(contents: Uint8Array, templateSlug: string): void {
   )
 }
 
-export function prepareProjectConfig(
+export const prepareProjectConfig = (
   plan: TemplateInstallationPlan,
   templateSlug: string
-): ProjectConfigPreparation {
+): ProjectConfigPreparation => {
   const configFile = findProjectConfig(plan)
   return configFile
     ? prepareProvidedProjectConfig(plan, configFile.contents, templateSlug)
     : { plan: addDefaultProjectConfig(plan), generated: true }
 }
 
-function prepareProvidedProjectConfig(
+const prepareProvidedProjectConfig = (
   plan: TemplateInstallationPlan,
   contents: Uint8Array,
   templateSlug: string
-): ProjectConfigPreparation {
+): ProjectConfigPreparation => {
   validateConfig(contents, templateSlug)
   return { plan, generated: false }
 }
