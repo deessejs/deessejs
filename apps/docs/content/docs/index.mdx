@@ -12,7 +12,7 @@ DeesseJS ships a curated registry of starter projects (web apps, mobile apps, ed
 npx --yes @deessejs/cli@latest init <slug>
 ```
 
-Replace `<slug>` with a template identifier from the [template list](/docs/cli-commands#deessejs-list), or pass a GitHub repository URL. Both forms require a valid root `deesse-template.json`, which selects the files copied into the project. The CLI creates the project in `./<slug>` for catalog entries, detects your package manager from the lockfile or `packageManager` field, then installs dependencies. If it cannot detect a package manager, it creates the project and asks you to install dependencies manually.
+Replace `<slug>` with an identifier from the [template list](/docs/cli-commands#deessejs-list), or pass a GitHub repository URL. Both forms need a valid root `deesse-template.json` to select the project files. For catalog entries, the CLI creates `./<slug>`, detects your package manager from the lockfile or `packageManager` field, and installs dependencies. If the CLI can't detect a package manager, it creates the project and asks you to install dependencies manually.
 
 ## Common workflows
 
@@ -36,6 +36,6 @@ Replace `<slug>` with a template identifier from the [template list](/docs/cli-c
 
 - **Node.js 20.0.0 or newer**: the CLI's `engines` field enforces this. Older versions fail fast at install time.
 - **GitHub access**: every `init` downloads the selected GitHub repository archive.
-- **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. The CLI picks one based on the generated project's lockfile or `packageManager` field; pass `--pm <name>` to override. If none is detected, `init` skips installation.
+- **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. The CLI picks one based on the generated project's lockfile or `packageManager` field. Pass `--pm <name>` to choose one yourself. If none appears, `init` skips installation.
 
-No account is required to use the public registry or scaffold a template. See [CLI: Authentication](/docs/cli-auth) for the optional device sign-in commands.
+You don't need an account to use the public registry or scaffold a template. See [CLI: Authentication](/docs/cli-auth) for optional device sign-in commands.

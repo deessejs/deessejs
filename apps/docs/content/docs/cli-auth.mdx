@@ -3,7 +3,7 @@ title: Authentication
 description: Sign in with the CLI.
 ---
 
-Authentication is optional. Public registry commands (`list`, `info`, and `init`) and block inspection commands work without signing in. `auth login` starts a device-flow session for this machine; `auth status` checks it and `auth logout` clears it.
+You can run public registry commands (`list`, `info`, and `init`) and block inspection commands without signing in. Use `auth login` to start a device-flow session for this machine. `auth status` checks the session, and `auth logout` clears it.
 
 The CLI uses **OAuth 2.0 device authorization grant** for sign-in. You never enter a password, copy an API token, or open a headless browser.
 
@@ -32,7 +32,7 @@ If you haven't signed in to `app.deessejs.com`, the `/device` page sends you thr
 ### Exit codes
 
 - `0`: successful login.
-- `1`: any failure. Device-flow denials use `cli_device_denied`; expired or unusable device flows use `cli_device_expired`. Unexpected failures use the general error handler.
+- `1`: any failure. Device-flow denials return `cli_device_denied`. Expired or unusable device flows return `cli_device_expired`. The general error handler reports unexpected failures.
 
 ## `deessejs auth status`
 
@@ -40,15 +40,15 @@ If you haven't signed in to `app.deessejs.com`, the `/device` page sends you thr
 deessejs auth status
 ```
 
-Reads the cached session and validates it against `GET /api/v1/auth/get-session` with a `Bearer` header. Three terminal states:
+The command reads the cached session and checks it with `GET /api/v1/auth/get-session`, using a `Bearer` header. It reports one of three terminal states:
 
 | State                                | Output                                                                        | Exit code |
 | ------------------------------------ | ----------------------------------------------------------------------------- | --------- |
-| No `~/.deessejs/auth.json`           | Notice that there is no active session. Run `deessejs auth login` to sign in. | `0`       |
+| No `~/.deessejs/auth.json`           | No active session. Run `deessejs auth login` to sign in.                       | `0`       |
 | Token still valid                    | Active-session message, identity, and `fetchedAt` timestamp                   | `0`       |
 | Token revoked or expired server-side | Stale-session notice and the stored identity for context                      | `0`       |
 
-The three normal states exit `0`; `auth status` is a read-only diagnostic and does not modify the stored file. If the request to the server fails, the command exits `1`.
+All three normal states exit `0`. The command only reads the stored file. A failed server request returns exit code `1`.
 
 The token never echoes, only its `fetchedAt` timestamp and the resolved user identity (email, name, id).
 
@@ -79,7 +79,7 @@ If `~/.deessejs/auth.json` doesn't exist, `auth logout` exits `0` silently: ther
 
 ## Where the token lives
 
-`~/.deessejs/auth.json`. On POSIX systems, the CLI writes this file with owner-only permissions (`0600`). `auth status` reports whether the stored token is still accepted; a stale token remains in the file until you run `auth login` again or `auth logout`.
+The CLI stores the token in `~/.deessejs/auth.json`. On systems that follow the Portable Operating System Interface (POSIX), the CLI writes the file with owner-only permissions (`0600`). `auth status` reports whether the server accepts the token. A stale token stays in the file until you run `auth login` again or `auth logout`.
 
 The file shape:
 
@@ -109,7 +109,7 @@ The 30-minute device-code window elapsed before you approved. The CLI stops poll
 
 ### Permission errors writing `~/.deessejs/auth.json`
 
-On POSIX systems, the CLI sets the auth file to owner-only permissions when it writes it. If the file cannot be written, check that your user can write to `~/.deessejs/`, then run `deessejs auth login` again.
+On systems that follow the Portable Operating System Interface (POSIX), the CLI sets the auth file to owner-only permissions when it writes it. If your user can't write to `~/.deessejs/`, update the directory permissions, then run `deessejs auth login` again.
 
 ### "Logged in as unknown user"
 
@@ -117,4 +117,4 @@ The CLI never falls back to a synthetic identity when the server rejects the bea
 
 ### Network errors during polling
 
-The device code expires after 30 minutes. If a request fails because the network is unavailable, restore connectivity and run `deessejs auth login` again to request a fresh device code.
+The device code expires after 30 minutes. If a network failure interrupts polling, restore connectivity and run `deessejs auth login` again to request a fresh code.
