@@ -146,7 +146,12 @@ async function createTemplateProject(
     throw error
   }
 
-  const projectConfig = resolveProjectConfig(plan, template.slug)
+  const projectConfig = resolveProjectConfig(plan).match({
+    ok: (value) => value,
+    err: (error) => {
+      throw templateInvalid(template.slug, error.message, error)
+    },
+  })
   const projectPlan = projectConfig.plan
   logVerbose(
     verbose,

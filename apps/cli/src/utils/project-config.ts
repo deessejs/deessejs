@@ -1,15 +1,31 @@
+import { error, type ErrorInstance } from "@deessejs/errors"
+import { err, ok, type Result } from "@deessejs/fp"
 import {
   PROJECT_CONFIG_SCHEMA_URL,
   parseProjectConfig,
   type PlannedTemplateFile,
+  type ProjectConfigV1,
   type TemplateInstallationPlan,
 } from "@workspace/registry/v1"
-import { templateInvalid } from "../errors/index.js"
 
 type ProjectConfigPreparation = {
   plan: TemplateInstallationPlan
   generated: boolean
 }
+
+type ProjectConfigErrorStage = "utf8" | "json" | "schema"
+
+type ProjectConfigErrorFields = {
+  stage: ProjectConfigErrorStage
+  detail: string
+}
+
+type ProjectConfigFailure = ErrorInstance<ProjectConfigErrorFields>
+
+const ProjectConfigError = error<ProjectConfigErrorFields>({
+  name: "ProjectConfigError",
+  message: "Project config {stage} validation failed: {detail}",
+})
 
 const isRootProjectConfig = (path: string): boolean => {
   const normalized = process.platform === "win32" ? path.toLowerCase() : path
@@ -32,35 +48,35 @@ const addDefaultProjectConfig = (
   return { ...plan, files: [...plan.files, createDefaultConfigFile()] }
 }
 
-const invalidUtf8Config = (templateSlug: string, error: unknown): never => {
-  const detail = error instanceof Error ? error.message : String(error)
-  throw templateInvalid(
-    templateSlug,
-    `the root "deesse.json" could not be read as UTF-8 JSON: ${detail}`
-  )
+const asError = (value: unknown): Error =>
+  value instanceof Error ? value : new Error(String(value))
+
+const projectConfigFailure = (
+  stage: ProjectConfigErrorStage,
+  detail: string,
+  cause?: Error
+): ProjectConfigFailure => {
+  const failure = ProjectConfigError({ stage, detail })
+  return cause ? failure.from(cause) : failure
 }
 
-const decodeConfig = (contents: Uint8Array, templateSlug: string): string => {
+const decodeConfig = (
+  contents: Uint8Array
+): Result<string, ProjectConfigFailure> => {
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(contents)
+    return ok(new TextDecoder("utf-8", { fatal: true }).decode(contents))
   } catch (error) {
-    invalidUtf8Config(templateSlug, error)
+    const cause = asError(error)
+    return err(projectConfigFailure("utf8", cause.message, cause))
   }
 }
 
-const invalidJsonDetail = (error: unknown): string => {
-  if (error instanceof Error && error.name !== "SyntaxError") throw error
-  return error instanceof Error ? error.message : String(error)
-}
-
-const parseConfig = (contents: Uint8Array, templateSlug: string): unknown => {
+const parseJson = (text: string): Result<unknown, ProjectConfigFailure> => {
   try {
-    return JSON.parse(decodeConfig(contents, templateSlug))
+    return ok(JSON.parse(text))
   } catch (error) {
-    throw templateInvalid(
-      templateSlug,
-      `the root "deesse.json" is not valid JSON: ${invalidJsonDetail(error)}`
-    )
+    const cause = asError(error)
+    return err(projectConfigFailure("json", cause.message, cause))
   }
 }
 
@@ -71,31 +87,32 @@ const formatDiagnostic = (diagnostic: {
   return `${diagnostic.code}: ${diagnostic.message}`
 }
 
-const validateConfig = (contents: Uint8Array, templateSlug: string): void => {
-  const result = parseProjectConfig(parseConfig(contents, templateSlug))
-  if (result.success) return
+const validateConfig = (
+  input: unknown
+): Result<ProjectConfigV1, ProjectConfigFailure> => {
+  const result = parseProjectConfig(input)
+  if (result.success) return ok(result.data)
   const details = result.diagnostics.map(formatDiagnostic).join("\n")
-  throw templateInvalid(
-    templateSlug,
-    `the root "deesse.json" is invalid:\n${details}`
-  )
+  return err(projectConfigFailure("schema", details))
 }
+
+const readProjectConfig = (
+  contents: Uint8Array
+): Result<ProjectConfigV1, ProjectConfigFailure> =>
+  decodeConfig(contents).flatMap(parseJson).flatMap(validateConfig)
+
+const preserveProjectConfig = (
+  plan: TemplateInstallationPlan,
+  contents: Uint8Array
+): Result<ProjectConfigPreparation, ProjectConfigFailure> =>
+  readProjectConfig(contents).map(() => ({ plan, generated: false }))
 
 export const resolveProjectConfig = (
-  plan: TemplateInstallationPlan,
-  templateSlug: string
-): ProjectConfigPreparation => {
+  plan: TemplateInstallationPlan
+): Result<ProjectConfigPreparation, ProjectConfigFailure> => {
   const configFile = findProjectConfig(plan)
-  return configFile
-    ? validateProvidedProjectConfig(plan, configFile.contents, templateSlug)
-    : { plan: addDefaultProjectConfig(plan), generated: true }
-}
-
-const validateProvidedProjectConfig = (
-  plan: TemplateInstallationPlan,
-  contents: Uint8Array,
-  templateSlug: string
-): ProjectConfigPreparation => {
-  validateConfig(contents, templateSlug)
-  return { plan, generated: false }
+  if (!configFile) {
+    return ok({ plan: addDefaultProjectConfig(plan), generated: true })
+  }
+  return preserveProjectConfig(plan, configFile.contents)
 }
