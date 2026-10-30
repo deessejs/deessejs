@@ -41,9 +41,7 @@ function response(body: unknown, status = 200): Response {
 }
 
 async function runCommand(args: string[]) {
-  await organizationCommand.parseAsync(["node", "deessejs", ...args], {
-    from: "user",
-  })
+  await organizationCommand.parseAsync(args, { from: "user" })
 }
 
 describe("organization commands", () => {
@@ -86,7 +84,7 @@ describe("organization commands", () => {
       })
     )
 
-    await runCommand(["organization", "list", "--json"])
+    await runCommand(["list", "--json"])
 
     expect(JSON.parse(stdoutWrites.join(""))).toEqual({ organizations: [] })
     expect(requests).toHaveLength(1)
@@ -118,7 +116,7 @@ describe("organization commands", () => {
       })
     )
 
-    await runCommand(["organization", "info", "acme-studio", "--json"])
+    await runCommand(["info", "acme-studio", "--json"])
 
     expect(JSON.parse(stdoutWrites.join(""))).toEqual({
       organization: {
@@ -157,7 +155,7 @@ describe("organization commands", () => {
       slug: "acme-studio-2",
     })
 
-    await runCommand(["organization", "create", "Acme Studio", "--json"])
+    await runCommand(["create", "Acme Studio", "--json"])
 
     expect(mockCreate).toHaveBeenCalledWith({
       name: "Acme Studio",
