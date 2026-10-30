@@ -25,7 +25,10 @@ jobs:
         uses: actions/cache@v4
         id: styles
         with:
-          path: .github/styles
+          path: |
+            .github/styles/Microsoft/
+            .github/styles/write-good/
+            .github/styles/proselint/
           key: vale-${{ hashFiles('.vale.ini') }}
           restore-keys: vale-
 
