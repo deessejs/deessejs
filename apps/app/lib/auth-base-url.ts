@@ -3,33 +3,15 @@
 import { clientEnv } from "@workspace/env/client"
 
 /**
- * Runtime resolution of the auth backend origin in the browser.
+ * Resolve the auth endpoint to the origin serving this app. The app's
+ * Next.js catch-all exposes the API on every deployment host, including
+ * custom domains and Vercel custom environments.
  *
- * `withRelatedProject` reads `VERCEL_RELATED_PROJECTS`, which
- * Vercel injects only at runtime on the server. The browser
- * bundle never sees it, so we can't use `withRelatedProject`
- * from a Client Component. The simplest rule that works for
- * every deployment shape:
- *
- *   - If the page is served from a Vercel preview
- *     (`*.vercel.app` hostname), the auth backend lives on the
- *     SAME hostname (apps/app and its `/api/v1/auth/*` catch-all
- *     are deployed together per Vercel project). Use
- *     `window.location.origin` (self-fetch).
- *   - Otherwise (localhost dev, production apex), use
- *     `clientEnv.NEXT_PUBLIC_APP_URL` (the env var that the
- *     Vercel project `deessejs-app` configures per environment).
- *
- * This matches the pattern used by `apps/app/proxy.ts` for the
- * server-side self-fetch. Both layers resolve to the same origin
- * without env-var wiring per preview branch.
+ * During server rendering there is no browser origin, so use the
+ * configured URL as a fallback. The client bundle evaluates this helper
+ * in the browser and therefore uses the active deployment origin.
  */
 export function getAuthBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname
-    if (hostname.endsWith(".vercel.app")) {
-      return window.location.origin
-    }
-  }
+  if (typeof window !== "undefined") return window.location.origin
   return clientEnv.NEXT_PUBLIC_APP_URL
 }
