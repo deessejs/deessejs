@@ -3,7 +3,7 @@ title: Introduction
 description: The DeesseJS CLI.
 ---
 
-The `@deessejs/cli` package (`deessejs` on npm) is the tool you use to discover, scaffold, and authenticate against DeesseJS templates. It's the only piece of DeesseJS you install; everything else forks from the templates it scaffolds.
+The `@deessejs/cli` package (`deessejs` on npm) helps you discover and scaffold DeesseJS templates, then sign in to use authenticated CLI features. Install the CLI once. Use it to create projects from the templates.
 
 ## What the CLI does
 
@@ -25,7 +25,7 @@ npm install -g @deessejs
 deessejs init <slug>
 ```
 
-The CLI publishes with provenance from the GitHub Actions release workflow. There's no `@canary` or pre-release channel; every release to npm ships as stable.
+The CLI publishes to npm with provenance from its GitHub Actions release workflow. Every npm release ships as stable. The CLI offers no `@canary` or pre-release channel.
 
 ## Requirements
 
@@ -36,8 +36,8 @@ The CLI publishes with provenance from the GitHub Actions release workflow. Ther
 ## What the CLI doesn't do
 
 - It doesn't host templates. They live in GitHub repositories, and the CLI uses each repository's descriptor to select files.
-- It doesn't manage your environment variables. Templates ship their own `.env.example`; you copy and fill it in.
-- It doesn't deploy. After `init`, you build and deploy with whatever your surface uses (Vercel, EAS, Cloudflare, and similar platforms).
+- It doesn't manage your environment variables. Templates ship `.env.example` files. Copy one and add your values.
+- It doesn't deploy. Use your platform's tools to deploy the generated project, such as Vercel, Expo Application Services (EAS), or Cloudflare.
 
 ## Where to go next
 

@@ -25,7 +25,10 @@ jobs:
         uses: actions/cache@v4
         id: styles
         with:
-          path: .github/styles
+          path: |
+            .github/styles/Microsoft/
+            .github/styles/write-good/
+            .github/styles/proselint/
           key: vale-${{ hashFiles('.vale.ini') }}
           restore-keys: vale-
 
@@ -33,12 +36,14 @@ jobs:
         uses: vale-cli/vale-action@v3
         with:
           version: 3.19.0
-          files: '["docs"]'
+          files: 'apps/docs/content/docs'
           config: .vale.ini
           sync: ${{ steps.styles.outputs.cache-hit != 'true' }}
           reporter: github-pr-check
-          filter_mode: added
-          fail_level: error
-          min_alert_level: error
+          filter_mode: nofilter
+          fail_level: any
+          fail_on_error: true
+          min_alert_level: suggestion
+          level: error
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

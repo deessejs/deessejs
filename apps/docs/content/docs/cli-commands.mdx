@@ -5,7 +5,7 @@ description: The DeesseJS CLI command reference.
 
 This page documents every command in the public CLI surface. The full surface stays small on purpose: four top-level commands plus a three-command `auth` group. Adding to either counts as a breaking change and goes through the release train.
 
-Every command supports `--json` for scripting. When passed, the CLI suppresses interactive prompts, spinners, and colour, then writes a single JSON object to stdout. Errors become `{ ok: false, code, message, hint }`. The exit code stays independent of `--json`; it follows the rules below.
+Every command accepts `--json` for scripts. With this flag, the CLI skips prompts, spinners, and colour, then writes one JSON object to stdout. Errors use `{ ok: false, code, message, hint }`. The exit code follows the rules below, regardless of `--json`.
 
 ---
 
@@ -31,7 +31,7 @@ A coloured table with one row per template: slug, owner/repo, short description,
 ### Exit codes
 
 - `0`: success.
-- `1`: `network_error` (registry unreachable after retries), `parse_error` (registry response did not match the v1 contract), `internal`.
+- `1`: `network_error` (registry unreachable after retries), `parse_error` (registry response didn't match the v1 contract), `internal`.
 
 ### Examples
 
@@ -67,9 +67,9 @@ deessejs info https://github.com/owner/repository --ref main
 
 ### Output
 
-A catalog slug and a direct GitHub URL show the same descriptor fields. The output includes its title, name, description, project type, version, optional author/license/category/labels, and source repository. The complete normalized descriptor is available in JSON output.
+A catalog slug and a direct GitHub URL show the same descriptor fields. The output includes the title, name, description, project type, version, optional author, license, category, labels, and source repository. JSON output includes the complete normalized descriptor.
 
-Both input forms require a valid root `deesse-template.json`. Slugs use a lightweight catalog lookup instead of fetching the GitHub-enriched template listing. `info` then reads only the descriptor through GitHub's Contents API, without downloading or inventorying the full repository. It validates the descriptor schema, declared repository, and include/exclude patterns. Repositories with a missing or invalid descriptor are rejected. `init` separately resolves an immutable commit and validates any declared source ref before copying files.
+Both input forms require a valid root `deesse-template.json`. For a catalog slug, the CLI uses a lightweight lookup instead of fetching the GitHub-enriched template listing. The `info` command reads the descriptor through GitHub's Contents API without downloading or inventorying the full repository. It checks the descriptor schema, declared repository, and include/exclude patterns. The command exits with an error if GitHub returns no descriptor or an invalid one. The `init` command resolves an immutable commit and checks any declared source ref before copying files.
 
 The formatted view ends with the matching install command:
 
@@ -108,16 +108,16 @@ deessejs init https://github.com/owner/repository
 | `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`.              |
 | `--ref <branch>` | Git ref to use. Default: the repository's default branch.                                               |
 | `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images.                                        |
-| `--force`        | Allow an existing empty target directory. Existing files are never removed.                             |
+| `--force`        | Use an existing empty target directory. The CLI never removes existing files.                           |
 | `--verbose`      | Show template resolution details and the package manager's full output during installation.             |
 | `--json`         | Emit `{ ok, slug, dir, ref, installed }` on success or `{ ok: false, code, message, hint }` on failure. |
 
 ### Package manager detection
 
-If `--pm` isn't passed, the CLI looks at the generated project in this order:
+When you omit `--pm`, the CLI checks the generated project in this order:
 
-1. The `packageManager` field in `package.json` (Corepack convention, like `pnpm@9.0.0` or `bun@1.1.0`). The CLI extracts the leading tool name; the version gets ignored.
-2. Lockfile presence: `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun, `yarn.lock` → yarn, `package-lock.json` → npm.
+1. The `packageManager` field in `package.json` (Corepack convention, such as `pnpm@9.0.0` or `bun@1.1.0`). The CLI uses the leading tool name and ignores the version.
+2. lockfile presence: `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun, `yarn.lock` → yarn, `package-lock.json` → npm.
 
 If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` explicitly.
 
@@ -125,10 +125,10 @@ If neither matches, the CLI aborts with `internal` and asks you to pass `--pm` e
 
 1. Resolve a catalog slug through the registry, or parse a GitHub repository URL directly.
 2. Resolve the requested ref to an immutable GitHub commit and download its source archive.
-3. Require and validate `deesse-template.json`, then use its include and exclude patterns to select project files. Both input forms follow this same path; there is no clone fallback.
-4. Compute the target directory (`./<slug>` for catalog entries, or `./<repository>` for direct URLs, unless `--dir` was passed).
-5. Materialize the selected files. If the directory exists and `--force` wasn't passed, abort with `target_exists`.
-6. Detect the package manager and run the install command (`pnpm install`, `npm install`, `yarn install`, `bun install`). Its output is hidden by default and can be shown with `--verbose`. `--verbose` also reports the resolved source, ref, target directory, commit, and number of selected files, including when installation is skipped with `--no-install`.
+3. Require `deesse-template.json`. Check its schema and use its include/exclude patterns to choose project files. Catalog slugs and direct URLs follow the same process. The CLI has no clone fallback.
+4. Choose the target directory (`./<slug>` for catalog entries or `./<repository>` for direct URLs), unless you set `--dir`.
+5. Copy the selected files into the target directory. If that directory already exists and you omit `--force`, the CLI aborts with `target_exists`.
+6. Detect the package manager and run its install command. The CLI supports `pnpm install`, `npm install`, `yarn install`, and `bun install`. By default, it hides installer output. Pass `--verbose` to show it with the resolved source, ref, target path, commit, and selected file count. The CLI also reports these details when `--no-install` skips installation.
 
 ### Exit codes
 
@@ -205,21 +205,21 @@ Exit codes: always `0`. A non-2xx from the server's sign-out endpoint logs but d
 
 ## Error codes reference
 
-The CLI's error surface forms a closed list: only the codes documented below are ever returned, and adding a new one counts as a breaking change. Pattern-match on these in your scripts:
+The CLI returns only the error codes listed below. Treat this closed list as part of the public API. Adding a code counts as a breaking change. Use these values in your scripts:
 
 | Code                 | Meaning                                                       | Remediation                                                            |
 | -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `not_found`          | A slug, template, or other identifier doesn't exist           | Check spelling, or run `deessejs list` to see available identifiers    |
-| `network_error`      | Network request failed after retries                          | Check connectivity, then retry; the CLI already retried 3x with jitter |
+| `not_found`          | A slug, template, or other identifier doesn't exist           | Check the spelling or run `deessejs list` to see available identifiers |
+| `network_error`      | Network request failed after retries                          | Check connectivity and retry. The CLI already retries three times with jitter. |
 | `parse_error`        | Server response didn't match the v1 contract                  | Likely a server-side regression. Open an issue.                        |
-| `cli_outdated`       | CLI version sits below the server's minimum supported version | `npm install -g @deessejs@latest`                                      |
+| `cli_outdated`       | Server requires a newer CLI                                    | Run `npm install -g @deessejs@latest`                                  |
 | `cli_device_denied`  | You denied the device-flow request in the browser             | Re-run `deessejs auth login` and select Approve                        |
 | `cli_device_expired` | The 30-minute device-code window elapsed                      | Re-run `deessejs auth login`                                           |
 
-Internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`) may also appear under `code` when you pass `--json`, but they aren't part of the public surface and may change without notice.
+With `--json`, the CLI may also return internal codes (`template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `install_failed`, `internal`). Treat these codes as implementation details. Their behavior may change without notice.
 
 Every error response on `--json` carries a `hint` field with a human-readable remediation hint. Print it before exiting.
 
 ## Global flags
 
-No global `--api-url` flag exists. The CLI's API base URL stays fixed at `https://app.deessejs.com/api/v1` and isn't currently overridable from the command line. Custom base URLs belong to integration tests; end users run against the production host.
+No global `--api-url` flag exists. The CLI always calls `https://app.deessejs.com/api/v1`. Integration tests can use custom base URLs. Production commands use the production host.

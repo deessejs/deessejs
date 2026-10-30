@@ -36,6 +36,6 @@ Replace `<slug>` with any template identifier from the [Templates](/docs/cli-com
 
 - **Node.js 20.0.0 or newer**: the CLI's `engines` field enforces this. Older versions fail fast at install time.
 - **GitHub access**: every `init` downloads the selected GitHub repository archive.
-- **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. The CLI picks one based on the generated project's lockfile or `packageManager` field; pass `--pm <name>` to override.
+- **A package manager**: Choose `pnpm`, `npm`, `yarn`, or `bun`. The CLI selects one from the generated project's lockfile or `packageManager` field. Pass `--pm <name>` to choose a different manager.
 
-No account is required for `init`. Authentication only matters if you publish templates, leave reviews, or use features that hit the DeesseJS API. See [CLI: Authentication](/docs/cli-auth).
+Run `init` without an account. Sign in only to publish templates, leave reviews, or use features that call the DeesseJS API. See [CLI: Authentication](/docs/cli-auth).
