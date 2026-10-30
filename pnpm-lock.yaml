@@ -213,6 +213,9 @@ catalogs:
     resend:
       specifier: ^6.33.0
       version: 6.34.1
+    sharp:
+      specifier: ^0.35.5
+      version: 0.35.5
     shiki:
       specifier: ^4.3.1
       version: 4.3.1
@@ -889,6 +892,9 @@ importers:
       '@workspace/registry':
         specifier: workspace:*
         version: link:../registry
+      '@workspace/storage':
+        specifier: workspace:*
+        version: link:../storage
       better-auth:
         specifier: 'catalog:'
         version: 1.7.7(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9))(next@16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@playwright/test@1.62.1)(@types/node@24.13.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.22.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.10)
@@ -901,6 +907,9 @@ importers:
       postgres:
         specifier: 'catalog:'
         version: 3.4.9
+      sharp:
+        specifier: 'catalog:'
+        version: 0.35.5(@types/node@24.13.2)
       zod:
         specifier: 'catalog:'
         version: 4.4.3

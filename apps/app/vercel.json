@@ -1,3 +1,6 @@
 {
-  "relatedProjects": ["prj_EDu0GMa3fKaInW6f3MBiLCiewi6O"]
+  "relatedProjects": ["prj_EDu0GMa3fKaInW6f3MBiLCiewi6O"],
+  "crons": [
+    { "path": "/api/internal/avatars/cleanup", "schedule": "13 2 * * *" }
+  ]
 }

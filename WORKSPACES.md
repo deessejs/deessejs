@@ -20,6 +20,7 @@ graph TD
 
   subgraph PKG["Packages"]
     API["packages/api<br/>Hono server, oRPC router"]
+    STORAGE["packages/storage<br/>generic R2 object operations"]
     AUTH["packages/auth<br/>Better Auth config and plugins"]
     DB["packages/database<br/>Drizzle schema, migrations"]
     CONTRACTS["packages/contracts<br/>Zod wire contracts"]
@@ -54,6 +55,7 @@ graph TD
   API --> CONTRACTS
   API --> DB
   API --> ENV
+  API --> STORAGE
 
   AUTH --> DB
   AUTH --> EMAIL

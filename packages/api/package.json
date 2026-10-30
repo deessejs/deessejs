@@ -49,10 +49,12 @@
     "@workspace/email": "workspace:*",
     "@workspace/env": "workspace:*",
     "@workspace/registry": "workspace:*",
+    "@workspace/storage": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
     "postgres": "catalog:",
+    "sharp": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

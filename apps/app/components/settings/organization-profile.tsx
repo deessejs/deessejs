@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -17,6 +18,15 @@ import { Input } from "@workspace/ui/components/input"
 import { CopyIcon } from "lucide-react"
 
 import { authClient } from "@/lib/auth-client"
+import { orpcBrowser } from "@/lib/orpc-browser"
+
+const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
+const organizationAvatarQueryOptions = (slug: string) =>
+  queryOptions({
+    queryKey: ["organization", "avatar", slug],
+    queryFn: () => orpcBrowser.organization.avatar.get({ slug }),
+    retry: false,
+  })
 
 const organizationProfileSchema = z.object({
   name: z
@@ -105,7 +115,12 @@ export function OrganizationProfile({
   organization: OrganizationProfile
 }) {
   const router = useRouter()
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
   const canManage = hasManagingRole(organization.role)
+  const avatarQuery = organizationAvatarQueryOptions(organization.slug)
+  const avatar = useQuery(avatarQuery)
+  const [avatarBusy, setAvatarBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
   const form = useForm<OrganizationProfileValues>({
@@ -113,6 +128,56 @@ export function OrganizationProfile({
     defaultValues: { name: organization.name, logo: organization.logo ?? "" },
   })
   const logoField = form.register("logo")
+
+  async function handleAvatarChange(file: File | undefined) {
+    if (!file) return
+    const contentType = avatarContentTypes.find((type) => type === file.type)
+    if (!contentType) {
+      toast.error("Choose a JPEG, PNG, or WebP image.")
+      return
+    }
+    setAvatarBusy(true)
+    try {
+      const upload = await orpcBrowser.organization.avatar.createUpload({
+        slug: organization.slug,
+        contentType,
+        byteSize: file.size,
+      })
+      const response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        headers: upload.requiredHeaders,
+        body: file,
+      })
+      if (!response.ok) throw new Error("Could not upload this image.")
+      await orpcBrowser.organization.avatar.complete({
+        slug: organization.slug,
+        uploadId: upload.uploadId,
+      })
+      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
+      toast.success("Organization avatar updated")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update avatar"
+      )
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarBusy(true)
+    try {
+      await orpcBrowser.organization.avatar.remove({ slug: organization.slug })
+      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
+      toast.success("Uploaded organization avatar removed")
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not remove avatar"
+      )
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
   async function handleSubmit(values: OrganizationProfileValues) {
     const savedValues = { ...values, logo: values.logo.trim() }
     setSubmitting(true)
@@ -142,14 +207,15 @@ export function OrganizationProfile({
 
   const workspacePath = `/${organization.slug}`
   const initials = organization.name.trim().slice(0, 2).toUpperCase() || "?"
+  const avatarUrl = avatar.data?.imageUrl ?? logoPreview
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <Avatar className="size-16 rounded-lg">
-          {isSafeLogoPreview(logoPreview) && (
+          {(avatar.data?.imageUrl || isSafeLogoPreview(logoPreview)) && (
             <AvatarImage
-              src={logoPreview}
+              src={avatarUrl}
               alt={`${organization.name} logo`}
               referrerPolicy="no-referrer"
             />
@@ -163,6 +229,45 @@ export function OrganizationProfile({
           <p className="text-sm text-muted-foreground">Organization profile</p>
         </div>
       </div>
+
+      {canManage ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            ref={avatarInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={avatarBusy}
+            aria-label="Choose an organization avatar"
+            onChange={(event) => {
+              void handleAvatarChange(event.currentTarget.files?.[0]).then(
+                () => undefined
+              )
+              event.currentTarget.value = ""
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={avatarBusy}
+            onClick={() => avatarInputRef.current?.click()}
+          >
+            {avatarBusy ? "Saving..." : "Change avatar"}
+          </Button>
+          {avatar.data?.imageUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              disabled={avatarBusy}
+              onClick={() => void handleAvatarRemove().then(() => undefined)}
+            >
+              Remove upload
+            </Button>
+          )}
+        </div>
+      ) : null}
 
       {canManage ? (
         <form
