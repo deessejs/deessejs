@@ -2,6 +2,8 @@
 
 CLI for the DeesseJS template registry and block sources.
 
+Requires Node.js 22.14 or later.
+
 ## Install
 
 The package is published as `@deessejs/cli` and exposes the `deessejs` executable:

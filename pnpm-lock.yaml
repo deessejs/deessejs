@@ -452,8 +452,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       '@deessejs/fp':
-        specifier: ^1.0.0
-        version: 1.0.0(@deessejs/errors@1.1.1)
+        specifier: ^5.0.1
+        version: 5.0.1
       '@orpc/client':
         specifier: ^1.14.7
         version: 1.14.7
@@ -1756,10 +1756,9 @@ packages:
   '@deessejs/errors@1.1.1':
     resolution: {integrity: sha512-iq9ei2OgoGqpuO37c7Mp4EBIFOZsyueGQLgavSwUKtExu0oSElWCzTcF568XUWRVAjrjlxWD8vcDyLRFPYSIZQ==}
 
-  '@deessejs/fp@1.0.0':
-    resolution: {integrity: sha512-li2Lg1ZKnGq0temTUZxFzR9wK1d24trc/SOMFNF9KI1NZOom4FWn/DXd34Gthssn3gSaBKyqUItaUnFCB4v8IQ==}
-    peerDependencies:
-      '@deessejs/errors': '>=1.0.0'
+  '@deessejs/fp@5.0.1':
+    resolution: {integrity: sha512-7/PTC5S40To1D0iJV22js0buI3aymO9lrLJN5GOkwQb8O0aSIQKNDik58KyhsYtKW5DdnSnUs4k91dxTuoFGFg==}
+    engines: {node: '>=22.14.0'}
 
   '@dotenvx/dotenvx@1.75.1':
     resolution: {integrity: sha512-/BITOC9dmS/edY2zQwZNicQ059O6RKabtQfyEafV0nGtfYRNHYy1DIPiYVcov40+tob9hfmBnbR963dS+EQ1DQ==}
@@ -11403,9 +11402,7 @@ snapshots:
     dependencies:
       '@standard-schema/spec': 1.1.0
 
-  '@deessejs/fp@1.0.0(@deessejs/errors@1.1.1)':
-    dependencies:
-      '@deessejs/errors': 1.1.1
+  '@deessejs/fp@5.0.1': {}
 
   '@dotenvx/dotenvx@1.75.1':
     dependencies:

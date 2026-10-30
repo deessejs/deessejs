@@ -1,5 +1,5 @@
 import { error, type ErrorInstance } from "@deessejs/errors"
-import { err, ok, type Result } from "@deessejs/fp"
+import { err, flatMap, map, ok, pipe, type Result } from "@deessejs/fp"
 import {
   PROJECT_CONFIG_SCHEMA_URL,
   parseProjectConfig,
@@ -99,13 +99,16 @@ const validateConfig = (
 const readProjectConfig = (
   contents: Uint8Array
 ): Result<ProjectConfigV1, ProjectConfigFailure> =>
-  decodeConfig(contents).flatMap(parseJson).flatMap(validateConfig)
+  pipe(contents, decodeConfig, flatMap(parseJson), flatMap(validateConfig))
 
 const preserveProjectConfig = (
   plan: TemplateInstallationPlan,
   contents: Uint8Array
 ): Result<ProjectConfigPreparation, ProjectConfigFailure> =>
-  readProjectConfig(contents).map(() => ({ plan, generated: false }))
+  pipe(
+    readProjectConfig(contents),
+    map(() => ({ plan, generated: false }))
+  )
 
 export const resolveProjectConfig = (
   plan: TemplateInstallationPlan
