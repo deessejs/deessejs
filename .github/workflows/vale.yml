@@ -37,7 +37,7 @@ jobs:
           config: .vale.ini
           sync: ${{ steps.styles.outputs.cache-hit != 'true' }}
           reporter: github-pr-check
-          filter_mode: added
+          filter_mode: nofilter
           fail_level: any
           min_alert_level: suggestion
         env:
