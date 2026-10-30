@@ -81,17 +81,17 @@ const validateConfig = (contents: Uint8Array, templateSlug: string): void => {
   )
 }
 
-export const prepareProjectConfig = (
+export const resolveProjectConfig = (
   plan: TemplateInstallationPlan,
   templateSlug: string
 ): ProjectConfigPreparation => {
   const configFile = findProjectConfig(plan)
   return configFile
-    ? prepareProvidedProjectConfig(plan, configFile.contents, templateSlug)
+    ? validateProvidedProjectConfig(plan, configFile.contents, templateSlug)
     : { plan: addDefaultProjectConfig(plan), generated: true }
 }
 
-const prepareProvidedProjectConfig = (
+const validateProvidedProjectConfig = (
   plan: TemplateInstallationPlan,
   contents: Uint8Array,
   templateSlug: string

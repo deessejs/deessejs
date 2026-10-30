@@ -16,7 +16,7 @@ import {
 } from "../utils/detect-pm.js"
 import { spawn } from "../utils/spawn.js"
 import { materializeTemplatePlan } from "../utils/materialize.js"
-import { prepareProjectConfig } from "../utils/project-config.js"
+import { resolveProjectConfig } from "../utils/project-config.js"
 import {
   resolveTemplateSource,
   type TemplateSource,
@@ -146,7 +146,7 @@ async function createTemplateProject(
     throw error
   }
 
-  const projectConfig = prepareProjectConfig(plan, template.slug)
+  const projectConfig = resolveProjectConfig(plan, template.slug)
   const projectPlan = projectConfig.plan
   logVerbose(
     verbose,
@@ -217,14 +217,17 @@ async function runInitCommand(
   options: InitCommandOptions
 ): Promise<void> {
   try {
-    const state = await prepareTemplate(slugOrUrl, options)
+    const state = await loadTemplateState(slugOrUrl, options)
     await installAndReport(state, options)
   } catch (error) {
     reportInitError(error, options.json ?? false)
   }
 }
 
-async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
+async function loadTemplateState(
+  slugOrUrl: string,
+  options: InitCommandOptions
+) {
   const { template, directRepository } = await resolveTemplateSource(slugOrUrl)
   const projectName =
     directRepository?.repo ?? template.templateSlug ?? template.slug
@@ -250,7 +253,7 @@ async function prepareTemplate(slugOrUrl: string, options: InitCommandOptions) {
 }
 
 async function installAndReport(
-  state: Awaited<ReturnType<typeof prepareTemplate>>,
+  state: Awaited<ReturnType<typeof loadTemplateState>>,
   options: InitCommandOptions
 ): Promise<void> {
   const { template, dir, revision } = state
