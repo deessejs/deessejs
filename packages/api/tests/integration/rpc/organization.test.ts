@@ -58,21 +58,29 @@ const SESSION_COOKIE_NAME = "better-auth.session_token"
  * account while a recovery is running.
  */
 const wrapper = vi.hoisted(() => {
-  let markEntered: () => void = () => {}
-  let release: () => void = () => {}
-  const entered = new Promise<void>((resolve) => {
-    markEntered = resolve
-  })
-  const gate = new Promise<void>((resolve) => {
-    release = resolve
-  })
+  const createLatch = () => {
+    let markEntered: () => void = () => {}
+    let release: () => void = () => {}
+    const entered = new Promise<void>((resolve) => {
+      markEntered = resolve
+    })
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return { entered, gate, markEntered, release }
+  }
+
+  let latch = createLatch()
+
   return {
     mode: "real" as "real" | "fail-before" | "fail-after",
     setActive: "real" as "real" | "hold" | "fail",
-    markEntered,
-    release,
-    entered,
-    gate,
+    get latch() {
+      return latch
+    },
+    resetLatch() {
+      latch = createLatch()
+    },
   }
 })
 
@@ -116,8 +124,9 @@ vi.mock("@workspace/auth/organization/create", async (importOriginal) => {
         throw new Error("The active selection could not be restored.")
       }
       if (wrapper.setActive === "hold") {
-        wrapper.markEntered()
-        await wrapper.gate
+        const latch = wrapper.latch
+        latch.markEntered()
+        await latch.gate
       }
       return original.setActiveOrganization(input)
     },
@@ -143,7 +152,8 @@ const createdOrganizations: string[] = []
 afterEach(async () => {
   wrapper.mode = "real"
   wrapper.setActive = "real"
-  wrapper.release()
+  wrapper.latch.release()
+  wrapper.resetLatch()
   const users = createdUsers.splice(0)
   const organizations = createdOrganizations.splice(0)
   if (users.length > 0) {
@@ -1282,7 +1292,8 @@ describe("organization creation", () => {
       // is running.
       wrapper.setActive = "hold"
       const first = rpc(["organization", "create"], { name: "Acme" }, actor.cookie)
-      await wrapper.entered
+      const latch = wrapper.latch
+      await latch.entered
 
       // The operation is superseded, and the account's unique index
       // still covers it, so the second attempt does not start.
@@ -1294,7 +1305,7 @@ describe("organization creation", () => {
       expect(second.status).toBe(409)
       expect(errorOf(second.body).code).toBe("ORGANIZATION_CREATE_IN_PROGRESS")
 
-      wrapper.release()
+      latch.release()
       const firstResult = await first
       expect(firstResult.status).toBe(200)
       expect((firstResult.body.json as { id: string }).id).toBe(orphan.id)
