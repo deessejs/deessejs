@@ -88,46 +88,22 @@ type OrganizationProfile = {
   role: string
 }
 
-function CopyButton({ value, label }: { value: () => string; label: string }) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      aria-label={`Copy ${label}`}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value())
-          toast.success(`${label} copied`)
-        } catch {
-          toast.error(`Could not copy ${label.toLowerCase()}`)
-        }
-      }}
-    >
-      <CopyIcon className="size-4" aria-hidden />
-    </Button>
-  )
-}
-
-export function OrganizationProfile({
-  organization,
+function OrganizationAvatar({
+  slug,
+  name,
+  logo,
+  canManage,
 }: {
-  organization: OrganizationProfile
+  slug: string
+  name: string
+  logo: string | null
+  canManage: boolean
 }) {
-  const router = useRouter()
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
-  const canManage = hasManagingRole(organization.role)
-  const avatarQuery = organizationAvatarQueryOptions(organization.slug)
+  const avatarQuery = organizationAvatarQueryOptions(slug)
   const avatar = useQuery(avatarQuery)
   const [avatarBusy, setAvatarBusy] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
-  const form = useForm<OrganizationProfileValues>({
-    resolver: zodResolver(organizationProfileSchema),
-    defaultValues: { name: organization.name, logo: organization.logo ?? "" },
-  })
-  const logoField = form.register("logo")
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return
@@ -139,7 +115,7 @@ export function OrganizationProfile({
     setAvatarBusy(true)
     try {
       const upload = await orpcBrowser.organization.avatar.createUpload({
-        slug: organization.slug,
+        slug,
         contentType,
         byteSize: file.size,
       })
@@ -150,7 +126,7 @@ export function OrganizationProfile({
       })
       if (!response.ok) throw new Error("Could not upload this image.")
       await orpcBrowser.organization.avatar.complete({
-        slug: organization.slug,
+        slug,
         uploadId: upload.uploadId,
       })
       await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
@@ -167,7 +143,7 @@ export function OrganizationProfile({
   async function handleAvatarRemove() {
     setAvatarBusy(true)
     try {
-      await orpcBrowser.organization.avatar.remove({ slug: organization.slug })
+      await orpcBrowser.organization.avatar.remove({ slug })
       await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
       toast.success("Uploaded organization avatar removed")
     } catch (error) {
@@ -178,45 +154,18 @@ export function OrganizationProfile({
       setAvatarBusy(false)
     }
   }
-  async function handleSubmit(values: OrganizationProfileValues) {
-    const savedValues = { ...values, logo: values.logo.trim() }
-    setSubmitting(true)
-    try {
-      const { error } = await authClient.organization.update({
-        organizationId: organization.id,
-        data: { name: savedValues.name, logo: savedValues.logo || null },
-      })
 
-      if (error) {
-        toast.error(error.message ?? "Could not update organization")
-        return
-      }
-
-      form.reset(savedValues)
-      setLogoPreview(savedValues.logo)
-      toast.success("Organization profile saved")
-      router.refresh()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update organization"
-      )
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const workspacePath = `/${organization.slug}`
-  const initials = organization.name.trim().slice(0, 2).toUpperCase() || "?"
-  const avatarUrl = avatar.data?.imageUrl ?? logoPreview
+  const initials = name.trim().slice(0, 2).toUpperCase() || "?"
+  const avatarUrl = avatar.data?.imageUrl ?? logo ?? ""
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <div className="flex items-center gap-4">
         <Avatar className="size-16 rounded-lg">
-          {(avatar.data?.imageUrl || isSafeLogoPreview(logoPreview)) && (
+          {(avatar.data?.imageUrl || isSafeLogoPreview(logo ?? "")) && (
             <AvatarImage
               src={avatarUrl}
-              alt={`${organization.name} logo`}
+              alt={`${name} logo`}
               referrerPolicy="no-referrer"
             />
           )}
@@ -225,7 +174,7 @@ export function OrganizationProfile({
           </AvatarFallback>
         </Avatar>
         <div>
-          <h2 className="text-lg font-semibold">{organization.name}</h2>
+          <h2 className="text-lg font-semibold">{name}</h2>
           <p className="text-sm text-muted-foreground">Organization profile</p>
         </div>
       </div>
@@ -268,6 +217,82 @@ export function OrganizationProfile({
           )}
         </div>
       ) : null}
+    </>
+  )
+}
+
+function CopyButton({ value, label }: { value: () => string; label: string }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={`Copy ${label}`}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value())
+          toast.success(`${label} copied`)
+        } catch {
+          toast.error(`Could not copy ${label.toLowerCase()}`)
+        }
+      }}
+    >
+      <CopyIcon className="size-4" aria-hidden />
+    </Button>
+  )
+}
+
+export function OrganizationProfile({
+  organization,
+}: {
+  organization: OrganizationProfile
+}) {
+  const router = useRouter()
+  const canManage = hasManagingRole(organization.role)
+  const [submitting, setSubmitting] = useState(false)
+  const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
+  const form = useForm<OrganizationProfileValues>({
+    resolver: zodResolver(organizationProfileSchema),
+    defaultValues: { name: organization.name, logo: organization.logo ?? "" },
+  })
+  const logoField = form.register("logo")
+
+  async function handleSubmit(values: OrganizationProfileValues) {
+    const savedValues = { ...values, logo: values.logo.trim() }
+    setSubmitting(true)
+    try {
+      const { error } = await authClient.organization.update({
+        organizationId: organization.id,
+        data: { name: savedValues.name, logo: savedValues.logo || null },
+      })
+
+      if (error) {
+        toast.error(error.message ?? "Could not update organization")
+        return
+      }
+
+      form.reset(savedValues)
+      setLogoPreview(savedValues.logo)
+      toast.success("Organization profile saved")
+      router.refresh()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update organization"
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const workspacePath = `/${organization.slug}`
+  return (
+    <div className="flex flex-col gap-6">
+      <OrganizationAvatar
+        slug={organization.slug}
+        name={organization.name}
+        logo={logoPreview}
+        canManage={canManage}
+      />
 
       {canManage ? (
         <form
