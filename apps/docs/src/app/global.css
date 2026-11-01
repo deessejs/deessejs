@@ -1,4 +1,6 @@
-@import 'tailwindcss';
+@import "@workspace/ui/globals.css";
+@source "../../node_modules/@workspace/analytics";
+@source "../../node_modules/@workspace/cookies";
 @import 'fumadocs-ui/css/black.css';
 @import 'fumadocs-ui/css/preset.css';
 
