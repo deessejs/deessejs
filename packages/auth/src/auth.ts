@@ -245,13 +245,10 @@ const authConfig: BetterAuthOptions = {
   // question, for the same slug, with the caller's membership and role
   // checked and with no effect on the session.
   //
-  // The create endpoint is disabled for a different reason: it takes
-  // the slug from the body, and the slug is the server's. A caller
-  // that reaches it directly would choose the slug, and the guarantee
-  // that the slug is generated would hold for the callers that happen
-  // to go through the procedure and for nobody else. The application's
-  // own procedure generates it, retries a collision against the
-  // database, and refuses a name it cannot turn into a usable slug.
+  // The create endpoint is disabled because direct requests would bypass
+  // the application's marker-protected provisioning operation. The
+  // provisioning procedure accepts a proposed slug, validates it, retries
+  // collisions, and passes the pending operation marker to the plugin.
   //
   // The server-side call the procedure makes is not affected:
   // `disabledPaths` is applied by the request router, and the call

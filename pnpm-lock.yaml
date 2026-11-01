@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@hono/node-server':
+      specifier: ^1.19.14
+      version: 1.19.14
     '@aws-sdk/client-s3':
       specifier: ^3.1159.0
       version: 3.1159.0
@@ -482,9 +485,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@hono/node-server':
+        specifier: 'catalog:'
+        version: 1.19.14(hono@4.12.28)
       '@workspace/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@workspace/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -503,6 +512,9 @@ importers:
       tar:
         specifier: 'catalog:'
         version: 7.5.22
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9)
       tsup:
         specifier: ^8.3.5
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.32)(supports-color@7.2.0)(tsx@4.23.0)(typescript@6.0.3)(yaml@2.9.1)
