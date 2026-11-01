@@ -40,7 +40,8 @@
     "typecheck:e2e": "tsc --noEmit -p tsconfig.e2e.json",
     "pretest": "pnpm turbo build --filter=@deessejs/cli && tsup",
     "test": "vitest run",
-    "test:e2e": "vitest run --config test/e2e/vitest.e2e.config.ts test/e2e/init.test.ts",
+    "test:e2e": "vitest run --config test/e2e/vitest.e2e.config.ts",
+    "test:e2e:init": "vitest run --config test/e2e/vitest.e2e.config.ts test/e2e/init.test.ts",
     "test:e2e:organization": "vitest run --config test/e2e/vitest.e2e.config.ts test/e2e/organization.test.ts",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
