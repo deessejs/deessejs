@@ -163,11 +163,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - name: Typecheck CLI E2E harness
-        run: pnpm --filter @deessejs/cli typecheck:e2e
-
       - name: Build CLI and workspace dependencies
         run: pnpm turbo build --filter=@deessejs/cli --force
+
+      - name: Typecheck CLI E2E harness
+        run: pnpm --filter @deessejs/cli typecheck:e2e
 
       - name: Run packed CLI init regression test
         run: pnpm --filter @deessejs/cli test:e2e

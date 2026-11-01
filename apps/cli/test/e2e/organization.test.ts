@@ -76,7 +76,14 @@ describe("organization CLI against the real API", () => {
 
   afterAll(async () => {
     try {
-      if (server) await new Promise<void>((resolveClose, reject) => server!.close((error) => error ? reject(error) : resolveClose()))
+      const runningServer = server
+      if (runningServer) {
+        await new Promise<void>((resolveClose, reject) =>
+          runningServer.close((error) =>
+            error ? reject(error) : resolveClose()
+          )
+        )
+      }
       if (users.length) await db.delete(user).where(inArray(user.id, users))
       if (organizations.length) await db.delete(organization).where(inArray(organization.id, organizations))
     } finally {
