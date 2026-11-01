@@ -17,6 +17,7 @@ allowBuilds:
 
 # Shared dependency versions: update here, propagate everywhere
 catalog:
+  "@hono/node-server": ^1.19.14
   # Core
   "@aws-sdk/client-s3": ^3.1159.0
   "@aws-sdk/s3-request-presigner": ^3.1159.0

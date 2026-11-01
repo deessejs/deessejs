@@ -226,6 +226,9 @@ jobs:
       - name: Apply migrations
         run: pnpm db:migrate
 
+      - name: Run CLI end-to-end tests
+        run: pnpm --filter @deessejs/cli test:e2e:organization
+
       - name: Run integration tests
         # @workspace/database is included so the template catalog
         # constraint tests run against this real PostgreSQL service.
