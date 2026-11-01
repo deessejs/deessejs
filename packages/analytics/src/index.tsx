@@ -187,13 +187,15 @@ export function AnalyticsConsent({
 }) {
   const hasDecided = useCookieConsentStore((state) => state.hasDecided)
   const hasHydrated = useCookieConsentStore((state) => state.hasHydrated)
+  const showPreferencesControl =
+    showPreferences &&
+    (!showPreferencesAfterDecision || (hasHydrated && hasDecided))
 
   return (
     <>
       <ConsentGatedVercelScripts isProductApp={isProductApp} />
       <CookieConsent />
-      {showPreferences &&
-      (!showPreferencesAfterDecision || (hasHydrated && hasDecided)) ? (
+      {showPreferencesControl ? (
         <div
           className={`fixed bottom-4 ${preferencesPlacement === "right" ? "right-4" : "left-4"} z-40 rounded-md border bg-background/90 px-3 py-2 shadow-sm`}
         >
