@@ -2,6 +2,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import {
   chmodSync,
+  cpSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -14,6 +15,10 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import * as tar from "tar"
+import {
+  PROJECT_CONFIG_SCHEMA_URL,
+  parseProjectConfig,
+} from "@workspace/registry/v1"
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -83,6 +88,7 @@ describe.skipIf(process.platform !== "linux")(
     let templateArchivePath = ""
     let missingDescriptorArchivePath = ""
     let fetchTracePath = ""
+    const projectConfigArchives = new Map<string, string>()
 
     beforeAll(async () => {
       workDirectory = mkdtempSync(join(tmpdir(), "deessejs-cli-init-e2e-"))
@@ -107,6 +113,40 @@ describe.skipIf(process.platform !== "linux")(
         },
         [".gitignore", "deesse-template.json", "package.json", "private", "src"]
       )
+      for (const [name, config] of [
+        [
+          "valid",
+          Buffer.from(
+            '{"$schema":"https://app.deessejs.com/schema/project/v1.json","formatVersion":1}\n'
+          ),
+        ],
+        ["invalid-utf8", Buffer.from([0xc3, 0x28])],
+        ["malformed-json", Buffer.from("{\n")],
+        ["invalid-schema", Buffer.from('{"formatVersion":2}\n')],
+      ] as const) {
+        const fixture = join(workDirectory, `template-${name}`)
+        mkdirSync(fixture, { recursive: true })
+        cpSync(templateFixtureDirectory, fixture, { recursive: true })
+        writeFileSync(join(fixture, "deesse.json"), config)
+        const archivePath = join(workDirectory, `template-${name}.tar.gz`)
+        await tar.c(
+          {
+            cwd: fixture,
+            file: archivePath,
+            gzip: true,
+            prefix: `deessejs-init-regression-fixture-${expectedRevision.slice(0, 7)}`,
+          },
+          [
+            ".gitignore",
+            "deesse-template.json",
+            "deesse.json",
+            "package.json",
+            "private",
+            "src",
+          ]
+        )
+        projectConfigArchives.set(name, archivePath)
+      }
       await tar.c(
         {
           cwd: templateFixtureDirectory,
@@ -131,7 +171,16 @@ describe.skipIf(process.platform !== "linux")(
       const packResult = await runCommand(
         "pnpm",
         ["--dir", cliDirectory, "pack", "--pack-destination", installDirectory],
-        { cwd: resolve(cliDirectory, "../.."), timeout: 5 * 60_000 }
+        {
+          cwd: resolve(cliDirectory, "../.."),
+          timeout: 5 * 60_000,
+          env: {
+            ...process.env,
+            npm_config_manage_package_manager_versions: "false",
+            PNPM_HOME: "/tmp/pr398-pnpm-home",
+            npm_config_store_dir: "/tmp/pr398-pnpm-store",
+          },
+        }
       )
       if (packResult.exitCode !== 0) {
         throw new Error(
@@ -329,9 +378,58 @@ describe.skipIf(process.platform !== "linux")(
         expect(existsSync(join(projectDirectory, "deesse-template.json"))).toBe(
           false
         )
+        const generatedConfigBytes = readFileSync(
+          join(projectDirectory, "deesse.json")
+        )
+        expect(generatedConfigBytes.toString("utf8")).toBe(
+          `${JSON.stringify({ $schema: PROJECT_CONFIG_SCHEMA_URL, formatVersion: 1 }, null, 2)}\n`
+        )
+        expect(
+          parseProjectConfig(JSON.parse(generatedConfigBytes.toString("utf8")))
+        ).toMatchObject({ success: true })
         expect(
           existsSync(join(projectDirectory, "private", "secret.txt"))
         ).toBe(false)
+
+        for (const name of [
+          "valid",
+          "invalid-utf8",
+          "malformed-json",
+          "invalid-schema",
+        ]) {
+          const target = join(consumerDirectory, `project-config-${name}`)
+          const archive = projectConfigArchives.get(name)
+          if (!archive) throw new Error(`Missing ${name} fixture archive`)
+          const configEnv = { ...env, DEESSEJS_INIT_FIXTURE_ARCHIVE: archive }
+          const result = await runCommand(
+            cliExecutable,
+            [
+              "init",
+              "init-regression-fixture",
+              "--dir",
+              target,
+              "--no-install",
+              "--json",
+            ],
+            { cwd: consumerDirectory, env: configEnv, timeout: 2 * 60_000 }
+          )
+          if (name === "valid") {
+            expect(result.exitCode, `${result.stdout}\n${result.stderr}`).toBe(
+              0
+            )
+            expect(readFileSync(join(target, "deesse.json"))).toEqual(
+              readFileSync(join(workDirectory, "template-valid", "deesse.json"))
+            )
+          } else {
+            expect(result.exitCode).not.toBe(0)
+            expect(JSON.parse(result.stdout)).toMatchObject({
+              ok: false,
+              code: "template_invalid",
+              hint: expect.stringContaining("Project config"),
+            })
+            expect(existsSync(target)).toBe(false)
+          }
+        }
 
         const installedProjectDirectory = join(
           consumerDirectory,
@@ -573,7 +671,7 @@ describe.skipIf(process.platform !== "linux")(
           requests.filter((request) =>
             request.startsWith("GET https://app.deessejs.com/api/v1/version")
           )
-        ).toHaveLength(7)
+        ).toHaveLength(11)
         expect(requests).toContain(
           "POST https://app.deessejs.com/api/v1/rpc/templates/list"
         )
@@ -594,21 +692,21 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(9)
+        ).toBe(13)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(11)
+        ).toBe(15)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
             )
           ).length
-        ).toBe(11)
+        ).toBe(15)
         expect(
           requests.filter((request) =>
             request.startsWith(
