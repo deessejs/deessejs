@@ -6,18 +6,44 @@ import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getAllPosts } from "@/lib/blog/posts"
 import { getAllTags } from "@/lib/blog/types"
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description: "Articles and updates.",
-  alternates: {
-    canonical: "/blog",
-    types: {
-      "application/rss+xml": "/blog/feed.xml",
+type SearchParams = Promise<{ page?: string | string[] }>
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}): Promise<Metadata> {
+  const params = await searchParams
+  const page = Math.max(
+    1,
+    Number(Array.isArray(params.page) ? params.page[0] : params.page) || 1
+  )
+  const canonical = page === 1 ? "/blog" : `/blog?page=${page}`
+  return {
+    title: "Blog",
+    description: "Articles and updates.",
+    alternates: {
+      canonical,
+      types: {
+        "application/rss+xml": "/blog/feed.xml",
+      },
     },
-  },
+  }
 }
 
-export default function BlogPage() {
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const params = await searchParams
+  const page = Math.min(
+    1000,
+    Math.max(
+      1,
+      Number(Array.isArray(params.page) ? params.page[0] : params.page) || 1
+    )
+  )
   const posts = getAllPosts()
   const tags = getAllTags()
   const featured = posts.slice(0, 2)
@@ -57,6 +83,7 @@ export default function BlogPage() {
       {tags.length > 0 ? (
         <BlogSearch
           posts={posts}
+          page={page}
           featured={featured}
           topics={
             <nav
@@ -95,6 +122,7 @@ export default function BlogPage() {
       ) : (
         <BlogSearch
           posts={posts}
+          page={page}
           featured={featured}
           topics={
             <nav

@@ -1,11 +1,19 @@
 "use client"
 
-import { useDeferredValue, useMemo, useState, type ReactNode } from "react"
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Search, X } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import type { Post } from "@/lib/blog/types"
+import { BLOG_PAGE_SIZE } from "@/lib/blog/pagination"
 
 import { PostCardGrid } from "./blog-post-grid"
 
@@ -21,10 +29,12 @@ export function BlogSearch({
   posts,
   featured,
   topics,
+  page = 1,
 }: {
   posts: ReadonlyArray<Post>
   featured?: ReadonlyArray<Post> | undefined
   topics?: ReactNode
+  page?: number
 }) {
   const [query, setQuery] = useState("")
   const deferred = useDeferredValue(query)
@@ -42,6 +52,45 @@ export function BlogSearch({
 
   const isSearching = deferred.trim().length > 0
   const showEmpty = isSearching && filtered.length === 0
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [visibleCount, setVisibleCount] = useState(
+    Math.min(page * BLOG_PAGE_SIZE, posts.length)
+  )
+  const [loading, setLoading] = useState(false)
+  const visible = isSearching ? filtered : filtered.slice(0, visibleCount)
+  const nextPage = Math.floor(visibleCount / BLOG_PAGE_SIZE) + 1
+  const nextUrl = new URLSearchParams(searchParams.toString())
+  nextUrl.set("page", String(nextPage))
+  const nextHref = `${pathname}?${nextUrl.toString()}`
+
+  useEffect(() => {
+    function restoreHistoryState(event: PopStateEvent) {
+      const url = new URL(window.location.href)
+      const urlPage = Number(url.searchParams.get("page")) || 1
+      const stateCount = event.state?.blogVisibleCount
+      setVisibleCount(
+        typeof stateCount === "number"
+          ? stateCount
+          : Math.min(urlPage * BLOG_PAGE_SIZE, posts.length)
+      )
+    }
+    window.addEventListener("popstate", restoreHistoryState)
+    return () => window.removeEventListener("popstate", restoreHistoryState)
+  }, [posts.length])
+
+  function loadMore() {
+    if (loading || visibleCount >= filtered.length) return
+    setLoading(true)
+    const count = Math.min(visibleCount + BLOG_PAGE_SIZE, filtered.length)
+    setVisibleCount(count)
+    setLoading(false)
+    window.history.pushState(
+      { ...window.history.state, blogVisibleCount: count },
+      "",
+      nextHref
+    )
+  }
 
   return (
     <div className="flex flex-col" data-blog-search-query={query}>
@@ -101,10 +150,33 @@ export function BlogSearch({
         </div>
       ) : (
         <PostCardGrid
-          posts={filtered}
+          posts={visible}
           featured={isSearching ? undefined : featured}
         />
       )}
+      {!isSearching && !showEmpty && visibleCount < filtered.length ? (
+        <div className="flex justify-center border-x border-b border-border py-6">
+          <a
+            href={nextHref}
+            onClick={(event) => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return
+              event.preventDefault()
+              loadMore()
+            }}
+            aria-disabled={loading}
+            aria-label={`Load blog posts page ${nextPage}`}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          >
+            {loading ? "Loading…" : "Load more"}
+          </a>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -5,6 +5,8 @@ export function getAllPosts(): Post[] {
   return [...allPosts].sort((a, b) => b.date.localeCompare(a.date))
 }
 
+export { BLOG_PAGE_SIZE, getPostPage } from "./pagination.js"
+
 export function getPostBySlug(slug: string): Post | undefined {
   return allPosts.find((p) => p.slug === slug)
 }
