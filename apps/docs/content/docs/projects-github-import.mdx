@@ -58,5 +58,5 @@ The review shows whether configuration is valid, the pinned commit, and counts f
 - **No `deesse.json` or no default branch:** add the file at the repository root on its default branch, or set a default branch in GitHub, then inspect again.
 - **Invalid JSON or configuration diagnostics:** correct the reported issue in `deesse.json` and retry inspection.
 - **Configuration exceeds 64 KiB:** reduce the root file to 64 KiB or less.
-- **GitHub authorization the authorization flow was canceled or expired:** reconnect the GitHub account and retry. If GitHub can’t verify the installation, try again after a short wait.
-- **GitHub status cannot load:** refresh the import page. If the GitHub App is not configured in this DeesseJS environment, an administrator must configure it before the flow can continue.
+- **GitHub canceled or expired the authorization flow:** reconnect the GitHub account and retry. If GitHub can’t verify the installation, try again after a short wait.
+- **GitHub status won’t load:** refresh the import page. If the GitHub App isn’t configured in this DeesseJS environment, an administrator must configure it before the flow can continue.
