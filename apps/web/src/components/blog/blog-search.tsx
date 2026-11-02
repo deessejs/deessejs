@@ -54,11 +54,15 @@ export function BlogSearch({
   const showEmpty = isSearching && filtered.length === 0
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [visibleCount, setVisibleCount] = useState(() =>
+  const [visibleCount, setVisibleCount] = useState(
     Math.min(page * BLOG_PAGE_SIZE, posts.length)
   )
+  const [loadedPosts, setLoadedPosts] = useState<ReadonlyArray<Post>>(() =>
+    posts.slice(0, Math.min(page * BLOG_PAGE_SIZE, posts.length))
+  )
   const [loading, setLoading] = useState(false)
-  const visible = isSearching ? filtered : filtered.slice(0, visibleCount)
+  const [loadError, setLoadError] = useState(false)
+  const visible = isSearching ? filtered : loadedPosts.slice(0, visibleCount)
   const nextPage = Math.floor(visibleCount / BLOG_PAGE_SIZE) + 1
   const nextUrl = new URLSearchParams(searchParams.toString())
   nextUrl.set("page", String(nextPage))
@@ -79,17 +83,27 @@ export function BlogSearch({
     return () => window.removeEventListener("popstate", restoreHistoryState)
   }, [posts.length])
 
-  function loadMore() {
+  async function loadMore(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault()
     if (loading || visibleCount >= filtered.length) return
     setLoading(true)
-    const count = Math.min(visibleCount + BLOG_PAGE_SIZE, filtered.length)
-    setVisibleCount(count)
-    setLoading(false)
-    window.history.pushState(
-      { ...window.history.state, blogVisibleCount: count },
-      "",
-      nextHref
-    )
+    setLoadError(false)
+    try {
+      const tag = pathname.startsWith("/blog/tag/")
+        ? `&tag=${encodeURIComponent(decodeURIComponent(pathname.slice("/blog/tag/".length)))}`
+        : ""
+      const response = await fetch(`/api/blog/posts?page=${nextPage}${tag}`)
+      if (!response.ok) throw new Error("Could not load posts")
+      const result: { posts: Post[] } = await response.json()
+      const known = new Set(visible.map((post) => post.slug))
+      const additions = result.posts.filter((post) => !known.has(post.slug))
+      setLoadedPosts((current) => [...current, ...additions])
+      setVisibleCount((count) => count + additions.length)
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -158,20 +172,17 @@ export function BlogSearch({
         <div className="flex justify-center border-x border-b border-border py-6">
           <a
             href={nextHref}
-            aria-label={`Go to blog posts page ${nextPage}`}
+            aria-label={`Show more posts, page ${nextPage}`}
+            aria-busy={loading}
+            aria-disabled={loading || undefined}
+            onClick={loadMore}
             className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
-            Next page
+            {loading ? "Loading posts…" : "Show more posts"}
           </a>
-          <Button
-            type="button"
-            disabled={loading}
-            aria-label={`Load blog posts page ${nextPage}`}
-            aria-busy={loading}
-            onClick={loadMore}
-          >
-            {loading ? "Loading…" : "Load more"}
-          </Button>
+          {loadError ? (
+            <span role="status">Could not load posts. Try again.</span>
+          ) : null}
         </div>
       ) : null}
     </div>
