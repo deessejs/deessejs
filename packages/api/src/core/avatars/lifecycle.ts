@@ -1,4 +1,4 @@
-import { and, eq, isNull, lte } from "drizzle-orm"
+import { and, asc, eq, isNull, lte } from "drizzle-orm"
 import { db } from "@workspace/database"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
@@ -18,6 +18,8 @@ import { API_BASE_PATH } from "../../constants/base-path.js"
 
 const UPLOAD_EXPIRY_SECONDS = 300
 const CLEANUP_RETENTION_MS = 24 * 60 * 60 * 1000
+const CLEANUP_BATCH_SIZE = 100
+const CLEANUP_MAX_BATCHES = 10
 
 type AvatarTarget =
   | { kind: "user"; userId: string }
@@ -387,58 +389,72 @@ export async function removeOrganizationAvatar(organizationId: string) {
 
 export async function cleanupAvatars() {
   const now = new Date()
-  const expiredUploads = await db
-    .select({
-      id: storageUploads.id,
-      objectId: storageUploads.objectId,
-      stagedKey: storageUploads.stagedKey,
-      state: storageUploads.state,
-    })
-    .from(storageUploads)
-    .where(lte(storageUploads.cleanupAfter, now))
-    .limit(100)
   let cleaned = 0
 
-  for (const upload of expiredUploads) {
-    if (!(await deleteStaged(upload.stagedKey))) continue
-    if (upload.state === "pending") {
-      const [object] = await db
-        .select({ objectKey: storageObjects.objectKey })
-        .from(storageObjects)
-        .where(eq(storageObjects.id, upload.objectId))
-        .limit(1)
-      if (object) {
-        try {
-          await getAvatarStorage().deleteObject(object.objectKey)
-          await db
-            .delete(storageObjects)
-            .where(eq(storageObjects.id, upload.objectId))
-        } catch {
-          await db
-            .update(storageObjects)
-            .set({ state: "delete_pending", cleanupAfter: now })
-            .where(eq(storageObjects.id, upload.objectId))
-          continue
+  // Delete successful rows as we go so each next page advances without offsets.
+  // The page and iteration caps keep a single cron request bounded while allowing
+  // subsequent daily runs to continue draining a larger backlog.
+  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+    const expiredUploads = await db
+      .select({
+        id: storageUploads.id,
+        objectId: storageUploads.objectId,
+        stagedKey: storageUploads.stagedKey,
+        state: storageUploads.state,
+      })
+      .from(storageUploads)
+      .where(lte(storageUploads.cleanupAfter, now))
+      .orderBy(asc(storageUploads.cleanupAfter), asc(storageUploads.id))
+      .limit(CLEANUP_BATCH_SIZE)
+    if (expiredUploads.length === 0) break
+
+    for (const upload of expiredUploads) {
+      if (!(await deleteStaged(upload.stagedKey))) continue
+      if (upload.state === "pending") {
+        const [object] = await db
+          .select({ objectKey: storageObjects.objectKey })
+          .from(storageObjects)
+          .where(eq(storageObjects.id, upload.objectId))
+          .limit(1)
+        if (object) {
+          try {
+            await getAvatarStorage().deleteObject(object.objectKey)
+            await db
+              .delete(storageObjects)
+              .where(eq(storageObjects.id, upload.objectId))
+          } catch {
+            await db
+              .update(storageObjects)
+              .set({ state: "delete_pending", cleanupAfter: now })
+              .where(eq(storageObjects.id, upload.objectId))
+            continue
+          }
         }
       }
+      await db.delete(storageUploads).where(eq(storageUploads.id, upload.id))
+      cleaned += 1
     }
-    await db.delete(storageUploads).where(eq(storageUploads.id, upload.id))
-    cleaned += 1
+    if (expiredUploads.length < CLEANUP_BATCH_SIZE) break
   }
 
-  const expiredObjects = await db
-    .select({ id: storageObjects.id, objectKey: storageObjects.objectKey })
-    .from(storageObjects)
-    .where(
-      and(
-        eq(storageObjects.state, "delete_pending"),
-        lte(storageObjects.cleanupAfter, now)
+  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+    const expiredObjects = await db
+      .select({ id: storageObjects.id, objectKey: storageObjects.objectKey })
+      .from(storageObjects)
+      .where(
+        and(
+          eq(storageObjects.state, "delete_pending"),
+          lte(storageObjects.cleanupAfter, now)
+        )
       )
-    )
-    .limit(100)
-  for (const object of expiredObjects) {
-    await removeObject(object.id)
-    cleaned += 1
+      .orderBy(asc(storageObjects.cleanupAfter), asc(storageObjects.id))
+      .limit(CLEANUP_BATCH_SIZE)
+    if (expiredObjects.length === 0) break
+    for (const object of expiredObjects) {
+      await removeObject(object.id)
+      cleaned += 1
+    }
+    if (expiredObjects.length < CLEANUP_BATCH_SIZE) break
   }
   return { cleaned }
 }
