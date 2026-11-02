@@ -230,7 +230,25 @@ jobs:
         with:
           go-version: 1.24.8
 
+      - name: Cache pinned MinIO binary
+        id: minio-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/minio-bin/minio
+          key: minio-${{ runner.os }}-${{ runner.arch }}-go1.24.8-9e49d5e7a648
+
+      - name: Validate cached MinIO binary
+        id: validate-minio
+        if: steps.minio-cache.outputs.cache-hit == 'true'
+        run: |
+          if ! "$RUNNER_TEMP/minio-bin/minio" --version | grep -Fq 'RELEASE.2025-10-15T17-29-55Z'; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build MinIO Community Edition from its pinned source release
+        if: steps.minio-cache.outputs.cache-hit != 'true' || steps.validate-minio.outputs.valid != 'true'
         run: go install github.com/minio/minio@v0.0.0-20251015172955-9e49d5e7a648
         env:
           GOBIN: ${{ runner.temp }}/minio-bin
