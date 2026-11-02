@@ -41,12 +41,14 @@
     "pretest": "pnpm turbo build --filter=@deessejs/cli && tsup",
     "test": "vitest run",
     "test:e2e": "vitest run --config test/e2e/vitest.e2e.config.ts",
+    "test:e2e:init": "vitest run --config test/e2e/vitest.e2e.config.ts test/e2e/init.test.ts",
+    "test:e2e:organization": "vitest run --config test/e2e/vitest.e2e.config.ts test/e2e/organization.test.ts",
     "test:watch": "vitest",
     "start": "node ./dist/index.js"
   },
   "dependencies": {
     "@deessejs/errors": "^1.1.1",
-    "@deessejs/fp": "^1.0.0",
+    "@deessejs/fp": "^5.0.1",
     "@orpc/client": "^1.14.7",
     "@orpc/server": "^1.14.7",
     "better-auth": "^1.7.7",
@@ -58,6 +60,9 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@hono/node-server": "catalog:",
+    "@workspace/database": "workspace:*",
+    "drizzle-orm": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
     "@workspace/registry": "workspace:*",
@@ -70,6 +75,6 @@
     "vitest": "^2.1.5"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.14.0"
   }
 }

@@ -43,11 +43,8 @@ type OrganizationPluginApi = {
       name: string
       slug: string
       metadata?: Record<string, unknown>
+      keepCurrentActiveOrganization: boolean
     }
-    headers: Headers
-  }) => Promise<unknown>
-  setActiveOrganization: (input: {
-    body: { organizationId: string }
     headers: Headers
   }) => Promise<unknown>
 }
@@ -118,10 +115,10 @@ const toCreatedOrganization = (answer: unknown): CreatedOrganization => {
 /**
  * Creates an organization through the plugin.
  *
- * The slug is the caller's, and it is the server's: the flow that
- * calls this generated it. The marker is the operation's id, and it
- * travels in the metadata, so the organization carries the proof of
- * which attempt made it in the same statement that creates it.
+ * The slug is the caller's proposal, validated and collision-resolved
+ * by the server flow. The marker is the operation's id, and it travels
+ * in the metadata so the organization carries proof of which attempt
+ * made it in the same statement that creates it.
  */
 export async function createOrganization(input: {
   name: string
@@ -134,25 +131,9 @@ export async function createOrganization(input: {
       name: input.name,
       slug: input.slug,
       metadata: { [PROVISIONING_MARKER_KEY]: input.marker },
+      keepCurrentActiveOrganization: true,
     },
     headers: input.headers,
   })
   return toCreatedOrganization(answer)
-}
-
-/**
- * Makes an organization the caller's active one.
- *
- * The recovery adopts an organization whose creation was interrupted
- * before the plugin could write the active selection, and the session
- * of the request being answered has to point at it.
- */
-export async function setActiveOrganization(input: {
-  organizationId: string
-  headers: Headers
-}): Promise<void> {
-  await pluginApi.setActiveOrganization({
-    body: { organizationId: input.organizationId },
-    headers: input.headers,
-  })
 }

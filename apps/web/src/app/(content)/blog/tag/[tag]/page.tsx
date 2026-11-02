@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Badge } from "@workspace/ui/components/badge"
@@ -8,6 +9,13 @@ import { getPostsByTag } from "@/lib/blog/posts"
 import { BLOG_TAG_LABELS, getAllTags, isBlogTag } from "@/lib/blog/types"
 
 type Params = { tag: string }
+type SearchParams = Promise<{ page?: string | string[] }>
+
+function readPage(params: { page?: string | string[] }) {
+  const value = Array.isArray(params.page) ? params.page[0] : params.page
+  const parsed = Number(value)
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, 1000) : 1
+}
 
 export function generateStaticParams(): Array<Params> {
   return getAllTags().map((tag) => ({ tag: encodeURIComponent(tag) }))
@@ -15,16 +23,20 @@ export function generateStaticParams(): Array<Params> {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<Params>
+  searchParams: SearchParams
 }): Promise<Metadata> {
   const { tag } = await params
+  const page = readPage(await searchParams)
   const decoded = decodeURIComponent(tag)
   if (!isBlogTag(decoded)) notFound()
   const blogTag = decoded
   const label = BLOG_TAG_LABELS[blogTag]
   const postCount = getPostsByTag(blogTag).length
-  const path = `/blog/tag/${encodeURIComponent(decoded)}`
+  const basePath = `/blog/tag/${encodeURIComponent(decoded)}`
+  const path = page === 1 ? basePath : `${basePath}?page=${page}`
   return {
     title: label,
     description: `${postCount} ${postCount === 1 ? "post" : "posts"} tagged "${label}" on the DeesseJS blog.`,
@@ -47,8 +59,15 @@ export async function generateMetadata({
   }
 }
 
-export default async function TagPage({ params }: { params: Promise<Params> }) {
+export default async function TagPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>
+  searchParams: SearchParams
+}) {
   const { tag } = await params
+  const page = readPage(await searchParams)
   const decoded = decodeURIComponent(tag)
   if (!isBlogTag(decoded)) notFound()
   const blogTag = decoded
@@ -89,57 +108,61 @@ export default async function TagPage({ params }: { params: Promise<Params> }) {
         </div>
       </header>
 
-      <BlogSearch
-        posts={posts}
-        featured={featured}
-        topics={
-          <nav
-            aria-label="Filter by tag"
-            className="flex flex-wrap items-center gap-2"
-          >
-            <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-              Topics
-            </span>
-            <Link href="/blog">
-              <Badge
-                variant="outline"
-                className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
-              >
-                All topics
-              </Badge>
-            </Link>
-            {tags.map((t) => {
-              const isActive = t === decoded
-              return (
-                <Link
-                  key={t}
-                  href={`/blog/tag/${encodeURIComponent(t)}`}
-                  aria-current={isActive ? "page" : undefined}
+      <Suspense fallback={<div className="min-h-20" />}>
+        <BlogSearch
+          key={`${decoded}:${page}`}
+          posts={posts}
+          page={page}
+          featured={featured}
+          topics={
+            <nav
+              aria-label="Filter by tag"
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                Topics
+              </span>
+              <Link href="/blog">
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
                 >
-                  <Badge
-                    variant={isActive ? "default" : "outline"}
-                    className={
-                      isActive
-                        ? "cursor-pointer"
-                        : "cursor-pointer transition-colors hover:bg-foreground hover:text-background"
-                    }
+                  All topics
+                </Badge>
+              </Link>
+              {tags.map((t) => {
+                const isActive = t === decoded
+                return (
+                  <Link
+                    key={t}
+                    href={`/blog/tag/${encodeURIComponent(t)}`}
+                    aria-current={isActive ? "page" : undefined}
                   >
-                    {t}
-                  </Badge>
-                </Link>
-              )
-            })}
-            <Link href="/changelog">
-              <Badge
-                variant="outline"
-                className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
-              >
-                Changelog
-              </Badge>
-            </Link>
-          </nav>
-        }
-      />
+                    <Badge
+                      variant={isActive ? "default" : "outline"}
+                      className={
+                        isActive
+                          ? "cursor-pointer"
+                          : "cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+                      }
+                    >
+                      {t}
+                    </Badge>
+                  </Link>
+                )
+              })}
+              <Link href="/changelog">
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+                >
+                  Changelog
+                </Badge>
+              </Link>
+            </nav>
+          }
+        />
+      </Suspense>
     </section>
   )
 }

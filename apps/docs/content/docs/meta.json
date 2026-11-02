@@ -5,9 +5,15 @@
     "index",
     "what-is-deessejs",
     "comparisons",
+    "organizations",
     "---CLI---",
     "cli-introduction",
     "cli-auth",
-    "cli-commands"
+    "cli-commands",
+    "cli-blocks",
+    "community-templates",
+    "template-authoring",
+    "---Projects---",
+    "projects-github-import"
   ]
 }

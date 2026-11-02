@@ -1,0 +1,62 @@
+---
+title: Import a project from GitHub
+description: Connect GitHub, review a repository's DeesseJS configuration, and import it into an organization.
+---
+
+DeesseJS links a GitHub repository to an organization when you import a project. The app saves project details and a validation summary for `deesse.json`. GitHub keeps the repository files and the file's contents.
+
+## Prerequisites
+
+- Sign in to DeesseJS and open the organization that will own the project.
+- Ask an organization owner or admin to run the import. Only these roles can import projects or manage the GitHub installation.
+- Connect a GitHub account to the organization. Install the DeesseJS GitHub App for that account or GitHub organization.
+- Give that GitHub account access to the repository through the installation. Choose a default branch and add a valid `deesse.json` at the repository root.
+
+## Connect GitHub and install the app
+
+1. Open organization **Settings** and find the **GitHub** section.
+2. If you haven’t connected a GitHub account, choose **Connect GitHub account**. Complete the GitHub authorization steps.
+3. Choose **Install GitHub App**. In GitHub, choose the account, organization, or repositories. Grant the app access to the repositories you plan to import. Return to DeesseJS.
+4. Check the GitHub section for the connected installation. Choose **Change installation** to switch it.
+
+The import checks both the GitHub account and the organization installation for repository access.
+
+## Select a repository
+
+1. Open the organization **Projects** page and choose **Import Project**.
+2. Choose a repository. The list shows repositories that your GitHub account can access through the installation. Each entry shows visibility and the default branch. Use pagination to browse more entries.
+
+You can import private repositories. DeesseJS shares the repository name, link, configuration path, default branch, commit, and validation summary with organization members. GitHub controls access to private repository files.
+
+## Review `deesse.json`
+
+After you choose a repository, DeesseJS reads the root `deesse.json` from its default branch. The review uses the branch’s current commit. The raw file stays on the server. Keep the file at or below 64 KiB.
+
+The app supports project configuration version 1. The file can contain:
+
+- `$schema`, optionally set to `https://app.deessejs.com/schema/project/v1.json`
+- `formatVersion`, set to `1`
+- `paths`, an optional map from role identifiers to non-empty repository paths
+- `aliases`, an optional map from role identifiers to import roots
+
+Each import mapping needs a matching path. Use safe repository-relative paths. The validator rejects absolute paths, backslashes, glob syntax, and other unsafe forms. The validator lists unknown or unsupported fields and format versions as diagnostics. Fix each reported issue in GitHub, then inspect the file again.
+
+The review shows the validation result, commit, and counts for paths and import mappings. The review hides the raw configuration. Choose **Confirm Import** only after the validator accepts the configuration.
+
+## Import and open the project
+
+1. Review the repository and configuration summary. Choose **Confirm Import**.
+2. DeesseJS checks the inspected commit again during import. If the default branch moved or import failed, review the latest configuration and confirm again.
+3. DeesseJS returns you to the organization **Projects** page after import. Choose the project to open its home page.
+4. Use **Home** in the project sidebar to return to project home. Choose **All projects** to return to the organization project list. The sidebar shows the GitHub repository name.
+
+## Troubleshooting
+
+- **No GitHub account connection:** Open organization Settings and choose **Connect GitHub account**.
+- **No app installation:** Choose **Manage GitHub** on the import page. Install the app from organization Settings.
+- **Repository missing from the list:** Check that the installation grants access and that your GitHub account can open the repository. Switch installations if needed.
+- **Missing `deesse.json` or default branch:** Add the file at the repository root on the default branch, or choose a default branch in GitHub. Then inspect again.
+- **Invalid JSON or configuration:** Fix the reported issue in `deesse.json`. Retry the inspection.
+- **File exceeds 64 KiB:** Reduce the root file to 64 KiB or less.
+- **GitHub canceled authorization or the authorization expired:** Connect the GitHub account again and retry. If GitHub can’t verify the installation, try again shortly.
+- **GitHub status won’t load:** Refresh the import page. If this environment lacks GitHub App credentials, ask an administrator to configure them.

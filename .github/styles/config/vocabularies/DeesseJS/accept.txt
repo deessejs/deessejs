@@ -201,6 +201,12 @@ unindexed
 enum
 kbTopics
 scaffolded
+Corepack
+author
+Prisma
+runtimes
+Tauri
+Zustand
 scaffolder
 scaffolders
 polyrepo

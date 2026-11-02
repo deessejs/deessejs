@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript"],
+  "plugins": ["typescript", "eslint"],
   "jsPlugins": [
     {
       "name": "eslint-js",
@@ -331,10 +331,47 @@
       {
         "selector": ":matches(ArrowFunctionExpression[async=true], FunctionExpression[async=true], FunctionDeclaration[async=true]) CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
         "message": "authClient.useSession() is a React hook (returns a cached signal value). Calling it inside an async callback is a Rules of Hooks violation and returns a stale value. For one-shot reads, use authClient.getSession() instead."
+      },
+      {
+        "selector": "FunctionDeclaration[id.name=/^prepare/i]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "FunctionExpression[id.name=/^prepare/i]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "VariableDeclarator[id.name=/^prepare/i][init.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "MethodDefinition[key.name=/^prepare/i]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "Property[method=true][key.name=/^prepare/i]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "Property[key.name=/^prepare/i][value.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+        "message": "Function names must not start with 'prepare'."
+      },
+      {
+        "selector": "PropertyDefinition[key.name=/^prepare/i][value.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+        "message": "Function names must not start with 'prepare'."
       }
     ]
   },
   "overrides": [
+    {
+      "files": ["apps/cli/src/utils/project-config.ts"],
+      "rules": {
+        "eslint/max-lines-per-function": [
+          "error",
+          { "max": 10, "skipBlankLines": true, "skipComments": true }
+        ]
+      }
+    },
     {
       "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "rules": {
@@ -380,6 +417,34 @@
           {
             "selector": ":matches(ArrowFunctionExpression[async=true], FunctionExpression[async=true], FunctionDeclaration[async=true]) CallExpression[callee.object.name='authClient'][callee.property.name='useSession']",
             "message": "authClient.useSession() is a React hook (returns a cached signal value). Calling it inside an async callback is a Rules of Hooks violation and returns a stale value. For one-shot reads, use authClient.getSession() instead."
+          },
+          {
+            "selector": "FunctionDeclaration[id.name=/^prepare/i]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "FunctionExpression[id.name=/^prepare/i]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "VariableDeclarator[id.name=/^prepare/i][init.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "MethodDefinition[key.name=/^prepare/i]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "Property[method=true][key.name=/^prepare/i]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "Property[key.name=/^prepare/i][value.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+            "message": "Function names must not start with 'prepare'."
+          },
+          {
+            "selector": "PropertyDefinition[key.name=/^prepare/i][value.type=/^(ArrowFunctionExpression|FunctionExpression)$/]",
+            "message": "Function names must not start with 'prepare'."
           }
         ]
       }

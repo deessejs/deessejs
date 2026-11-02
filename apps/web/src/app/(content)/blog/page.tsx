@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
 import { BlogSearch } from "@/components/blog/blog-search"
@@ -6,18 +7,44 @@ import { FlickeringGrid } from "@/components/marketing/flickering-grid"
 import { getAllPosts } from "@/lib/blog/posts"
 import { getAllTags } from "@/lib/blog/types"
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description: "Articles and updates.",
-  alternates: {
-    canonical: "/blog",
-    types: {
-      "application/rss+xml": "/blog/feed.xml",
+type SearchParams = Promise<{ page?: string | string[] }>
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}): Promise<Metadata> {
+  const params = await searchParams
+  const page = Math.max(
+    1,
+    Number(Array.isArray(params.page) ? params.page[0] : params.page) || 1
+  )
+  const canonical = page === 1 ? "/blog" : `/blog?page=${page}`
+  return {
+    title: "Blog",
+    description: "Articles and updates.",
+    alternates: {
+      canonical,
+      types: {
+        "application/rss+xml": "/blog/feed.xml",
+      },
     },
-  },
+  }
 }
 
-export default function BlogPage() {
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: SearchParams
+}) {
+  const params = await searchParams
+  const page = Math.min(
+    1000,
+    Math.max(
+      1,
+      Number(Array.isArray(params.page) ? params.page[0] : params.page) || 1
+    )
+  )
   const posts = getAllPosts()
   const tags = getAllTags()
   const featured = posts.slice(0, 2)
@@ -55,71 +82,79 @@ export default function BlogPage() {
       </header>
 
       {tags.length > 0 ? (
-        <BlogSearch
-          posts={posts}
-          featured={featured}
-          topics={
-            <nav
-              aria-label="Filter by tag"
-              className="flex flex-wrap items-center gap-2"
-            >
-              <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-                Topics
-              </span>
-              <Link href="/blog" aria-current="page">
-                <Badge variant="default" className="cursor-pointer">
-                  All topics
-                </Badge>
-              </Link>
-              {tags.map((tag) => (
-                <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
+        <Suspense fallback={<div className="min-h-20" />}>
+          <BlogSearch
+            key={page}
+            posts={posts}
+            page={page}
+            featured={featured}
+            topics={
+              <nav
+                aria-label="Filter by tag"
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                  Topics
+                </span>
+                <Link href="/blog" aria-current="page">
+                  <Badge variant="default" className="cursor-pointer">
+                    All topics
+                  </Badge>
+                </Link>
+                {tags.map((tag) => (
+                  <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
+                    <Badge
+                      variant="outline"
+                      className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+                    >
+                      {tag}
+                    </Badge>
+                  </Link>
+                ))}
+                <Link href="/changelog">
                   <Badge
                     variant="outline"
                     className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
                   >
-                    {tag}
+                    Changelog
                   </Badge>
                 </Link>
-              ))}
-              <Link href="/changelog">
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
-                >
-                  Changelog
-                </Badge>
-              </Link>
-            </nav>
-          }
-        />
+              </nav>
+            }
+          />
+        </Suspense>
       ) : (
-        <BlogSearch
-          posts={posts}
-          featured={featured}
-          topics={
-            <nav
-              aria-label="Related sections"
-              className="flex flex-wrap items-center gap-2"
-            >
-              <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-                Topics
-              </span>
-              <Link href="/blog" aria-current="page">
-                <Badge variant="default" className="cursor-pointer">
-                  All topics
-                </Badge>
-              </Link>
-              <Link href="/changelog">
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
-                >
-                  Changelog
-                </Badge>
-              </Link>
-            </nav>
-          }
-        />
+        <Suspense fallback={<div className="min-h-20" />}>
+          <BlogSearch
+            key={page}
+            posts={posts}
+            page={page}
+            featured={featured}
+            topics={
+              <nav
+                aria-label="Related sections"
+                className="flex flex-wrap items-center gap-2"
+              >
+                <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                  Topics
+                </span>
+                <Link href="/blog" aria-current="page">
+                  <Badge variant="default" className="cursor-pointer">
+                    All topics
+                  </Badge>
+                </Link>
+                <Link href="/changelog">
+                  <Badge
+                    variant="outline"
+                    className="cursor-pointer transition-colors hover:bg-foreground hover:text-background"
+                  >
+                    Changelog
+                  </Badge>
+                </Link>
+              </nav>
+            }
+          />
+        </Suspense>
       )}
     </section>
   )
