@@ -18,6 +18,10 @@ import {
 } from "../output/table.js"
 import { readAuth } from "../lib/auth/store/store.js"
 import { organizationSlugFromName } from "../utils/organization-slug.js"
+import type {
+  OrganizationTemplateV1Type,
+  OrganizationTemplateCategoryV1Type,
+} from "@workspace/contracts/v1"
 
 type JsonOption = { json?: boolean }
 
@@ -227,12 +231,8 @@ export const organizationCreateCommand = new Command("create")
     }
   })
 
-type OrganizationTemplate = Awaited<
-  ReturnType<ORPCClient["organization"]["templates"]["list"]>
->["templates"][number]
-type OrganizationTemplateCategory = Parameters<
-  ORPCClient["organization"]["templates"]["create"]
->[0]["category"]
+type OrganizationTemplate = OrganizationTemplateV1Type
+type OrganizationTemplateCategory = OrganizationTemplateCategoryV1Type
 
 const organizationTemplateCommand = new Command("template").description(
   "Manage templates owned by an organization"

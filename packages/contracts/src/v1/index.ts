@@ -11,3 +11,13 @@ export {
   CommunityTemplatesListResponseV1,
   type CommunityTemplatesListResponseV1 as CommunityTemplatesListResponseV1Type,
 } from "./community-templates-response.js"
+export {
+  OrganizationTemplateV1,
+  type OrganizationTemplateV1 as OrganizationTemplateV1Type,
+  OrganizationTemplatesListResponseV1,
+  type OrganizationTemplatesListResponseV1 as OrganizationTemplatesListResponseV1Type,
+  OrganizationTemplateCategoryV1,
+  type OrganizationTemplateCategoryV1 as OrganizationTemplateCategoryV1Type,
+  OrganizationTemplateCreateInputV1,
+  type OrganizationTemplateCreateInputV1 as OrganizationTemplateCreateInputV1Type,
+} from "./organization-template.js"
