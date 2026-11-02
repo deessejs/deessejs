@@ -176,6 +176,7 @@ function TemplateContent({
 
   return (
     <OrganizationTemplateTable
+      organizationSlug={organizationSlug}
       templates={templates}
       organizationName={organizationName}
       canManage={canManage}
@@ -212,6 +213,7 @@ function EmptyTemplates({
 }
 
 function OrganizationTemplateTable({
+  organizationSlug,
   templates,
   organizationName,
   canManage,
@@ -219,6 +221,7 @@ function OrganizationTemplateTable({
   onWithdrawPublication,
   actionError,
 }: {
+  organizationSlug: string
   templates: OrganizationTemplate[]
   organizationName: string
   canManage: boolean

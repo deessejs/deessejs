@@ -13,7 +13,7 @@ import {
 import { serverEnv } from "@workspace/env/server"
 import { alias } from "drizzle-orm/pg-core"
 import projectSchema from "@workspace/registry/schema/project/v1.json"
-import type { Hono } from "hono"
+import type { Context, Hono } from "hono"
 import { VERSION, MIN_SUPPORTED_VERSION } from "../../constants/version.js"
 import type { ApiEnv } from "../env.js"
 import { rateLimit } from "../middleware/rate-limit.js"
@@ -23,6 +23,137 @@ import { getAvatarStorage } from "../../core/avatars/storage.js"
 import { templatePublications, templates } from "@workspace/database/schema"
 import { user } from "@workspace/database/schema"
 import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
+
+async function resolveAvatarImageAccess(objectId: string, viewerId?: string) {
+  if (!viewerId) return null
+  const [personal] = await db
+    .select({ userId: userAvatars.userId, objectKey: storageObjects.objectKey })
+    .from(userAvatars)
+    .innerJoin(storageObjects, eq(storageObjects.id, userAvatars.objectId))
+    .where(
+      and(eq(userAvatars.objectId, objectId), eq(storageObjects.state, "ready"))
+    )
+    .limit(1)
+  if (personal?.userId === viewerId) return { objectKey: personal.objectKey }
+  if (personal) {
+    const owner = alias(member, "avatar_owner_membership")
+    const [shared] = await db
+      .select({ id: member.id })
+      .from(member)
+      .innerJoin(owner, eq(member.organizationId, owner.organizationId))
+      .innerJoin(userAvatars, eq(userAvatars.userId, owner.userId))
+      .where(
+        and(eq(member.userId, viewerId), eq(userAvatars.objectId, objectId))
+      )
+      .limit(1)
+    if (shared) return { objectKey: personal.objectKey }
+  }
+  const [organization] = await db
+    .select({ objectKey: storageObjects.objectKey })
+    .from(organizationAvatars)
+    .innerJoin(
+      storageObjects,
+      eq(storageObjects.id, organizationAvatars.objectId)
+    )
+    .innerJoin(
+      member,
+      eq(member.organizationId, organizationAvatars.organizationId)
+    )
+    .where(
+      and(
+        eq(organizationAvatars.objectId, objectId),
+        eq(storageObjects.state, "ready"),
+        eq(member.userId, viewerId)
+      )
+    )
+    .limit(1)
+  return organization ? { objectKey: organization.objectKey } : null
+}
+
+async function streamImage(
+  c: Context<ApiEnv>,
+  key: string,
+  cacheControl: string
+) {
+  const image = await getAvatarStorage().getObject(key)
+  if (!image.body) return c.notFound()
+  c.header("Cache-Control", cacheControl)
+  c.header("Content-Type", "image/webp")
+  c.header("X-Content-Type-Options", "nosniff")
+  if (image.contentLength !== undefined)
+    c.header("Content-Length", String(image.contentLength))
+  return c.body(Readable.toWeb(image.body))
+}
+
+async function resolveTemplateImageAccess(objectId: string, viewerId?: string) {
+  const [official] = await db
+    .select({ objectKey: storageObjects.objectKey })
+    .from(templates)
+    .innerJoin(storageObjects, eq(storageObjects.id, templates.imageObjectId))
+    .where(
+      and(
+        eq(templates.imageObjectId, objectId),
+        eq(templates.ownerType, "platform"),
+        eq(storageObjects.state, "ready")
+      )
+    )
+    .limit(1)
+  if (official) return { objectKey: official.objectKey, isPublic: true }
+
+  const [published] = await db
+    .select({ objectKey: storageObjects.objectKey })
+    .from(templatePublications)
+    .innerJoin(
+      storageObjects,
+      eq(storageObjects.id, templatePublications.imageObjectId)
+    )
+    .where(
+      and(
+        eq(templatePublications.imageObjectId, objectId),
+        eq(templatePublications.publicationState, "current"),
+        eq(templatePublications.reviewStatus, "approved"),
+        eq(storageObjects.state, "ready")
+      )
+    )
+    .limit(1)
+  if (published) return { objectKey: published.objectKey, isPublic: true }
+
+  if (!viewerId) return null
+  const [review] = await db
+    .select({ objectKey: storageObjects.objectKey })
+    .from(templatePublications)
+    .innerJoin(
+      storageObjects,
+      eq(storageObjects.id, templatePublications.imageObjectId)
+    )
+    .innerJoin(user, eq(user.id, viewerId))
+    .where(
+      and(
+        eq(templatePublications.imageObjectId, objectId),
+        eq(templatePublications.reviewStatus, "pending"),
+        eq(storageObjects.state, "ready"),
+        eq(user.role, "admin")
+      )
+    )
+    .limit(1)
+  if (review) return { objectKey: review.objectKey, isPublic: false }
+
+  const [working] = await db
+    .select({ objectKey: storageObjects.objectKey })
+    .from(templates)
+    .innerJoin(storageObjects, eq(storageObjects.id, templates.imageObjectId))
+    .innerJoin(member, eq(member.organizationId, templates.organizationId))
+    .where(
+      and(
+        eq(templates.imageObjectId, objectId),
+        eq(templates.ownerType, "organization"),
+        eq(member.userId, viewerId),
+        eq(storageObjects.state, "ready")
+      )
+    )
+    .limit(1)
+  return working ? { objectKey: working.objectKey, isPublic: false } : null
+}
 
 /**
  * Direct HTTP routes that do not go through oRPC:
@@ -84,186 +215,18 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
       return c.notFound()
     }
 
-    const [personal] = viewer
-      ? await db
-          .select({
-            userId: userAvatars.userId,
-            objectKey: storageObjects.objectKey,
-          })
-          .from(userAvatars)
-          .innerJoin(
-            storageObjects,
-            eq(storageObjects.id, userAvatars.objectId)
-          )
-          .where(
-            and(
-              eq(userAvatars.objectId, objectId),
-              eq(storageObjects.state, "ready")
-            )
-          )
-          .limit(1)
-      : []
-    let allowed = personal?.userId === viewer?.id
+    const avatar = await resolveAvatarImageAccess(objectId, viewer?.id)
+    if (avatar) return streamImage(c, avatar.objectKey, "private, no-store")
 
-    if (!allowed && personal && viewer) {
-      const ownerMembership = alias(member, "avatar_owner_membership")
-      const sharedOrganization = await db
-        .select({ id: member.id })
-        .from(member)
-        .innerJoin(
-          ownerMembership,
-          eq(member.organizationId, ownerMembership.organizationId)
-        )
-        .innerJoin(userAvatars, eq(userAvatars.userId, ownerMembership.userId))
-        .where(
-          and(eq(member.userId, viewer.id), eq(userAvatars.objectId, objectId))
-        )
-        .limit(1)
-      allowed = sharedOrganization.length > 0
-    }
-
-    const [organizationAvatar] =
-      personal || !viewer
-        ? []
-        : await db
-            .select({
-              organizationId: organizationAvatars.organizationId,
-              objectKey: storageObjects.objectKey,
-            })
-            .from(organizationAvatars)
-            .innerJoin(
-              storageObjects,
-              eq(storageObjects.id, organizationAvatars.objectId)
-            )
-            .innerJoin(
-              member,
-              eq(member.organizationId, organizationAvatars.organizationId)
-            )
-            .where(
-              and(
-                eq(organizationAvatars.objectId, objectId),
-                eq(storageObjects.state, "ready"),
-                eq(member.userId, viewer.id)
-              )
-            )
-            .limit(1)
-
-    if (!allowed && !organizationAvatar) {
-      const [platformImage] = await db
-        .select({ objectKey: storageObjects.objectKey })
-        .from(templates)
-        .innerJoin(
-          storageObjects,
-          eq(storageObjects.id, templates.imageObjectId)
-        )
-        .where(
-          and(
-            eq(templates.imageObjectId, objectId),
-            eq(templates.ownerType, "platform"),
-            eq(storageObjects.state, "ready")
-          )
-        )
-        .limit(1)
-      const [publicationImage] = platformImage
-        ? []
-        : await db
-            .select({ objectKey: storageObjects.objectKey })
-            .from(templatePublications)
-            .innerJoin(
-              storageObjects,
-              eq(storageObjects.id, templatePublications.imageObjectId)
-            )
-            .where(
-              and(
-                eq(templatePublications.imageObjectId, objectId),
-                eq(templatePublications.publicationState, "current"),
-                eq(templatePublications.reviewStatus, "approved"),
-                eq(storageObjects.state, "ready")
-              )
-            )
-            .limit(1)
-      const publicObjectKey =
-        platformImage?.objectKey ?? publicationImage?.objectKey
-      if (publicObjectKey) {
-        const object = await getAvatarStorage().getObject(publicObjectKey)
-        if (!object.body) return c.notFound()
-        c.header("Cache-Control", "public, max-age=300, immutable")
-        c.header("Content-Type", "image/webp")
-        c.header("X-Content-Type-Options", "nosniff")
-        if (object.contentLength !== undefined)
-          c.header("Content-Length", String(object.contentLength))
-        return c.body(Readable.toWeb(object.body))
-      }
-      const [reviewImage] = viewer
-        ? await db
-            .select({ objectKey: storageObjects.objectKey })
-            .from(templatePublications)
-            .innerJoin(
-              storageObjects,
-              eq(storageObjects.id, templatePublications.imageObjectId)
-            )
-            .innerJoin(user, eq(user.id, viewer.id))
-            .where(
-              and(
-                eq(templatePublications.imageObjectId, objectId),
-                eq(templatePublications.reviewStatus, "pending"),
-                eq(storageObjects.state, "ready"),
-                eq(user.role, "admin")
-              )
-            )
-            .limit(1)
-        : []
-      if (reviewImage) {
-        const object = await getAvatarStorage().getObject(reviewImage.objectKey)
-        if (!object.body) return c.notFound()
-        c.header("Cache-Control", "private, no-store")
-        c.header("Content-Type", "image/webp")
-        c.header("X-Content-Type-Options", "nosniff")
-        return c.body(Readable.toWeb(object.body))
-      }
-      // Organization working images remain private and require membership.
-      const [workingImage] = viewer
-        ? await db
-            .select({ objectKey: storageObjects.objectKey })
-            .from(templates)
-            .innerJoin(
-              storageObjects,
-              eq(storageObjects.id, templates.imageObjectId)
-            )
-            .innerJoin(
-              member,
-              eq(member.organizationId, templates.organizationId)
-            )
-            .where(
-              and(
-                eq(templates.imageObjectId, objectId),
-                eq(templates.ownerType, "organization"),
-                eq(member.userId, viewer.id),
-                eq(storageObjects.state, "ready")
-              )
-            )
-            .limit(1)
-        : []
-      if (!workingImage) return c.notFound()
-      const object = await getAvatarStorage().getObject(workingImage.objectKey)
-      if (!object.body) return c.notFound()
-      c.header("Cache-Control", "private, no-store")
-      c.header("Content-Type", "image/webp")
-      c.header("X-Content-Type-Options", "nosniff")
-      return c.body(Readable.toWeb(object.body))
-    }
-    const objectKey = personal?.objectKey ?? organizationAvatar?.objectKey
-    if (!objectKey) return c.notFound()
-
-    const object = await getAvatarStorage().getObject(objectKey)
-    if (!object.body) return c.notFound()
-    c.header("Cache-Control", "private, no-store")
-    c.header("Content-Type", "image/webp")
-    c.header("X-Content-Type-Options", "nosniff")
-    if (object.contentLength !== undefined) {
-      c.header("Content-Length", String(object.contentLength))
-    }
-    return c.body(Readable.toWeb(object.body))
+    const templateImage = await resolveTemplateImageAccess(objectId, viewer?.id)
+    if (!templateImage) return c.notFound()
+    return streamImage(
+      c,
+      templateImage.objectKey,
+      templateImage.isPublic
+        ? "public, max-age=300, immutable"
+        : "private, no-store"
+    )
   })
 
   api.get("/internal/avatars/cleanup", async (c) => {

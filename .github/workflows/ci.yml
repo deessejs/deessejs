@@ -280,6 +280,9 @@ jobs:
       - name: Run avatar HTTP E2E against MinIO
         run: pnpm --filter @workspace/api test:e2e:avatar
 
+      - name: Run template image reference lifecycle tests
+        run: pnpm --filter @workspace/api exec vitest run tests/unit/template-image-lifecycle.test.ts
+
   # create-deesse-app native smoke. Runs the bundled CLI directly on
   # each supported OS so we catch any platform-specific regression in
   # the JSON-on-stdout contract, the destination guard, the npm guard,

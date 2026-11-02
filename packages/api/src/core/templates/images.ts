@@ -13,10 +13,57 @@ import {
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import { getAvatarStorage } from "../avatars/storage.js"
 
+export function hasActiveTemplateImageReferences(refs: {
+  working: boolean
+  currentPublication: boolean
+  pendingPublication: boolean
+}) {
+  return refs.working || refs.currentPublication || refs.pendingPublication
+}
+
+async function findActiveReferences(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  objectId: string
+) {
+  const [working] = await tx
+    .select({ id: templates.id })
+    .from(templates)
+    .where(eq(templates.imageObjectId, objectId))
+    .limit(1)
+  const publications = await tx
+    .select({
+      publicationState: templatePublications.publicationState,
+      reviewStatus: templatePublications.reviewStatus,
+    })
+    .from(templatePublications)
+    .where(eq(templatePublications.imageObjectId, objectId))
+  return {
+    working: Boolean(working),
+    currentPublication: publications.some(
+      (item) => item.publicationState === "current"
+    ),
+    pendingPublication: publications.some(
+      (item) => item.reviewStatus === "pending"
+    ),
+  }
+}
+
 const MAX_BYTES = 5 * 1024 * 1024
 const TYPES = ["image/jpeg", "image/png", "image/webp"] as const
 const isType = (value: string): value is (typeof TYPES)[number] =>
   TYPES.some((type) => type === value)
+
+function detectedContentType(format: string | undefined) {
+  if (format === "jpeg") return "image/jpeg"
+  if (format === "png") return "image/png"
+  if (format === "webp") return "image/webp"
+  return null
+}
+
+function dimensionsExceedPolicy(width?: number, height?: number) {
+  if (!width || !height) return true
+  return width > 4096 || height > 4096 || width * height > 16_000_000
+}
 
 async function authorize(templateId: string, userId: string) {
   const [template] = await db
@@ -100,6 +147,49 @@ export async function createTemplateImageUpload(
   }
 }
 
+async function validateAndNormalizeUpload(
+  storage: ReturnType<typeof getAvatarStorage>,
+  stagedKey: string,
+  expectedByteSize: number,
+  expectedContentType: string
+) {
+  const metadata = await storage.headObject(stagedKey)
+  if (
+    metadata.contentLength !== expectedByteSize ||
+    metadata.contentType !== expectedContentType ||
+    metadata.contentLength > MAX_BYTES
+  )
+    throw new Error("TEMPLATE_IMAGE_INVALID")
+  const source = await storage.getObject(stagedKey)
+  if (!source.body) throw new Error("TEMPLATE_IMAGE_INVALID")
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const part of source.body) {
+    const chunk = Buffer.isBuffer(part) ? part : Buffer.from(part)
+    size += chunk.length
+    if (size > MAX_BYTES) throw new Error("TEMPLATE_IMAGE_INVALID")
+    chunks.push(chunk)
+  }
+  const image = sharp(Buffer.concat(chunks), {
+    failOn: "warning",
+    limitInputPixels: 16_000_000,
+    pages: 1,
+  })
+  const meta = await image.metadata()
+  const actualType = detectedContentType(meta.format)
+  const invalidDimensions = dimensionsExceedPolicy(meta.width, meta.height)
+  if (
+    actualType !== expectedContentType ||
+    (meta.pages ?? 1) !== 1 ||
+    invalidDimensions
+  )
+    throw new Error("TEMPLATE_IMAGE_INVALID")
+  const output = await image.autoOrient().webp().toBuffer()
+  if (!output.length || output.length > MAX_BYTES)
+    throw new Error("TEMPLATE_IMAGE_INVALID")
+  return output
+}
+
 export async function completeTemplateImageUpload(
   templateId: string,
   userId: string,
@@ -120,53 +210,12 @@ export async function completeTemplateImageUpload(
   if (!upload || upload.expiresAt.getTime() < Date.now())
     throw new Error("TEMPLATE_IMAGE_NOT_FOUND")
   const storage = getAvatarStorage()
-  const metadata = await storage.headObject(upload.stagedKey)
-  if (
-    metadata.contentLength !== upload.expectedByteSize ||
-    metadata.contentType !== upload.expectedContentType ||
-    metadata.contentLength > MAX_BYTES
+  const output = await validateAndNormalizeUpload(
+    storage,
+    upload.stagedKey,
+    upload.expectedByteSize,
+    upload.expectedContentType
   )
-    throw new Error("TEMPLATE_IMAGE_INVALID")
-  const source = await storage.getObject(upload.stagedKey)
-  if (!source.body) throw new Error("TEMPLATE_IMAGE_INVALID")
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const part of source.body) {
-    const chunk = Buffer.isBuffer(part) ? part : Buffer.from(part)
-    size += chunk.length
-    if (size > MAX_BYTES) throw new Error("TEMPLATE_IMAGE_INVALID")
-    chunks.push(chunk)
-  }
-  const input = Buffer.concat(chunks)
-  const image = sharp(input, {
-    failOn: "warning",
-    limitInputPixels: 16_000_000,
-    pages: 1,
-  })
-  const meta = await image.metadata()
-  const actualType =
-    meta.format === "jpeg"
-      ? "image/jpeg"
-      : meta.format === "png"
-        ? "image/png"
-        : meta.format === "webp"
-          ? "image/webp"
-          : null
-  const invalidDimensions =
-    !meta.width ||
-    !meta.height ||
-    meta.width > 4096 ||
-    meta.height > 4096 ||
-    meta.width * meta.height > 16_000_000
-  if (
-    actualType !== upload.expectedContentType ||
-    (meta.pages ?? 1) !== 1 ||
-    invalidDimensions
-  )
-    throw new Error("TEMPLATE_IMAGE_INVALID")
-  const output = await image.autoOrient().webp().toBuffer()
-  if (!output.length || output.length > MAX_BYTES)
-    throw new Error("TEMPLATE_IMAGE_INVALID")
   const [object] = await db
     .select({ key: storageObjects.objectKey })
     .from(storageObjects)
@@ -205,17 +254,8 @@ export async function completeTemplateImageUpload(
       .delete(templateImageUploads)
       .where(eq(templateImageUploads.id, upload.id))
     if (previousId && previousId !== upload.objectId) {
-      const [publicationReference] = await tx
-        .select({ id: templatePublications.id })
-        .from(templatePublications)
-        .where(
-          and(
-            eq(templatePublications.imageObjectId, previousId),
-            eq(templatePublications.publicationState, "current")
-          )
-        )
-        .limit(1)
-      if (!publicationReference)
+      const references = await findActiveReferences(tx, previousId)
+      if (!hasActiveTemplateImageReferences(references))
         await tx
           .update(storageObjects)
           .set({ state: "delete_pending", cleanupAfter: new Date() })
@@ -228,6 +268,44 @@ export async function completeTemplateImageUpload(
     /* expired staging cleanup handles retry */
   }
   return { imageUrl: `/api/v1/images/${upload.objectId}` }
+}
+
+export async function detachSupersededPublicationImageReferences(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  templateId: string
+) {
+  const superseded = await tx
+    .select({ imageObjectId: templatePublications.imageObjectId })
+    .from(templatePublications)
+    .where(
+      and(
+        eq(templatePublications.templateId, templateId),
+        eq(templatePublications.publicationState, "current")
+      )
+    )
+  await tx
+    .update(templatePublications)
+    .set({ publicationState: "superseded", imageObjectId: null })
+    .where(
+      and(
+        eq(templatePublications.templateId, templateId),
+        eq(templatePublications.publicationState, "current")
+      )
+    )
+  const candidates = new Set(
+    superseded
+      .map((item) => item.imageObjectId)
+      .filter((id): id is string => id !== null)
+  )
+  for (const objectId of candidates) {
+    const refs = await findActiveReferences(tx, objectId)
+    if (!hasActiveTemplateImageReferences(refs)) {
+      await tx
+        .update(storageObjects)
+        .set({ state: "delete_pending", cleanupAfter: new Date() })
+        .where(eq(storageObjects.id, objectId))
+    }
+  }
 }
 
 export async function cleanupTemplateImageUploads() {

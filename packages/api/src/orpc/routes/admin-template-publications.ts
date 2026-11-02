@@ -1,10 +1,11 @@
 import { ORPCError } from "@orpc/server"
 import { and, asc, eq } from "drizzle-orm"
 import { z } from "zod"
-import { db, templatePublications, user } from "@workspace/database"
+import { db, templatePublications, templates, user } from "@workspace/database"
 import { adminProcedure } from "../admin-middleware.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
+import { detachSupersededPublicationImageReferences } from "../../core/templates/images.js"
 
 const publicationSummary = z.object({
   id: z.string().uuid(),
@@ -118,14 +119,13 @@ export const approve = adminProcedure
         if (!pending) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
 
         await tx
-          .update(templatePublications)
-          .set({ publicationState: "superseded" })
-          .where(
-            and(
-              eq(templatePublications.templateId, pending.templateId),
-              eq(templatePublications.publicationState, "current")
-            )
-          )
+          .select({ id: templates.id })
+          .from(templates)
+          .where(eq(templates.id, pending.templateId))
+          .for("update")
+          .limit(1)
+
+        await detachSupersededPublicationImageReferences(tx, pending.templateId)
 
         const [approved] = await tx
           .update(templatePublications)

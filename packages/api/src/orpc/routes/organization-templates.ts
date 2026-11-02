@@ -444,6 +444,21 @@ export const submit = base
           throw errors.ORGANIZATION_ACCESS_DENIED()
         }
 
+        // Serialize submission snapshotting with working-image replacement.
+        const [lockedTemplate] = await tx
+          .select({ imageObjectId: templates.imageObjectId })
+          .from(templates)
+          .where(
+            and(
+              eq(templates.id, template.id),
+              eq(templates.ownerType, "organization"),
+              eq(templates.organizationId, context.organization.id)
+            )
+          )
+          .for("update")
+          .limit(1)
+        if (!lockedTemplate) throw errors.ORGANIZATION_ACCESS_DENIED()
+
         const [pending] = await tx
           .select({ id: templatePublications.id })
           .from(templatePublications)
@@ -476,7 +491,7 @@ export const submit = base
             category: template.category,
             labels: template.labels,
             imageName: template.imageName,
-            imageObjectId: template.imageObjectId,
+            imageObjectId: lockedTemplate.imageObjectId,
             license,
             repositoryName: acquired.snapshot.repositoryName,
             canonicalUrl: acquired.snapshot.canonicalUrl,
