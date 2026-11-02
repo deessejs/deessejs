@@ -15,6 +15,8 @@ export interface R2StorageConfig {
   accountId: string
   accessKeyId: string
   bucket: string
+  endpoint?: string
+  region?: string
   secretAccessKey: string
 }
 
@@ -49,8 +51,11 @@ export function createR2Storage(config: R2StorageConfig): ObjectStorage {
       accessKeyId: config.accessKeyId,
       secretAccessKey: config.secretAccessKey,
     },
-    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
-    region: "auto",
+    endpoint:
+      config.endpoint ??
+      `https://${config.accountId}.r2.cloudflarestorage.com`,
+    region: config.region ?? "auto",
+    forcePathStyle: config.endpoint !== undefined,
   }) as NodeJsClient<S3Client>
 
   return {

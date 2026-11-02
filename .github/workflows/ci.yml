@@ -196,6 +196,14 @@ jobs:
       # injected via ${{ secrets.* }} in deploy workflows.
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      R2_ACCOUNT_ID: minio
+      R2_ACCESS_KEY_ID: minio-test
+      R2_SECRET_ACCESS_KEY: minio-test-password
+      R2_AVATARS_BUCKET: avatar-e2e
+      R2_ENDPOINT: http://localhost:9000
+      R2_REGION: us-east-1
+      MINIO_ROOT_USER: minio-test
+      MINIO_ROOT_PASSWORD: minio-test-password
       # The templates integration test hits the real GitHub REST
       # API. The standard `secrets.GITHUB_TOKEN` grants 1000 req/min
       # on the workflow run; without it, the anonymous 60 req/h
@@ -217,6 +225,34 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install Go for the pinned MinIO source build
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.8
+
+      - name: Build MinIO Community Edition from its pinned source release
+        run: go install github.com/minio/minio@v0.0.0-20251015172955-9e49d5e7a648
+        env:
+          GOBIN: ${{ runner.temp }}/minio-bin
+
+      - name: Add MinIO to PATH
+        run: echo "$RUNNER_TEMP/minio-bin" >> "$GITHUB_PATH"
+
+      - name: Start MinIO and require readiness
+        run: |
+          mkdir -p "$RUNNER_TEMP/minio-data"
+          minio server "$RUNNER_TEMP/minio-data" --address :9000 > "$RUNNER_TEMP/minio.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/ready >/dev/null; then
+              echo "MinIO is ready at http://127.0.0.1:9000"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/minio.log"
+          echo "MinIO failed readiness at http://127.0.0.1:9000" >&2
+          exit 1
+
       - name: Build dependencies
         run: pnpm turbo build
 
@@ -235,6 +271,9 @@ jobs:
         # The package's own suite is a no-op without a database, so the
         # unit job stays green.
         run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
+
+      - name: Run avatar HTTP E2E against MinIO
+        run: pnpm --filter @workspace/api test:e2e:avatar
 
   # create-deesse-app native smoke. Runs the bundled CLI directly on
   # each supported OS so we catch any platform-specific regression in

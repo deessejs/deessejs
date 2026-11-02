@@ -36,6 +36,7 @@
     "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:e2e:avatar": "vitest run --config vitest.e2e.config.ts",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
@@ -58,6 +59,8 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "catalog:",
+    "@hono/node-server": "catalog:",
     "@types/node": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "vitest": "catalog:",

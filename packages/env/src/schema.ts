@@ -163,6 +163,8 @@ export const serverInputShape = {
   R2_ACCESS_KEY_ID: z.string().min(1).optional(),
   R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   R2_AVATARS_BUCKET: z.string().min(1).optional(),
+  R2_ENDPOINT: z.url().optional(),
+  R2_REGION: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(32).optional(),
 
   // Test-only override for the email-verification-on-invitation
