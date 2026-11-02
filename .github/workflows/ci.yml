@@ -254,7 +254,12 @@ jobs:
           exit 1
 
       - name: Build dependencies
-        run: pnpm turbo build
+        run: >-
+          pnpm turbo build
+          --filter=@workspace/auth
+          --filter=@workspace/api
+          --filter=@workspace/database
+          --filter=@deessejs/cli
 
       - name: Generate migrations
         run: pnpm db:generate
