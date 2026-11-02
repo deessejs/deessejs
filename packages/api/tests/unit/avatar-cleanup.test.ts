@@ -71,17 +71,21 @@ describe("cleanupAvatars", () => {
     harness.db.delete.mockImplementation(() => ({ where: vi.fn(() => Promise.resolve()) }))
   })
 
-  it("drains a backlog in bounded batches and leaves later work for the next invocation", async () => {
-    const rows = Array.from({ length: 250 }, (_, index) => ({
+  it("bounds each invocation and resumes the remaining backlog on the next invocation", async () => {
+    const rows = Array.from({ length: 1250 }, (_, index) => ({
       id: `upload-${index}`, objectId: `object-${index}`, stagedKey: `stage-${index}`, state: "delete_pending",
     }))
-    harness.queuesByTable.set(storageUploads, [rows.slice(0, 100), rows.slice(100, 200), rows.slice(200)])
+    harness.queuesByTable.set(storageUploads, [
+      ...Array.from({ length: 10 }, (_, index) => rows.slice(index * 100, (index + 1) * 100)),
+      rows.slice(1000),
+    ])
     harness.rowsByTable.set(storageObjects, [])
     harness.deleteObject.mockResolvedValue(undefined)
 
     await cleanupAvatars()
-    expect(harness.limits.filter((limit) => limit === 100)).toHaveLength(4)
-    expect(harness.deleteObject).toHaveBeenCalledTimes(250)
+    expect(harness.deleteObject).toHaveBeenCalledTimes(1000)
+    await cleanupAvatars()
+    expect(harness.deleteObject).toHaveBeenCalledTimes(1250)
   })
 
   it("continues after an object deletion fails and keeps that row available for retry", async () => {
