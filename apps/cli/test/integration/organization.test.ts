@@ -3,11 +3,17 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }))
+const { mockCreate, mockTemplateList } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+  mockTemplateList: vi.fn(),
+}))
 
 vi.mock("../../src/api/client.js", () => ({
   createAuthenticatedORPCClient: vi.fn(() => ({
-    organization: { create: mockCreate },
+    organization: {
+      create: mockCreate,
+      templates: { create: mockCreate, list: mockTemplateList },
+    },
   })),
 }))
 
@@ -59,6 +65,7 @@ describe("organization commands", () => {
         return true
       })
     mockCreate.mockReset()
+    mockTemplateList.mockReset()
   })
 
   afterEach(() => {
@@ -168,5 +175,156 @@ describe("organization commands", () => {
         slug: "acme-studio-2",
       },
     })
+  })
+
+  it("lists every owned template and shows publication and review states in JSON", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [
+        {
+          id: "1",
+          slug: "draft",
+          name: "Draft",
+          description: "",
+          owner: "acme",
+          repo: "draft",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/draft",
+          repositoryName: "draft",
+          stars: null,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: false,
+          publication: null,
+        },
+        {
+          id: "2",
+          slug: "pending",
+          name: "Pending",
+          description: "",
+          owner: "acme",
+          repo: "pending",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/pending",
+          repositoryName: "pending",
+          stars: 1,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: false,
+          publication: {
+            reviewStatus: "pending",
+            publicationState: "unpublished",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+        {
+          id: "3",
+          slug: "live",
+          name: "Live",
+          description: "",
+          owner: "acme",
+          repo: "live",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/live",
+          repositoryName: "live",
+          stars: 2,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: true,
+          publication: {
+            reviewStatus: "approved",
+            publicationState: "current",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+      ],
+    })
+    await runCommand(["template", "list", "acme", "--json"])
+    const result = JSON.parse(stdoutWrites.join(""))
+    expect(result.templates).toHaveLength(3)
+    expect(
+      result.templates.map(
+        (item: { publication: { reviewStatus: string } | null }) =>
+          item.publication?.reviewStatus ?? "none"
+      )
+    ).toEqual(["none", "pending", "approved"])
+    expect(mockTemplateList).toHaveBeenCalledWith({ organizationSlug: "acme" })
+  })
+
+  it("prints human publication states and resolves info from the organization list", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [
+        {
+          id: "3",
+          slug: "live",
+          name: "Live",
+          description: "",
+          owner: "acme",
+          repo: "live",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/live",
+          repositoryName: "live",
+          stars: 2,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: true,
+          publication: {
+            reviewStatus: "approved",
+            publicationState: "current",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+      ],
+    })
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+    try {
+      await runCommand(["template", "info", "acme", "live"])
+      expect(log.mock.calls.flat().join(" ")).toContain(
+        "Organization-owned template"
+      )
+      expect(log.mock.calls.flat().join(" ")).toContain(
+        "Publication state: current"
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("creates through the authenticated organization template procedure", async () => {
+    mockCreate.mockResolvedValue({
+      id: "new",
+      slug: "starter",
+      name: "Starter",
+    })
+    await runCommand([
+      "template",
+      "add",
+      "acme",
+      "--slug",
+      "starter",
+      "--name",
+      "Starter",
+      "--repository",
+      "https://github.com/acme/starter",
+      "--category",
+      "saas",
+      "--json",
+    ])
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationSlug: "acme",
+        slug: "starter",
+        repositoryUrl: "https://github.com/acme/starter",
+        category: "saas",
+        labels: [],
+      })
+    )
+    expect(JSON.parse(stdoutWrites.join("")).publication).toBe("unpublished")
   })
 })
