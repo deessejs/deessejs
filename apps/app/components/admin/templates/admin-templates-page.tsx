@@ -26,6 +26,7 @@ import {
   SearchIcon,
 } from "lucide-react"
 import { CreateTemplateDialog } from "./create-template-dialog"
+import { TemplateImageUpload } from "./template-image-upload"
 
 type AdminClient = RouterClient<typeof appRouter>
 type AdminTemplate = Awaited<
@@ -106,6 +107,16 @@ const columns = column.columns([
       >
         {fetchedAtFormatter.format(new Date(getValue()))}
       </time>
+    ),
+  }),
+  column.display({
+    id: "presentation",
+    header: "Presentation image",
+    cell: ({ row }) => (
+      <TemplateImageUpload
+        templateId={row.original.id}
+        onUploaded={() => window.location.reload()}
+      />
     ),
   }),
 ])

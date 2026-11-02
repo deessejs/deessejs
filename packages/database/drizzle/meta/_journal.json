@@ -64,6 +64,13 @@
       "when": 1793322409997,
       "tag": "0008_green_justin_hammer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0009_template_images",
+      "breakpoints": true
     }
   ]
 }

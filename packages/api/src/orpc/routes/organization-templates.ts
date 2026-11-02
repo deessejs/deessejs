@@ -377,6 +377,7 @@ export const submit = base
         category: templates.category,
         labels: templates.labels,
         imageName: templates.imageName,
+        imageObjectId: templates.imageObjectId,
         licenseFallback: templates.licenseFallback,
       })
       .from(templates)
@@ -475,6 +476,7 @@ export const submit = base
             category: template.category,
             labels: template.labels,
             imageName: template.imageName,
+            imageObjectId: template.imageObjectId,
             license,
             repositoryName: acquired.snapshot.repositoryName,
             canonicalUrl: acquired.snapshot.canonicalUrl,

@@ -3,6 +3,8 @@ import { and, asc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { db, templatePublications, user } from "@workspace/database"
 import { adminProcedure } from "../admin-middleware.js"
+import { API_BASE_PATH } from "../../constants/base-path.js"
+import { serverEnv } from "@workspace/env/server"
 
 const publicationSummary = z.object({
   id: z.string().uuid(),
@@ -23,6 +25,7 @@ const publicationSummary = z.object({
   distributionRightsConfirmed: z.boolean(),
   stars: z.number().int().nonnegative().nullable(),
   repositoryName: z.string(),
+  imageUrl: z.string().url().nullable(),
 })
 
 const listOutput = z.object({ submissions: z.array(publicationSummary) })
@@ -61,6 +64,7 @@ export const list = adminProcedure.output(listOutput).handler(async () => {
         templatePublications.distributionRightsConfirmed,
       stars: templatePublications.stars,
       repositoryName: templatePublications.repositoryName,
+      imageObjectId: templatePublications.imageObjectId,
     })
     .from(templatePublications)
     .where(eq(templatePublications.reviewStatus, "pending"))
@@ -70,6 +74,9 @@ export const list = adminProcedure.output(listOutput).handler(async () => {
     submissions: rows.map((row) => ({
       ...row,
       submittedAt: row.submittedAt.toISOString(),
+      imageUrl: row.imageObjectId
+        ? `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`
+        : null,
     })),
   }
 })

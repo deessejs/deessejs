@@ -20,6 +20,9 @@ import { rateLimit } from "../middleware/rate-limit.js"
 import { mountGitHubAppSetup } from "./github-app.js"
 import { cleanupAvatars } from "../../core/avatars/lifecycle.js"
 import { getAvatarStorage } from "../../core/avatars/storage.js"
+import { templatePublications, templates } from "@workspace/database/schema"
+import { user } from "@workspace/database/schema"
+import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
 
 /**
  * Direct HTTP routes that do not go through oRPC:
@@ -77,27 +80,32 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
   api.get("/images/:objectId", async (c) => {
     const viewer = c.get("user")
     const objectId = c.req.param("objectId")
-    if (!viewer || !/^[0-9a-f-]{36}$/i.test(objectId)) {
+    if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
       return c.notFound()
     }
 
-    const [personal] = await db
-      .select({
-        userId: userAvatars.userId,
-        objectKey: storageObjects.objectKey,
-      })
-      .from(userAvatars)
-      .innerJoin(storageObjects, eq(storageObjects.id, userAvatars.objectId))
-      .where(
-        and(
-          eq(userAvatars.objectId, objectId),
-          eq(storageObjects.state, "ready")
-        )
-      )
-      .limit(1)
-    let allowed = personal?.userId === viewer.id
+    const [personal] = viewer
+      ? await db
+          .select({
+            userId: userAvatars.userId,
+            objectKey: storageObjects.objectKey,
+          })
+          .from(userAvatars)
+          .innerJoin(
+            storageObjects,
+            eq(storageObjects.id, userAvatars.objectId)
+          )
+          .where(
+            and(
+              eq(userAvatars.objectId, objectId),
+              eq(storageObjects.state, "ready")
+            )
+          )
+          .limit(1)
+      : []
+    let allowed = personal?.userId === viewer?.id
 
-    if (!allowed && personal) {
+    if (!allowed && personal && viewer) {
       const ownerMembership = alias(member, "avatar_owner_membership")
       const sharedOrganization = await db
         .select({ id: member.id })
@@ -114,32 +122,136 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
       allowed = sharedOrganization.length > 0
     }
 
-    const [organizationAvatar] = personal
-      ? []
-      : await db
-          .select({
-            organizationId: organizationAvatars.organizationId,
-            objectKey: storageObjects.objectKey,
-          })
-          .from(organizationAvatars)
-          .innerJoin(
-            storageObjects,
-            eq(storageObjects.id, organizationAvatars.objectId)
-          )
-          .innerJoin(
-            member,
-            eq(member.organizationId, organizationAvatars.organizationId)
-          )
-          .where(
-            and(
-              eq(organizationAvatars.objectId, objectId),
-              eq(storageObjects.state, "ready"),
-              eq(member.userId, viewer.id)
+    const [organizationAvatar] =
+      personal || !viewer
+        ? []
+        : await db
+            .select({
+              organizationId: organizationAvatars.organizationId,
+              objectKey: storageObjects.objectKey,
+            })
+            .from(organizationAvatars)
+            .innerJoin(
+              storageObjects,
+              eq(storageObjects.id, organizationAvatars.objectId)
             )
-          )
-          .limit(1)
+            .innerJoin(
+              member,
+              eq(member.organizationId, organizationAvatars.organizationId)
+            )
+            .where(
+              and(
+                eq(organizationAvatars.objectId, objectId),
+                eq(storageObjects.state, "ready"),
+                eq(member.userId, viewer.id)
+              )
+            )
+            .limit(1)
 
-    if (!allowed && !organizationAvatar) return c.notFound()
+    if (!allowed && !organizationAvatar) {
+      const [platformImage] = await db
+        .select({ objectKey: storageObjects.objectKey })
+        .from(templates)
+        .innerJoin(
+          storageObjects,
+          eq(storageObjects.id, templates.imageObjectId)
+        )
+        .where(
+          and(
+            eq(templates.imageObjectId, objectId),
+            eq(templates.ownerType, "platform"),
+            eq(storageObjects.state, "ready")
+          )
+        )
+        .limit(1)
+      const [publicationImage] = platformImage
+        ? []
+        : await db
+            .select({ objectKey: storageObjects.objectKey })
+            .from(templatePublications)
+            .innerJoin(
+              storageObjects,
+              eq(storageObjects.id, templatePublications.imageObjectId)
+            )
+            .where(
+              and(
+                eq(templatePublications.imageObjectId, objectId),
+                eq(templatePublications.publicationState, "current"),
+                eq(templatePublications.reviewStatus, "approved"),
+                eq(storageObjects.state, "ready")
+              )
+            )
+            .limit(1)
+      const publicObjectKey =
+        platformImage?.objectKey ?? publicationImage?.objectKey
+      if (publicObjectKey) {
+        const object = await getAvatarStorage().getObject(publicObjectKey)
+        if (!object.body) return c.notFound()
+        c.header("Cache-Control", "public, max-age=300, immutable")
+        c.header("Content-Type", "image/webp")
+        c.header("X-Content-Type-Options", "nosniff")
+        if (object.contentLength !== undefined)
+          c.header("Content-Length", String(object.contentLength))
+        return c.body(Readable.toWeb(object.body))
+      }
+      const [reviewImage] = viewer
+        ? await db
+            .select({ objectKey: storageObjects.objectKey })
+            .from(templatePublications)
+            .innerJoin(
+              storageObjects,
+              eq(storageObjects.id, templatePublications.imageObjectId)
+            )
+            .innerJoin(user, eq(user.id, viewer.id))
+            .where(
+              and(
+                eq(templatePublications.imageObjectId, objectId),
+                eq(templatePublications.reviewStatus, "pending"),
+                eq(storageObjects.state, "ready"),
+                eq(user.role, "admin")
+              )
+            )
+            .limit(1)
+        : []
+      if (reviewImage) {
+        const object = await getAvatarStorage().getObject(reviewImage.objectKey)
+        if (!object.body) return c.notFound()
+        c.header("Cache-Control", "private, no-store")
+        c.header("Content-Type", "image/webp")
+        c.header("X-Content-Type-Options", "nosniff")
+        return c.body(Readable.toWeb(object.body))
+      }
+      // Organization working images remain private and require membership.
+      const [workingImage] = viewer
+        ? await db
+            .select({ objectKey: storageObjects.objectKey })
+            .from(templates)
+            .innerJoin(
+              storageObjects,
+              eq(storageObjects.id, templates.imageObjectId)
+            )
+            .innerJoin(
+              member,
+              eq(member.organizationId, templates.organizationId)
+            )
+            .where(
+              and(
+                eq(templates.imageObjectId, objectId),
+                eq(templates.ownerType, "organization"),
+                eq(member.userId, viewer.id),
+                eq(storageObjects.state, "ready")
+              )
+            )
+            .limit(1)
+        : []
+      if (!workingImage) return c.notFound()
+      const object = await getAvatarStorage().getObject(workingImage.objectKey)
+      if (!object.body) return c.notFound()
+      c.header("Cache-Control", "private, no-store")
+      c.header("Content-Type", "image/webp")
+      c.header("X-Content-Type-Options", "nosniff")
+      return c.body(Readable.toWeb(object.body))
+    }
     const objectKey = personal?.objectKey ?? organizationAvatar?.objectKey
     if (!objectKey) return c.notFound()
 
@@ -167,7 +279,9 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     ) {
       return c.json({ error: "Unauthorized." }, 401)
     }
-    return c.json(await cleanupAvatars())
+    const avatars = await cleanupAvatars()
+    const templateImages = await cleanupTemplateImageUploads()
+    return c.json({ ...avatars, templateImages })
   })
 
   // Better Auth — login, signup, session, etc.

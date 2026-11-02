@@ -266,6 +266,14 @@ function SubmissionRow({
 function SubmissionReviewDetails({ submission }: { submission: Submission }) {
   return (
     <dl className="grid gap-3 rounded-md border p-4 text-sm sm:grid-cols-2">
+      {submission.imageUrl ? (
+        <div className="sm:col-span-2">
+          <dt className="text-muted-foreground">Submitted presentation image</dt>
+          <dd className="mt-2">
+            <img src={submission.imageUrl} alt={`${submission.name} submitted presentation`} className="max-h-64 rounded-md border object-contain" />
+          </dd>
+        </div>
+      ) : null}
       <div className="sm:col-span-2">
         <dt className="text-muted-foreground">Description</dt>
         <dd className="mt-1 whitespace-pre-wrap">{submission.description}</dd>

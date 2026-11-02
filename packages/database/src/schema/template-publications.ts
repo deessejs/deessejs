@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { organization, user } from "./auth.js"
 import { templates } from "./templates.js"
+import { storageObjects } from "./avatars.js"
 
 export const templateSubmissionStatus = pgEnum("template_submission_status", [
   "pending",
@@ -72,6 +73,10 @@ export const templatePublications = pgTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     imageName: text("image_name"),
+    /** Frozen image reference submitted for review. */
+    imageObjectId: uuid("image_object_id").references(() => storageObjects.id, {
+      onDelete: "restrict",
+    }),
     license: text("license").notNull(),
     repositoryName: text("repository_name").notNull(),
     canonicalUrl: text("canonical_url").notNull(),
