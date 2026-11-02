@@ -2,6 +2,7 @@ import pc from "picocolors"
 import type { NormalizedTemplateDescriptorV1 } from "@workspace/registry/v1"
 
 import type { Template } from "../api/index.js"
+import type { OrganizationTemplateV1Type } from "@workspace/contracts/v1"
 import type {
   BlockCheckResult,
   BlockDescriptorInfo,
@@ -38,6 +39,60 @@ export const printOrganizationsTable = (
     organization.slug,
   ])
   printAlignedTable([["name", "slug"], ...rows])
+}
+
+export const printOrganizationTemplatesTable = (
+  templates: OrganizationTemplateV1Type[],
+  terminalWidth = process.stdout.columns || 120
+): void => {
+  if (templates.length === 0) {
+    process.stdout.write(pc.dim("No organization templates found.\n"))
+    return
+  }
+  const headers = ["slug", "name", "ownership", "publication", "review"]
+  const rows = templates.map((template) => [
+    template.slug,
+    template.name,
+    "organization-owned",
+    template.publication?.publicationState ?? "unpublished",
+    template.publication?.reviewStatus ?? "not submitted",
+  ])
+  const naturalWidths = headers.map((header, index) =>
+    Math.max(header.length, ...rows.map((row) => row[index]?.length ?? 0))
+  )
+  const separatorWidth = 2 * (headers.length - 1)
+  const minWidths = [4, 4, "organization-owned".length, 11, 13]
+  const available = Math.max(
+    headers.reduce((sum, header) => sum + header.length, 0) + separatorWidth,
+    terminalWidth
+  )
+  const widths = [...naturalWidths]
+  while (
+    widths.reduce((sum, width) => sum + width, separatorWidth) > available
+  ) {
+    const candidates = widths
+      .map((width, index) => ({ width, index }))
+      .filter(({ width, index }) => width > (minWidths[index] ?? 0))
+    if (candidates.length === 0) break
+    const widest = candidates.reduce((best, candidate) =>
+      candidate.width > best.width ? candidate : best
+    ).index
+    widths[widest] = (widths[widest] ?? 0) - 1
+  }
+  const renderRow = (cells: string[]) =>
+    cells
+      .map((cell, index) => {
+        const width = widths[index] ?? cell.length
+        const clipped =
+          cell.length > width
+            ? `${cell.slice(0, Math.max(0, width - 1))}…`
+            : cell
+        return clipped.padEnd(width)
+      })
+      .join("  ")
+      .trimEnd()
+  process.stdout.write(`${renderRow(headers)}\n`)
+  for (const row of rows) process.stdout.write(`${renderRow(row)}\n`)
 }
 
 export const printOrganizationInfo = (organization: OrganizationInfo): void => {

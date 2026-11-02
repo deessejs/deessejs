@@ -21,4 +21,5 @@ export {
   printBlockCheck,
   printOrganizationsTable,
   printOrganizationInfo,
+  printOrganizationTemplatesTable,
 } from "./table.js"

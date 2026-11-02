@@ -15,6 +15,7 @@ import { printError, printJson } from "../output/index.js"
 import {
   printOrganizationInfo,
   printOrganizationsTable,
+  printOrganizationTemplatesTable,
 } from "../output/table.js"
 import { readAuth } from "../lib/auth/store/store.js"
 import { organizationSlugFromName } from "../utils/organization-slug.js"
@@ -252,7 +253,7 @@ organizationTemplateCommand
           organizationSlug,
         })
         if (options.json) printJson({ templates })
-        else printOrganizationTemplates(templates)
+        else printOrganizationTemplatesTable(templates)
       }
     )
   })
@@ -356,18 +357,6 @@ async function runOrganizationTemplateAction(
   }
   const spinner = options.json ? null : ora(message).start()
   await reportAction(() => action(client), options.json ?? false, spinner)
-}
-
-function printOrganizationTemplates(templates: OrganizationTemplate[]): void {
-  if (!templates.length) {
-    console.log("No organization templates found.")
-    return
-  }
-  console.log("slug | name | ownership | publication | review")
-  for (const template of templates)
-    console.log(
-      `${template.slug} | ${template.name} | organization-owned | ${template.publication?.publicationState ?? "unpublished"} | ${template.publication?.reviewStatus ?? "not submitted"}`
-    )
 }
 
 function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
