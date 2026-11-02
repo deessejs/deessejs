@@ -54,7 +54,7 @@ export function BlogSearch({
   const showEmpty = isSearching && filtered.length === 0
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [visibleCount, setVisibleCount] = useState(
+  const [visibleCount, setVisibleCount] = useState(() =>
     Math.min(page * BLOG_PAGE_SIZE, posts.length)
   )
   const [loadedPosts, setLoadedPosts] = useState<ReadonlyArray<Post>>(() =>
