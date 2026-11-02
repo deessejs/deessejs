@@ -53,7 +53,9 @@ export const printOrganizationTemplatesTable = (
     template.slug,
     template.name,
     "organization-owned",
-    template.publication?.publicationState ?? "unpublished",
+    template.currentlyPublished
+      ? "current"
+      : (template.publication?.publicationState ?? "unpublished"),
     template.publication?.reviewStatus ?? "not submitted",
   ])
   printAlignedTable([headers, ...rows])

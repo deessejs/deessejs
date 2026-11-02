@@ -54,6 +54,24 @@ const organizationErrorFromCode = (code: unknown): CliError | undefined => {
   ) {
     return inaccessibleOrganization()
   }
+  if (code === "TEMPLATE_SLUG_CONFLICT")
+    return new CliError(
+      "organization_api_error",
+      "This organization already has a template with that slug.",
+      "Choose a different --slug value."
+    )
+  if (code === "TEMPLATE_GITHUB_SOURCE_INVALID")
+    return new CliError(
+      "organization_api_error",
+      "Use a URL to a public GitHub repository.",
+      "Check --repository and try again."
+    )
+  if (code === "TEMPLATE_GITHUB_FETCH_FAILED")
+    return new CliError(
+      "network_error",
+      "GitHub data could not be fetched.",
+      "Check the repository URL and retry."
+    )
   if (code === "ORGANIZATION_EMAIL_VERIFICATION_REQUIRED") {
     return new CliError(
       "organization_api_error",
@@ -138,6 +156,11 @@ async function reportAction<T>(
     reportError(error, json)
   }
 }
+
+const collectLabel = (value: string, previous: string[] = []): string[] => [
+  ...previous,
+  value,
+]
 
 export const organizationListCommand = new Command("list")
   .description("List your organizations")
@@ -295,7 +318,12 @@ organizationTemplateCommand
   .requiredOption("--repository <url>", "public GitHub repository URL")
   .option("--description <text>", "template description")
   .requiredOption("--category <category>", "template category")
-  .option("--label <label...>", "template labels")
+  .option(
+    "--label <label>",
+    "template label (repeat for multiple labels)",
+    collectLabel,
+    []
+  )
   .option("--license <license>", "license fallback")
   .option("--json", "JSON output for scripting")
   .action(
@@ -315,20 +343,37 @@ organizationTemplateCommand
         options,
         "Adding organization template...",
         async (client) => {
-          const template = await client.organization.templates.create({
-            organizationSlug,
-            slug: options.slug,
-            name: options.name,
-            repositoryUrl: options.repository,
-            category: options.category,
-            labels: options.label ?? [],
-            ...(options.description === undefined
-              ? {}
-              : { descriptionOverride: options.description }),
-            ...(options.license === undefined
-              ? {}
-              : { licenseFallback: options.license }),
-          })
+          let template: Awaited<
+            ReturnType<typeof client.organization.templates.create>
+          >
+          try {
+            template = await client.organization.templates.create({
+              organizationSlug,
+              slug: options.slug,
+              name: options.name,
+              repositoryUrl: options.repository,
+              category: options.category,
+              labels: options.label ?? [],
+              ...(options.description === undefined
+                ? {}
+                : { descriptionOverride: options.description }),
+              ...(options.license === undefined
+                ? {}
+                : { licenseFallback: options.license }),
+            })
+          } catch (error) {
+            if (
+              isRecordWithCode(error) &&
+              error.code === "ORGANIZATION_ACCESS_DENIED"
+            ) {
+              throw new CliError(
+                "organization_api_error",
+                "Only organization owners and admins can add templates.",
+                "Ask an organization owner or admin to run this command."
+              )
+            }
+            throw error
+          }
           if (options.json)
             printJson({
               template,
@@ -365,7 +410,7 @@ function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
   )
   console.log(`Repository: ${template.canonicalUrl}`)
   console.log(
-    `Publication state: ${template.publication?.publicationState ?? "unpublished"}`
+    `Publication state: ${template.currentlyPublished ? "current" : (template.publication?.publicationState ?? "unpublished")}`
   )
   console.log(
     `Review status: ${template.publication?.reviewStatus ?? "not submitted"}`
