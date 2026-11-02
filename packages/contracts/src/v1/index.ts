@@ -21,3 +21,15 @@ export {
   OrganizationTemplateCreateInputV1,
   type OrganizationTemplateCreateInputV1 as OrganizationTemplateCreateInputV1Type,
 } from "./organization-template.js"
+export {
+  AvatarCompleteRequestV1,
+  AvatarCompleteResponseV1,
+  AvatarImageV1,
+  AvatarRemoveResponseV1,
+  AvatarUploadRequestV1,
+  AvatarUploadResponseV1,
+  type AvatarImageV1 as AvatarImageV1Type,
+  type AvatarCompleteResponseV1 as AvatarCompleteResponseV1Type,
+  type AvatarUploadRequestV1 as AvatarUploadRequestV1Type,
+  type AvatarUploadResponseV1 as AvatarUploadResponseV1Type,
+} from "./avatar.js"

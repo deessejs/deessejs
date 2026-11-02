@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { API_BASE_PATH } from "@workspace/api/base-path";
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -6,7 +7,11 @@ const nextConfig: NextConfig = {
       beforeFiles: [
         {
           source: "/schema/project/v1.json",
-          destination: "/api/v1/schema/project/v1.json",
+          destination: `${API_BASE_PATH}/schema/project/v1.json`,
+        },
+        {
+          source: "/api/internal/avatars/cleanup",
+          destination: `${API_BASE_PATH}/internal/avatars/cleanup`,
         },
       ],
     }

@@ -4,7 +4,11 @@ import { logger as honoLogger } from "hono/logger"
 import { secureHeaders } from "hono/secure-headers"
 import { serverEnv } from "@workspace/env/server"
 import { isHostAllowed } from "@workspace/auth/host-allowlist"
-import { API_BASE_PATH, API_RPC_PATH, API_AUTH_PATH } from "./constants/base-path.js"
+import {
+  API_BASE_PATH,
+  API_RPC_PATH,
+  API_AUTH_PATH,
+} from "./constants/base-path.js"
 import { logger } from "./constants/logger.js"
 import {
   onError as onApiError,
@@ -44,7 +48,7 @@ api.use(
       return null
     },
     credentials: true,
-  }),
+  })
 )
 api.use("*", honoLogger())
 // Resolve the caller only for routes that consume session context.
@@ -53,6 +57,7 @@ api.use("*", honoLogger())
 // session lookup on /auth/get-session and unnecessary reads on public routes.
 api.use("/rpc/*", session())
 api.use("/github-app/*", session())
+api.use("/images/*", session())
 
 mountHttp(api)
 mountRpc(api)
