@@ -24,7 +24,7 @@ Place `deesse-template.json` at the repository root. Minimal example:
 
 Set `name`, `title`, and `description` to non-empty strings. Choose `type` from `template:app`, `template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`, or `template:starter`. Set `version` to a semantic version. Include `excludes`. You can also set `source` with `repo` and optional `ref`. Optional metadata fields include `author`, `license`, `category`, and `labels`.
 
-If you omit `includes`, DeesseJS selects `**/*`. An empty `includes` array fails validation. The selector applies includes, then excludes. It matches dot files with case-sensitive patterns, removes duplicate paths, sorts the result, and rejects an empty selection. Use excludes to omit generated dependencies, repository internals, and other files you do not distribute. Every selected path must point to a safe regular file. The CLI plans from a fixed GitHub revision before it writes files.
+If you omit `includes`, DeesseJS selects `**/*`. An empty `includes` array fails validation. The selector applies includes, then excludes. It matches dot files with case-sensitive patterns, removes duplicate paths, sorts the result, and rejects an empty selection. Use excludes to omit generated dependencies, repository internals, and other files excluded from distribution. Every selected path must point to a safe regular file. The CLI plans from a fixed GitHub revision before it writes files.
 
 Check the descriptor schema and registry package with:
 
@@ -54,7 +54,7 @@ Place `deesse-block.json` in the block directory. A block declares capabilities,
 }
 ```
 
-Use lowercase letters, numbers, and hyphens for `name` and package IDs. Start each identifier with a letter. Set `version` to a semantic version. Each `provides` entry identifies a capability, provider, and package. `install.packages` maps IDs to project paths. Each file maps a source-relative `from` path to a destination package and path. Optional `environment` entries describe variables and mark each as required or secret. Optional `manualSteps` describe work the CLI cannot perform.
+Use lowercase letters, numbers, and hyphens for `name` and package IDs. Start each identifier with a letter. Set `version` to a semantic version. Each `provides` entry identifies a capability, provider, and package. `install.packages` maps IDs to project paths. Each file maps a source-relative `from` path to a destination package and path. Optional `environment` entries describe variables and mark each as required or secret. Optional `manualSteps` describe work outside the CLI’s automation.
 
 Check a local block directory, including its referenced files and package manifests:
 
