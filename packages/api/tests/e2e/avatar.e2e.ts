@@ -130,23 +130,19 @@ describe("avatar HTTP E2E with PostgreSQL and MinIO", () => {
   it("uploads through MinIO's presigned URL, confirms, reads, replaces, and removes the avatar", async () => {
     const id = `avatar-e2e-${randomUUID()}`
     const token = `avatar-session-${randomUUID()}`
-    await db
-      .insert(user)
-      .values({
-        id,
-        name: id,
-        email: `${id}@example.test`,
-        emailVerified: true,
-      })
+    await db.insert(user).values({
+      id,
+      name: id,
+      email: `${id}@example.test`,
+      emailVerified: true,
+    })
     users.push(id)
-    await db
-      .insert(session)
-      .values({
-        id: randomUUID(),
-        token,
-        userId: id,
-        expiresAt: new Date(Date.now() + 3_600_000),
-      })
+    await db.insert(session).values({
+      id: randomUUID(),
+      token,
+      userId: id,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    })
     const cookie = await cookieFor(token)
     const png = await sharp({
       create: {
@@ -181,6 +177,7 @@ describe("avatar HTTP E2E with PostgreSQL and MinIO", () => {
         headers: { "content-type": "image/png" },
         body: bytes,
       })
+      console.info(`[avatar-e2e] MinIO presigned PUT ${put.status}`)
       expect(put.ok, `MinIO presigned PUT returned ${put.status}`).toBe(true)
       const confirm = await fetch(
         `${apiUrl}/api/v1/rpc/profile/avatar/complete`,
@@ -205,24 +202,20 @@ describe("avatar HTTP E2E with PostgreSQL and MinIO", () => {
     expect(firstBytes.subarray(0, 4).toString()).toBe("RIFF")
 
     const strangerId = `avatar-e2e-stranger-${randomUUID()}`
-    await db
-      .insert(user)
-      .values({
-        id: strangerId,
-        name: strangerId,
-        email: `${strangerId}@example.test`,
-        emailVerified: true,
-      })
+    await db.insert(user).values({
+      id: strangerId,
+      name: strangerId,
+      email: `${strangerId}@example.test`,
+      emailVerified: true,
+    })
     users.push(strangerId)
     const strangerToken = `avatar-stranger-session-${randomUUID()}`
-    await db
-      .insert(session)
-      .values({
-        id: randomUUID(),
-        token: strangerToken,
-        userId: strangerId,
-        expiresAt: new Date(Date.now() + 3_600_000),
-      })
+    await db.insert(session).values({
+      id: randomUUID(),
+      token: strangerToken,
+      userId: strangerId,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    })
     const strangerResponse = await fetch(new URL(firstUrl, apiUrl), {
       headers: { cookie: await cookieFor(strangerToken) },
     })
