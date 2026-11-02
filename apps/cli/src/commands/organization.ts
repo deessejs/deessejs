@@ -15,9 +15,14 @@ import { printError, printJson } from "../output/index.js"
 import {
   printOrganizationInfo,
   printOrganizationsTable,
+  printOrganizationTemplatesTable,
 } from "../output/table.js"
 import { readAuth } from "../lib/auth/store/store.js"
 import { organizationSlugFromName } from "../utils/organization-slug.js"
+import type {
+  OrganizationTemplateV1Type,
+  OrganizationTemplateCategoryV1Type,
+} from "@workspace/contracts/v1"
 
 type JsonOption = { json?: boolean }
 
@@ -40,7 +45,9 @@ const inaccessibleOrganization = (): CliError =>
 const isRecordWithCode = (error: unknown): error is { code: unknown } =>
   typeof error === "object" && error !== null && "code" in error
 
-const organizationErrorFromCode = (code: unknown): CliError | undefined => {
+export const organizationErrorFromCode = (
+  code: unknown
+): CliError | undefined => {
   if (code === "UNAUTHORIZED") return authRequired()
   if (
     code === "ORGANIZATION_ACCESS_DENIED" ||
@@ -49,6 +56,24 @@ const organizationErrorFromCode = (code: unknown): CliError | undefined => {
   ) {
     return inaccessibleOrganization()
   }
+  if (code === "TEMPLATE_SLUG_CONFLICT")
+    return new CliError(
+      "organization_api_error",
+      "This organization already has a template with that slug.",
+      "Choose a different --slug value."
+    )
+  if (code === "TEMPLATE_GITHUB_SOURCE_INVALID")
+    return new CliError(
+      "organization_api_error",
+      "Use a URL to a public GitHub repository.",
+      "Check --repository and try again."
+    )
+  if (code === "TEMPLATE_GITHUB_FETCH_FAILED")
+    return new CliError(
+      "network_error",
+      "GitHub data could not be fetched.",
+      "Check the repository URL and retry."
+    )
   if (code === "ORGANIZATION_EMAIL_VERIFICATION_REQUIRED") {
     return new CliError(
       "organization_api_error",
@@ -132,6 +157,19 @@ async function reportAction<T>(
     spinner?.fail()
     reportError(error, json)
   }
+}
+
+const collectLabel = (value: string, previous: string[] = []): string[] => [
+  ...previous,
+  value,
+]
+
+export const completeBeforePrint = (
+  complete: () => void,
+  print: () => void
+): void => {
+  complete()
+  print()
 }
 
 export const organizationListCommand = new Command("list")
@@ -227,8 +265,183 @@ export const organizationCreateCommand = new Command("create")
     }
   })
 
+type OrganizationTemplate = OrganizationTemplateV1Type
+type OrganizationTemplateCategory = OrganizationTemplateCategoryV1Type
+
+const organizationTemplateCommand = new Command("template").description(
+  "Manage templates owned by an organization"
+)
+
+organizationTemplateCommand
+  .command("list")
+  .description("List templates owned by an organization")
+  .argument("<organization-slug>", "organization slug")
+  .option("--json", "JSON output for scripting")
+  .action(async (organizationSlug: string, options: JsonOption) => {
+    await runOrganizationTemplateAction(
+      options,
+      "Fetching organization templates...",
+      async (client, complete) => {
+        const { templates } = await client.organization.templates.list({
+          organizationSlug,
+        })
+        completeBeforePrint(complete, () => {
+          if (options.json) printJson({ templates })
+          else printOrganizationTemplatesTable(templates)
+        })
+      }
+    )
+  })
+
+organizationTemplateCommand
+  .command("info")
+  .description("Show an organization-owned template")
+  .argument("<organization-slug>", "organization slug")
+  .argument("<template-slug>", "template slug")
+  .option("--json", "JSON output for scripting")
+  .action(
+    async (organizationSlug: string, slug: string, options: JsonOption) => {
+      await runOrganizationTemplateAction(
+        options,
+        "Fetching organization template...",
+        async (client, complete) => {
+          const { templates } = await client.organization.templates.list({
+            organizationSlug,
+          })
+          const template = templates.find((item) => item.slug === slug)
+          if (!template)
+            throw new CliError(
+              "organization_api_error",
+              `Template "${slug}" not found in organization "${organizationSlug}".`
+            )
+          completeBeforePrint(complete, () => {
+            if (options.json) printJson({ template })
+            else printOrganizationTemplateInfo(template)
+          })
+        }
+      )
+    }
+  )
+
+organizationTemplateCommand
+  .command("add")
+  .description("Add a template to an organization")
+  .argument("<organization-slug>", "organization slug")
+  .requiredOption("--slug <slug>", "template slug")
+  .requiredOption("--name <name>", "display name")
+  .requiredOption("--repository <url>", "public GitHub repository URL")
+  .option("--description <text>", "template description")
+  .requiredOption("--category <category>", "template category")
+  .option(
+    "--label <label>",
+    "template label (repeat for multiple labels)",
+    collectLabel,
+    []
+  )
+  .option("--license <license>", "license fallback")
+  .option("--json", "JSON output for scripting")
+  .action(
+    async (
+      organizationSlug: string,
+      options: JsonOption & {
+        slug: string
+        name: string
+        repository: string
+        description?: string
+        category: OrganizationTemplateCategory
+        label?: string[]
+        license?: string
+      }
+    ) => {
+      await runOrganizationTemplateAction(
+        options,
+        "Adding organization template...",
+        async (client, complete) => {
+          let template: Awaited<
+            ReturnType<typeof client.organization.templates.create>
+          >
+          try {
+            template = await client.organization.templates.create({
+              organizationSlug,
+              slug: options.slug,
+              name: options.name,
+              repositoryUrl: options.repository,
+              category: options.category,
+              labels: options.label ?? [],
+              ...(options.description === undefined
+                ? {}
+                : { descriptionOverride: options.description }),
+              ...(options.license === undefined
+                ? {}
+                : { licenseFallback: options.license }),
+            })
+          } catch (error) {
+            if (
+              isRecordWithCode(error) &&
+              error.code === "ORGANIZATION_ACCESS_DENIED"
+            ) {
+              throw new CliError(
+                "organization_api_error",
+                "Only organization owners and admins can add templates.",
+                "Ask an organization owner or admin to run this command."
+              )
+            }
+            throw error
+          }
+          completeBeforePrint(complete, () => {
+            if (options.json)
+              printJson({
+                template,
+                ownership: "organization",
+                publication: "unpublished",
+              })
+            else
+              console.log(
+                `Added ${template.name} (${template.slug}) to ${organizationSlug}. It is organization-owned and not publicly published.`
+              )
+          })
+        }
+      )
+    }
+  )
+
+async function runOrganizationTemplateAction(
+  options: JsonOption,
+  message: string,
+  action: (client: ORPCClient, complete: () => void) => Promise<void>
+): Promise<void> {
+  let client: ORPCClient
+  try {
+    client = createAuthenticatedORPCClient(signedInToken())
+  } catch (error) {
+    reportError(error, options.json ?? false)
+  }
+  const spinner = options.json ? null : ora(message).start()
+  await reportAction(
+    () => action(client, () => spinner?.succeed()),
+    options.json ?? false,
+    null
+  )
+}
+
+function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
+  console.log(
+    `Organization-owned template: ${template.name} (${template.slug})`
+  )
+  console.log(`Repository: ${template.canonicalUrl}`)
+  console.log(
+    `Publication state: ${template.currentlyPublished ? "current" : (template.publication?.publicationState ?? "unpublished")}`
+  )
+  console.log(
+    `Review status: ${template.publication?.reviewStatus ?? "not submitted"}`
+  )
+  if (template.publication?.reviewReason)
+    console.log(`Review reason: ${template.publication.reviewReason}`)
+}
+
 export const organizationCommand = new Command("organization")
   .description("Manage your organizations")
   .addCommand(organizationListCommand)
   .addCommand(organizationInfoCommand)
   .addCommand(organizationCreateCommand)
+  .addCommand(organizationTemplateCommand)

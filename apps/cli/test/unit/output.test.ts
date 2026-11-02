@@ -4,6 +4,7 @@ import {
   printError,
   printTemplatesTable,
   printTemplateInfo,
+  printOrganizationTemplatesTable,
 } from "../../src/output/index.js"
 import type { Template } from "../../src/api/index.js"
 import { CliError } from "../../src/errors/index.js"
@@ -106,6 +107,37 @@ describe("print", () => {
     printTemplatesTable([])
     const joined = stdoutWrites.join("")
     expect(joined).toContain("No templates available")
+  })
+
+  it("prints organization templates using the shared aligned table format", () => {
+    printOrganizationTemplatesTable([
+      {
+        id: "00000000-0000-4000-8000-000000000001",
+        slug: "starter-kit",
+        name: "A particularly long starter template name",
+        description: "",
+        owner: "acme",
+        repo: "starter",
+        category: "saas",
+        labels: [],
+        license: "MIT",
+        canonicalUrl: "https://github.com/acme/starter",
+        repositoryName: "starter",
+        stars: null,
+        fetchedAt: "2026-01-01T00:00:00.000Z",
+        currentlyPublished: true,
+        publication: {
+          reviewStatus: "pending",
+          publicationState: "unpublished",
+          submittedAt: "2026-01-01T00:00:00.000Z",
+          reviewReason: null,
+        },
+      },
+    ])
+    expect(stdoutWrites.join("")).toBe(
+      "slug         name                                       ownership           publication  review \n" +
+        "starter-kit  A particularly long starter template name  organization-owned  current      pending\n"
+    )
   })
 
   it("printTemplateInfo only prints validated descriptor fields", () => {

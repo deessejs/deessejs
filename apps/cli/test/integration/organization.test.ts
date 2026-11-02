@@ -3,15 +3,43 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockCreate } = vi.hoisted(() => ({ mockCreate: vi.fn() }))
+const { mockCreate, mockTemplateList, spinnerEvents } = vi.hoisted(() => ({
+  mockCreate: vi.fn(),
+  mockTemplateList: vi.fn(),
+  spinnerEvents: [] as string[],
+}))
+
+vi.mock("ora", () => ({
+  default: () => ({
+    start() {
+      spinnerEvents.push("start")
+      return this
+    },
+    succeed() {
+      spinnerEvents.push("success")
+      return this
+    },
+    fail() {
+      spinnerEvents.push("failure")
+      return this
+    },
+  }),
+}))
 
 vi.mock("../../src/api/client.js", () => ({
   createAuthenticatedORPCClient: vi.fn(() => ({
-    organization: { create: mockCreate },
+    organization: {
+      create: mockCreate,
+      templates: { create: mockCreate, list: mockTemplateList },
+    },
   })),
 }))
 
-import { organizationCommand } from "../../src/commands/organization.js"
+import {
+  organizationCommand,
+  organizationErrorFromCode,
+  completeBeforePrint,
+} from "../../src/commands/organization.js"
 
 const originalHome = process.env.HOME
 const originalUserProfile = process.env.USERPROFILE
@@ -59,6 +87,8 @@ describe("organization commands", () => {
         return true
       })
     mockCreate.mockReset()
+    mockTemplateList.mockReset()
+    spinnerEvents.length = 0
   })
 
   afterEach(() => {
@@ -168,5 +198,212 @@ describe("organization commands", () => {
         slug: "acme-studio-2",
       },
     })
+  })
+
+  it("lists every owned template and shows publication and review states in JSON", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [
+        {
+          id: "1",
+          slug: "draft",
+          name: "Draft",
+          description: "",
+          owner: "acme",
+          repo: "draft",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/draft",
+          repositoryName: "draft",
+          stars: null,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: false,
+          publication: null,
+        },
+        {
+          id: "2",
+          slug: "pending",
+          name: "Pending",
+          description: "",
+          owner: "acme",
+          repo: "pending",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/pending",
+          repositoryName: "pending",
+          stars: 1,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: false,
+          publication: {
+            reviewStatus: "pending",
+            publicationState: "unpublished",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+        {
+          id: "3",
+          slug: "live",
+          name: "Live",
+          description: "",
+          owner: "acme",
+          repo: "live",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/live",
+          repositoryName: "live",
+          stars: 2,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: true,
+          publication: {
+            reviewStatus: "approved",
+            publicationState: "current",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+      ],
+    })
+    await runCommand(["template", "list", "acme", "--json"])
+    const result = JSON.parse(stdoutWrites.join(""))
+    expect(result.templates).toHaveLength(3)
+    expect(
+      result.templates.map(
+        (item: { publication: { reviewStatus: string } | null }) =>
+          item.publication?.reviewStatus ?? "none"
+      )
+    ).toEqual(["none", "pending", "approved"])
+    expect(mockTemplateList).toHaveBeenCalledWith({ organizationSlug: "acme" })
+  })
+
+  it("prints human publication states and resolves info from the organization list", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [
+        {
+          id: "3",
+          slug: "live",
+          name: "Live",
+          description: "",
+          owner: "acme",
+          repo: "live",
+          category: "saas",
+          labels: [],
+          license: "MIT",
+          canonicalUrl: "https://github.com/acme/live",
+          repositoryName: "live",
+          stars: 2,
+          fetchedAt: new Date().toISOString(),
+          currentlyPublished: true,
+          publication: {
+            reviewStatus: "approved",
+            publicationState: "current",
+            submittedAt: new Date().toISOString(),
+            reviewReason: null,
+          },
+        },
+      ],
+    })
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+    try {
+      await runCommand(["template", "info", "acme", "live"])
+      expect(log.mock.calls.flat().join(" ")).toContain(
+        "Organization-owned template"
+      )
+      expect(log.mock.calls.flat().join(" ")).toContain(
+        "Publication state: current"
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("creates through the authenticated organization template procedure", async () => {
+    mockCreate.mockResolvedValue({
+      id: "new",
+      slug: "starter",
+      name: "Starter",
+    })
+    await runCommand([
+      "template",
+      "add",
+      "acme",
+      "--slug",
+      "starter",
+      "--name",
+      "Starter",
+      "--repository",
+      "https://github.com/acme/starter",
+      "--category",
+      "saas",
+      "--json",
+    ])
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationSlug: "acme",
+        slug: "starter",
+        repositoryUrl: "https://github.com/acme/starter",
+        category: "saas",
+        labels: [],
+      })
+    )
+    expect(JSON.parse(stdoutWrites.join("")).publication).toBe("unpublished")
+  })
+
+  it("maps template API failures and managing-role denial to actionable CLI errors", () => {
+    expect(
+      organizationErrorFromCode("TEMPLATE_SLUG_CONFLICT")?.message
+    ).toContain("already has a template")
+    expect(
+      organizationErrorFromCode("TEMPLATE_GITHUB_SOURCE_INVALID")?.message
+    ).toContain("public GitHub")
+    expect(
+      organizationErrorFromCode("TEMPLATE_GITHUB_FETCH_FAILED")?.code
+    ).toBe("network_error")
+    expect(organizationErrorFromCode("ORGANIZATION_ACCESS_DENIED")?.code).toBe(
+      "organization_not_found"
+    )
+  })
+
+  it("parses repeated labels when add options precede the organization slug", async () => {
+    mockCreate.mockResolvedValue({
+      id: "new",
+      slug: "starter",
+      name: "Starter",
+    })
+    await runCommand([
+      "template",
+      "add",
+      "--slug",
+      "starter",
+      "--name",
+      "Starter",
+      "--repository",
+      "https://github.com/acme/starter",
+      "--category",
+      "saas",
+      "--label",
+      "nextjs",
+      "--label",
+      "auth",
+      "acme",
+      "--json",
+    ])
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationSlug: "acme",
+        labels: ["nextjs", "auth"],
+      })
+    )
+  })
+
+  it("completes the spinner before printing human-readable output", () => {
+    const events: string[] = []
+    completeBeforePrint(
+      () => events.push("spinner-success"),
+      () => events.push("human-output")
+    )
+    expect(events).toEqual(["spinner-success", "human-output"])
   })
 })
