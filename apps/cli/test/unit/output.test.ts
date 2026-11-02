@@ -109,38 +109,30 @@ describe("print", () => {
     expect(joined).toContain("No templates available")
   })
 
-  it("prints organization template columns aligned and clips to a narrow width", () => {
-    printOrganizationTemplatesTable(
-      [
-        {
-          id: "00000000-0000-4000-8000-000000000001",
-          slug: "starter-kit",
-          name: "A particularly long starter template name",
-          description: "",
-          owner: "acme",
-          repo: "starter",
-          category: "saas",
-          labels: [],
-          license: "MIT",
-          canonicalUrl: "https://github.com/acme/starter",
-          repositoryName: "starter",
-          stars: null,
-          fetchedAt: "2026-01-01T00:00:00.000Z",
-          currentlyPublished: false,
-          publication: null,
-        },
-      ],
-      64
+  it("prints organization templates using the shared aligned table format", () => {
+    printOrganizationTemplatesTable([
+      {
+        id: "00000000-0000-4000-8000-000000000001",
+        slug: "starter-kit",
+        name: "A particularly long starter template name",
+        description: "",
+        owner: "acme",
+        repo: "starter",
+        category: "saas",
+        labels: [],
+        license: "MIT",
+        canonicalUrl: "https://github.com/acme/starter",
+        repositoryName: "starter",
+        stars: null,
+        fetchedAt: "2026-01-01T00:00:00.000Z",
+        currentlyPublished: false,
+        publication: null,
+      },
+    ])
+    expect(stdoutWrites.join("")).toBe(
+      "slug         name                                       ownership           publication  review       \n" +
+        "starter-kit  A particularly long starter template name  organization-owned  unpublished  not submitted\n"
     )
-    const lines = stdoutWrites.join("").trimEnd().split("\n")
-    expect(lines[0]?.indexOf("name")).toBeGreaterThan(
-      lines[0]?.indexOf("slug") ?? -1
-    )
-    expect(lines[1]?.indexOf("organization-owned")).toBe(
-      lines[0]?.indexOf("ownership")
-    )
-    expect(lines[1]?.length).toBeLessThanOrEqual(64)
-    expect(lines[1]).toContain("unpublished")
   })
 
   it("printTemplateInfo only prints validated descriptor fields", () => {
