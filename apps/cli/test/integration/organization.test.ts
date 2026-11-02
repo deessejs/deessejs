@@ -3,9 +3,27 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockCreate, mockTemplateList } = vi.hoisted(() => ({
+const { mockCreate, mockTemplateList, spinnerEvents } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockTemplateList: vi.fn(),
+  spinnerEvents: [] as string[],
+}))
+
+vi.mock("ora", () => ({
+  default: () => ({
+    start() {
+      spinnerEvents.push("start")
+      return this
+    },
+    succeed() {
+      spinnerEvents.push("success")
+      return this
+    },
+    fail() {
+      spinnerEvents.push("failure")
+      return this
+    },
+  }),
 }))
 
 vi.mock("../../src/api/client.js", () => ({
@@ -17,7 +35,11 @@ vi.mock("../../src/api/client.js", () => ({
   })),
 }))
 
-import { organizationCommand } from "../../src/commands/organization.js"
+import {
+  organizationCommand,
+  organizationErrorFromCode,
+  completeBeforePrint,
+} from "../../src/commands/organization.js"
 
 const originalHome = process.env.HOME
 const originalUserProfile = process.env.USERPROFILE
@@ -66,6 +88,7 @@ describe("organization commands", () => {
       })
     mockCreate.mockReset()
     mockTemplateList.mockReset()
+    spinnerEvents.length = 0
   })
 
   afterEach(() => {
@@ -326,5 +349,61 @@ describe("organization commands", () => {
       })
     )
     expect(JSON.parse(stdoutWrites.join("")).publication).toBe("unpublished")
+  })
+
+  it("maps template API failures and managing-role denial to actionable CLI errors", () => {
+    expect(
+      organizationErrorFromCode("TEMPLATE_SLUG_CONFLICT")?.message
+    ).toContain("already has a template")
+    expect(
+      organizationErrorFromCode("TEMPLATE_GITHUB_SOURCE_INVALID")?.message
+    ).toContain("public GitHub")
+    expect(
+      organizationErrorFromCode("TEMPLATE_GITHUB_FETCH_FAILED")?.code
+    ).toBe("network_error")
+    expect(organizationErrorFromCode("ORGANIZATION_ACCESS_DENIED")?.code).toBe(
+      "organization_not_found"
+    )
+  })
+
+  it("parses repeated labels when add options precede the organization slug", async () => {
+    mockCreate.mockResolvedValue({
+      id: "new",
+      slug: "starter",
+      name: "Starter",
+    })
+    await runCommand([
+      "template",
+      "add",
+      "--slug",
+      "starter",
+      "--name",
+      "Starter",
+      "--repository",
+      "https://github.com/acme/starter",
+      "--category",
+      "saas",
+      "--label",
+      "nextjs",
+      "--label",
+      "auth",
+      "acme",
+      "--json",
+    ])
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationSlug: "acme",
+        labels: ["nextjs", "auth"],
+      })
+    )
+  })
+
+  it("completes the spinner before printing human-readable output", () => {
+    const events: string[] = []
+    completeBeforePrint(
+      () => events.push("spinner-success"),
+      () => events.push("human-output")
+    )
+    expect(events).toEqual(["spinner-success", "human-output"])
   })
 })

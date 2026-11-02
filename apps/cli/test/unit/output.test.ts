@@ -125,13 +125,18 @@ describe("print", () => {
         repositoryName: "starter",
         stars: null,
         fetchedAt: "2026-01-01T00:00:00.000Z",
-        currentlyPublished: false,
-        publication: null,
+        currentlyPublished: true,
+        publication: {
+          reviewStatus: "pending",
+          publicationState: "unpublished",
+          submittedAt: "2026-01-01T00:00:00.000Z",
+          reviewReason: null,
+        },
       },
     ])
     expect(stdoutWrites.join("")).toBe(
-      "slug         name                                       ownership           publication  review       \n" +
-        "starter-kit  A particularly long starter template name  organization-owned  unpublished  not submitted\n"
+      "slug         name                                       ownership           publication  review \n" +
+        "starter-kit  A particularly long starter template name  organization-owned  current      pending\n"
     )
   })
 

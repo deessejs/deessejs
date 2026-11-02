@@ -45,7 +45,9 @@ const inaccessibleOrganization = (): CliError =>
 const isRecordWithCode = (error: unknown): error is { code: unknown } =>
   typeof error === "object" && error !== null && "code" in error
 
-const organizationErrorFromCode = (code: unknown): CliError | undefined => {
+export const organizationErrorFromCode = (
+  code: unknown
+): CliError | undefined => {
   if (code === "UNAUTHORIZED") return authRequired()
   if (
     code === "ORGANIZATION_ACCESS_DENIED" ||
@@ -162,6 +164,14 @@ const collectLabel = (value: string, previous: string[] = []): string[] => [
   value,
 ]
 
+export const completeBeforePrint = (
+  complete: () => void,
+  print: () => void
+): void => {
+  complete()
+  print()
+}
+
 export const organizationListCommand = new Command("list")
   .description("List your organizations")
   .option("--json", "JSON output for scripting")
@@ -275,9 +285,10 @@ organizationTemplateCommand
         const { templates } = await client.organization.templates.list({
           organizationSlug,
         })
-        complete()
-        if (options.json) printJson({ templates })
-        else printOrganizationTemplatesTable(templates)
+        completeBeforePrint(complete, () => {
+          if (options.json) printJson({ templates })
+          else printOrganizationTemplatesTable(templates)
+        })
       }
     )
   })
@@ -303,9 +314,10 @@ organizationTemplateCommand
               "organization_api_error",
               `Template "${slug}" not found in organization "${organizationSlug}".`
             )
-          complete()
-          if (options.json) printJson({ template })
-          else printOrganizationTemplateInfo(template)
+          completeBeforePrint(complete, () => {
+            if (options.json) printJson({ template })
+            else printOrganizationTemplateInfo(template)
+          })
         }
       )
     }
@@ -376,17 +388,18 @@ organizationTemplateCommand
             }
             throw error
           }
-          complete()
-          if (options.json)
-            printJson({
-              template,
-              ownership: "organization",
-              publication: "unpublished",
-            })
-          else
-            console.log(
-              `Added ${template.name} (${template.slug}) to ${organizationSlug}. It is organization-owned and not publicly published.`
-            )
+          completeBeforePrint(complete, () => {
+            if (options.json)
+              printJson({
+                template,
+                ownership: "organization",
+                publication: "unpublished",
+              })
+            else
+              console.log(
+                `Added ${template.name} (${template.slug}) to ${organizationSlug}. It is organization-owned and not publicly published.`
+              )
+          })
         }
       )
     }
