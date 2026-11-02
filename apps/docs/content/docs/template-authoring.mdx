@@ -1,0 +1,67 @@
+---
+title: Authoring templates and blocks
+description: Write and validate the supported DeesseJS template and block descriptors.
+---
+
+DeesseJS currently supports two root descriptor files: `deesse-template.json` for whole-project templates and `deesse-block.json` for copy-first blocks. Both are versioned contracts. Their objects reject unknown fields, so remove unsupported keys rather than relying on them being ignored.
+
+## Whole-project templates
+
+Place `deesse-template.json` at the repository root. Minimal example:
+
+```json
+{
+  "$schema": "https://app.deessejs.com/schema/template/v1.json",
+  "formatVersion": 1,
+  "name": "acme-next-app",
+  "title": "Acme Next.js app",
+  "description": "A starter application",
+  "type": "template:app",
+  "version": "1.0.0",
+  "excludes": ["node_modules/**", ".git/**"]
+}
+```
+
+`name`, `title`, and `description` are non-empty strings. `type` is one of the supported `template:app`, `template:package`, `template:cli`, `template:mobile`, `template:desktop`, `template:agent`, `template:landing`, or `template:starter` values. `version` is semantic version syntax. `excludes` is required. Optional `source` contains `repo` and optional `ref`; optional metadata includes `author`, `license`, `category`, and `labels`.
+
+`includes` defaults to `**/*` when omitted and cannot be an empty array. Selection applies includes first and excludes after, matches dotfiles case-sensitively, deduplicates and sorts paths, and rejects an empty result. Use excludes to keep generated dependencies, repository internals, and other non-distributable files out. Selected paths must be safe regular files. The CLI plans from a fixed GitHub revision before materializing files.
+
+Validate a template by installing dependencies in the monorepo and running the registry checks:
+
+```bash
+pnpm --filter @workspace/registry schema:check
+pnpm --filter @workspace/registry test:run
+```
+
+The registry package validates descriptor structure; template source planning and publication also check repository inventory and selected files. The public registry schema is [`template/v1.json`](https://app.deessejs.com/schema/template/v1.json).
+
+## Copy-first blocks
+
+Place `deesse-block.json` in the block directory. A block declares its capabilities and the packages and files to add to a project:
+
+```json
+{
+  "$schema": "https://app.deessejs.com/schema/block/v1.json",
+  "formatVersion": 1,
+  "name": "analytics",
+  "version": "1.0.0",
+  "description": "Adds analytics setup",
+  "provides": [{ "capability": "analytics", "provider": "acme", "package": "web" }],
+  "install": {
+    "packages": [{ "id": "web", "path": "." }],
+    "files": [{ "from": "src/analytics.ts", "to": { "package": "web", "path": "src/analytics.ts" } }]
+  }
+}
+```
+
+`name` and package IDs use lowercase letters, numbers, and hyphens, starting with a letter. `version` is semantic version syntax. Each `provides` entry identifies a capability, provider, and package. `install.packages` maps IDs to project paths, and each file maps a source-relative `from` path to a destination package and path. Optional `environment` entries declare variables and whether they are required and secret; optional `manualSteps` describe work the CLI cannot perform.
+
+Check a local block directory, including referenced files and package manifests, with:
+
+```bash
+deesse block check ./path/to/block
+```
+
+Inspect the descriptor with `deesse block info ./path/to/block`. For GitHub sources, both commands accept a public HTTPS repository or supported directory URL; `--ref <git-ref>` selects a ref. See `deesse block check --help` for options. The public schema is [`block/v1.json`](https://app.deessejs.com/schema/block/v1.json).
+
+The checked-in generated schemas and implementation are maintained in [`@workspace/registry`](https://github.com/deessejs/deessejs/tree/staging/packages/registry): template and block V1 contracts, source resolution, validation, and selection behavior.
