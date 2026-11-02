@@ -36,7 +36,7 @@
 
 > **Started from [`deessejs/saas-template`](https://github.com/deessejs/saas-template)** (MIT, July 2026). This repo was cloned from it as the foundation for the deessejs main app and has since diverged. See [DESIGN.md](DESIGN.md) for the current state of the monorepo.
 
-> 👉 **Need workspaces / multi-tenant?** See [`deessejs/saas-template-multi-tenant`](https://github.com/deessejs/saas-template-multi-tenant) — same monorepo with the Better Auth Organization plugin wired in, for users who need per-tenant data isolation and invite-based memberships.
+This repository now includes organization support. See the [organization section](#organizations) for shipped capabilities and current UI limits.
 
 ---
 
@@ -44,13 +44,14 @@
 
 | Layer             | What you get                                                                                                                                    | Why it matters                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| **Apps**          | `apps/web` (marketing), `apps/app` (authenticated product), `apps/docs` (Fumadocs)                                                              | Three deployable surfaces, each with its own purpose.                          |
+| **Apps**          | `apps/web` (marketing), `apps/app` (authenticated product), `apps/docs` (Fumadocs), `apps/storybook`, `apps/cli`, `apps/create-deesse-app` | Six applications for marketing, product, documentation, component catalogue, and scaffolding.                          |
+| **Agent**         | `apps/agent` (`@deessejs-agent`), a GitHub bot built on Vercel eve                                                                         | Automates GitHub interactions.                                                 |
 | **Auth**          | `packages/auth` (server-side Better Auth configuration and plugins), accessed by applications through configured auth clients and API endpoints | Production auth flows with email verification and password reset.              |
 | **API**           | Hono and oRPC in `packages/api`                                                                                                                 | Type-safe RPC without GraphQL.                                                 |
 | **Database**      | Drizzle ORM, Postgres and pg-mem in `packages/database`                                                                                         | Single source of truth for schema; tests run without a DB.                     |
 | **UI**            | `packages/ui` ( shadcn/ui + Tailwind v4, centralized design tokens                                                                              | One component library, every app reuses it.                                    |
 | **Tooling**       | pnpm 11 workspaces, Turbo v2, strict catalogs, shared Oxlint + TS configs                                                                       | One command rebuilds, lints, types, tests the whole monorepo.                  |
-| **Organizations** | Better Auth organization plugin, organization/member/invitation schema and invitation delivery                                                  | Organization support is wired in; the member-management UI is not shipped yet. |
+| **Organizations** | Better Auth organization plugin, organization/member/invitation schema and invitation delivery                                                  | Organization creation, membership, invitation delivery and GitHub project import are implemented; member-management UI is not shipped. |
 
 ## Why this stack
 
@@ -58,7 +59,7 @@
 - **Lockfile-clean pnpm catalogs.** All shared versions live in `pnpm-workspace.yaml` with `catalogMode: strict`. No drift between apps.
 - **Real auth flow.** Email verification is enforced in the proxy. No "demo" auth.
 - **Real database.** Postgres locally (Docker) or in the cloud. Schema is generated, not hand-written.
-- **Three apps, one repo.** Marketing, product, docs. Each deployable independently to Vercel.
+- **Six applications, one repo.** Marketing, product, docs, Storybook, CLI and standalone scaffolder, plus the GitHub agent.
 
 ## Quick start
 
@@ -67,7 +68,7 @@
 
 ### Prerequisites
 
-- Node.js **22.0.0+** (`engines.node: ">=22.0.0"` enforced)
+- Node.js **22.14.0+** for the CLI (`apps/cli/package.json`); workspace workflows use Node.js 24
 - pnpm **11+** (`corepack enable` if not installed)
 - Docker (for local Postgres). Skip if you point `DATABASE_URL` at a remote DB
 
@@ -168,7 +169,7 @@ Click the **Deploy with Vercel** button at the top. The monorepo is detected aut
 
 ## Organizations
 
-Organization support is enabled in `packages/auth` and persisted through the generated schema in `packages/database`. The current product includes organization creation and invitations. The member-management UI is not shipped yet. The target application boundary uses auth and API clients. `apps/app/lib/admin-auth.ts` and the device page still contain legacy direct auth calls, tracked as migration targets in `WORKSPACES.md`.
+Organization support is enabled in `packages/auth` and persisted through the generated schema in `packages/database`. The product supports organization creation, membership and invitations, as well as GitHub App connections and project imports. A dedicated member-management UI is not shipped yet. The target application boundary uses auth and API clients. `apps/app/lib/admin-auth.ts` and the device page still contain legacy direct auth calls, tracked as migration targets in `WORKSPACES.md`.
 
 ## Architecture notes
 
