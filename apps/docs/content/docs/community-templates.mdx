@@ -1,0 +1,32 @@
+---
+title: Organization and community templates
+description: Manage organization templates and submit them for public registry review.
+---
+
+An organization owns its templates. Each template points to a public GitHub repository. Add a template to make it available to that organization. This step leaves it out of the public catalogue.
+
+## Manage organization templates
+
+Open the organization’s template management area in the app. Organization members can view templates and publication status. Only members with a managing role can add a template, submit it, or withdraw a pending request.
+
+To add a template, provide its slug, display name, public GitHub repository URL, category, labels, and optional description and license fallback. When you add it, the app fetches the repository and stores a snapshot for management display.
+
+Use a lowercase slug with letters, numbers, and hyphens for community submission. The repository needs a public URL and a license. If its snapshot lacks a license, provide a license fallback.
+
+## Submit for publication
+
+Submit the organization template from its management view. Confirm that the organization has distribution rights. The server resolves the repository’s current default branch to a fixed commit. It checks that commit for a valid root `deesse-template.json` and installable file selection, then records the request for review.
+
+A template can have only one pending request. A manager can withdraw that request. After rejection, a manager can fix the template and submit it again.
+
+## Review and approval
+
+Administrators review pending submissions in the admin area. They can approve a request with an optional note or reject it with a required reason. Approval sets the submitted snapshot as current in the public registry. When an administrator approves a newer request for the same template, the system supersedes the previous publication.
+
+The organization view shows whether a template currently appears in the public registry. It also shows the latest request’s review status and reason.
+
+## What becomes public
+
+The public registry exposes the approved template metadata and repository snapshot captured at submission, including its fixed source commit. Public users can discover and install the template through the catalogue and CLI. Approval leaves the organization’s other templates private. Repository updates leave the approved snapshot unchanged. Submit an updated publication for review.
+
+See [CLI introduction](./cli-introduction) and [CLI commands](./cli-commands) for browsing and installing templates.

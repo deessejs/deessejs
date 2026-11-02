@@ -11,6 +11,8 @@
     "cli-auth",
     "cli-commands",
     "cli-blocks",
+    "community-templates",
+    "template-authoring",
     "---Projects---",
     "projects-github-import"
   ]
