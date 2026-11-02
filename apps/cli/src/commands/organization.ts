@@ -271,10 +271,11 @@ organizationTemplateCommand
     await runOrganizationTemplateAction(
       options,
       "Fetching organization templates...",
-      async (client) => {
+      async (client, complete) => {
         const { templates } = await client.organization.templates.list({
           organizationSlug,
         })
+        complete()
         if (options.json) printJson({ templates })
         else printOrganizationTemplatesTable(templates)
       }
@@ -292,7 +293,7 @@ organizationTemplateCommand
       await runOrganizationTemplateAction(
         options,
         "Fetching organization template...",
-        async (client) => {
+        async (client, complete) => {
           const { templates } = await client.organization.templates.list({
             organizationSlug,
           })
@@ -302,6 +303,7 @@ organizationTemplateCommand
               "organization_api_error",
               `Template "${slug}" not found in organization "${organizationSlug}".`
             )
+          complete()
           if (options.json) printJson({ template })
           else printOrganizationTemplateInfo(template)
         }
@@ -342,7 +344,7 @@ organizationTemplateCommand
       await runOrganizationTemplateAction(
         options,
         "Adding organization template...",
-        async (client) => {
+        async (client, complete) => {
           let template: Awaited<
             ReturnType<typeof client.organization.templates.create>
           >
@@ -374,6 +376,7 @@ organizationTemplateCommand
             }
             throw error
           }
+          complete()
           if (options.json)
             printJson({
               template,
@@ -392,7 +395,7 @@ organizationTemplateCommand
 async function runOrganizationTemplateAction(
   options: JsonOption,
   message: string,
-  action: (client: ORPCClient) => Promise<void>
+  action: (client: ORPCClient, complete: () => void) => Promise<void>
 ): Promise<void> {
   let client: ORPCClient
   try {
@@ -401,7 +404,11 @@ async function runOrganizationTemplateAction(
     reportError(error, options.json ?? false)
   }
   const spinner = options.json ? null : ora(message).start()
-  await reportAction(() => action(client), options.json ?? false, spinner)
+  await reportAction(
+    () => action(client, () => spinner?.succeed()),
+    options.json ?? false,
+    null
+  )
 }
 
 function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
