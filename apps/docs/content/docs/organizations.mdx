@@ -5,39 +5,39 @@ description: Create and work in organization workspaces.
 
 # Organizations
 
-An organization is a shared workspace. Your organization membership determines which workspaces you can open and which organization settings you can manage.
+An organization gives its members a shared workspace. Your membership determines which workspaces and organization settings you can access.
 
 ## Create or find an organization
 
-Open **Organizations** from the workspace switcher, or go to `/organizations`. The page lists organizations you belong to; search by name or slug to find one. Select an organization to open its workspace.
+Open **Organizations** from the workspace switcher, or go to `/organizations`. Search the list by organization name or slug, then select an organization to open its workspace.
 
-Choose **New organization** (also available in the workspace switcher) to create one. Enter a name and select **Create**. The address slug is generated for you, and you are taken to the new workspace as its owner. Your email must be verified first. Names must be 1–100 characters, without leading or trailing spaces or control characters. Reserved or unavailable slugs are handled by the service when it generates the address.
+Choose **New organization** in the list or workspace switcher. Enter a name and select **Create**. The service creates the address slug and opens the new workspace under your owner account. Verify your email before creating an organization. Names must contain 1–100 characters. Don't use leading or trailing spaces or control characters. The service skips reserved or unavailable slugs when it creates the address.
 
-If creation reports that one is already in progress for your account, wait briefly and try again. If creation still fails, retry from the Organizations page.
+If the page says another creation already runs for your account, wait for it to finish before trying again. If creation still fails, try again from **Organizations**.
 
 ## Workspace and navigation
 
-A workspace URL starts with its organization slug, for example `/<organization-slug>/home`. The sidebar switcher lets you move among organizations you belong to, return to **All organizations**, or create another organization. Workspace navigation includes Home, Projects, Templates, and Settings. Organization routes require membership; a workspace you do not belong to is unavailable to you.
+A workspace URL starts with its organization slug, for example `/<organization-slug>/home`. Use the sidebar switcher to move among organizations you belong to, open **All organizations**, or create another organization. The workspace includes Home, Projects, Templates, and Settings. You need organization membership to open its workspace.
 
 ## Members and invitations
 
-Open **Settings → Members** to see the roster. The list shows each member's name, email, and role. Owners and admins can invite someone by email. Invitations grant the **member** role when accepted, and expire after 48 hours.
+Open **Settings → Members** to see the roster. The list shows each member's name, email, and role. Owners and admins can invite someone by email. The invitation assigns the **member** role after acceptance and expires after 48 hours.
 
-The invited person should open the link in the invitation email and sign in or create an account with that same email address. They must verify the address before accepting. If the page shows a different signed-in email, use **Switch account** and sign in with the invited address. After acceptance, the person joins the organization and is taken to its workspace.
+The invited person should open the link in the invitation email and sign in or create an account with that email address. They must verify their email before they can accept. If the page shows a different signed-in email, select **Switch account** and sign in with the invited address. After the person accepts, the app opens the organization's workspace.
 
-Owners and admins can see pending invitations, resend an invitation (which starts a new 48-hour period), or cancel it. If a link is unavailable or expired, ask an owner or admin to resend the invitation.
+Owners and admins can see pending invitations, select **Resend** to start a new 48-hour period, or cancel an invitation. If a link expires or becomes unavailable, ask an owner or admin to select **Resend**.
 
 ## Roles and permissions
 
-- **Owner**: created as the organization's owner and can manage organization settings and invitations.
+- **Owner**: created as the organization's owner; can manage organization settings and invitations.
 - **Admin**: can manage organization settings and invitations.
 - **Member**: can access the workspace and view the member roster.
 
-The current member screen does not provide controls to change roles or remove members. Invitations from this screen always assign the member role.
+The member screen doesn't offer role changes or member removal. Invitations from this screen always assign the member role.
 
-## If something does not work
+## If something doesn't work
 
-- If an organization is missing, confirm you are signed in to the expected account and search by its name or slug. Only organizations you belong to appear.
-- If you cannot open a workspace or manage its settings, check that you are signed in to an account that belongs to it. Settings and pending invitations require an owner or admin role.
-- If you cannot create an organization, verify your email and check that the name meets the rules above. A creation already running for your account must finish before another can start.
-- If an invitation cannot be accepted, confirm the link is still valid, use the invited email account, and verify that email. Ask an owner or admin to resend an expired or unavailable invitation.
+- If an organization doesn't appear, confirm that you signed in to the expected account. Search by its name or slug. The list includes only organizations you belong to.
+- If you can't open a workspace or manage its settings, confirm that your account belongs to the organization. Settings and pending invitations require an owner or admin role.
+- If you can't create an organization, verify your email and check the name rules above. Wait for any creation already running for your account to finish.
+- If you can't accept an invitation, check that the link remains valid, sign in with the invited email, and verify that address. Ask an owner or admin to select **Resend** if the invitation expired or became unavailable.
