@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 const owner = "deessejs"
 const repo = "deessejs"
@@ -22,9 +24,9 @@ function classify(name) {
   if (s.includes("setup-node") || s.includes("setup node")) return "node setup/cache restore"
   if (s.includes("install dependencies") || s === "run pnpm install --frozen-lockfile") return "pnpm install"
   if (s.includes("postgres") || s.includes("wait for services")) return "service readiness"
-  if (/test|vitest|playwright|e2e|smoke/.test(s)) return "tests"
   if (s.includes("lint")) return "lint"
   if (s.includes("typecheck") || s.includes("type check")) return "typecheck"
+  if (/test|vitest|playwright|e2e|smoke/.test(s)) return "tests"
   if (s.includes("build")) return "build"
   if (s.includes("cache")) return "cache"
   return "other"
@@ -95,21 +97,63 @@ function gh(path) {
   return JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }))
 }
 
-function collect(limit, event, workflow) {
-  const response = gh(`repos/${owner}/${repo}/actions/runs?per_page=${Math.min(limit, 100)}`)
-  const runs = response.workflow_runs.filter(r => (!event || r.event === event) && (!workflow || r.name === workflow)).slice(0, limit)
-  return runs.map(r => ({ ...r, jobs: gh(`repos/${owner}/${repo}/actions/runs/${r.id}/jobs?per_page=100`).jobs }))
+async function collectRuns({ limit, event, workflow, fetchPage, maxPages = 10 }) {
+  const runs = []
+  let totalCount = 0
+  let pagesRead = 0
+  for (let page = 1; page <= maxPages && runs.length < limit; page++) {
+    const response = await fetchPage(page, event)
+    pagesRead = page
+    totalCount = response.total_count ?? totalCount
+    for (const run of response.workflow_runs ?? []) {
+      if ((!event || run.event === event) && (!workflow || run.name === workflow)) runs.push(run)
+      if (runs.length === limit) break
+    }
+    if (!(response.workflow_runs ?? []).length || page * 100 >= (response.total_count ?? 0)) break
+  }
+  if (runs.length < limit && pagesRead < maxPages && runs.length < totalCount) {
+    throw new Error(`Only ${runs.length} matching runs found, but ${limit} requested (${totalCount} API results available).`)
+  }
+  if (runs.length < limit && pagesRead === maxPages && runs.length < totalCount) {
+    throw new Error(`Pagination safety limit reached after ${pagesRead} pages: collected ${runs.length} matching runs, ${limit} requested. Narrow the event/workflow or request fewer runs.`)
+  }
+  return runs
 }
 
-export { analyze, classify, duration, markdown, percentile, summary }
+function isEntrypoint(moduleUrl, argvPath, platform = process.platform) {
+  if (!argvPath) return false
+  const pathApi = platform === "win32" ? path.win32 : path.posix
+  let modulePath
+  if (platform === "win32") {
+    const url = new URL(moduleUrl)
+    modulePath = decodeURIComponent(url.pathname).replace(/^\/(?=[A-Za-z]:)/, "")
+  } else {
+    modulePath = fileURLToPath(moduleUrl)
+  }
+  return pathApi.normalize(pathApi.resolve(modulePath)) === pathApi.normalize(pathApi.resolve(argvPath))
+}
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+function collect(limit, event, workflow) {
+  const fetchPage = async page => {
+    const params = new URLSearchParams({ per_page: "100", page: String(page) })
+    if (event) params.set("event", event)
+    return gh(`repos/${owner}/${repo}/actions/runs?${params}`)
+  }
+  return collectRuns({ limit, event, workflow, fetchPage }).then(runs => runs.map(r => ({
+    ...r,
+    jobs: gh(`repos/${owner}/${repo}/actions/runs/${r.id}/jobs?per_page=100`).jobs,
+  })))
+}
+
+export { analyze, classify, collectRuns, duration, isEntrypoint, markdown, percentile, summary }
+
+if (isEntrypoint(import.meta.url, process.argv[1])) {
   const args = process.argv.slice(2)
   const arg = name => args.includes(name) ? args[args.indexOf(name) + 1] : undefined
   try {
     const limit = Number(arg("--limit") ?? 100)
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("--limit must be an integer from 1 to 100")
-    const jobs = analyze(collect(limit, arg("--event"), arg("--workflow")))
+    const jobs = analyze(await collect(limit, arg("--event"), arg("--workflow")))
     process.stdout.write(args.includes("--json") ? `${JSON.stringify({ jobs, summary: summary(jobs) }, null, 2)}\n` : markdown(jobs))
   } catch (error) {
     console.error(`CI timing collection failed: ${error.message}`)

@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { analyze, classify, duration, percentile, summary } from "./ci-timings.mjs"
+import { analyze, classify, collectRuns, duration, isEntrypoint, percentile, summary } from "./ci-timings.mjs"
 
 test("duration rejects missing, invalid, and negative timestamps", () => {
   assert.equal(duration("2026-01-01T00:00:00Z", "2026-01-01T00:00:05Z"), 5)
@@ -20,6 +20,32 @@ test("step categories capture common bootstrap and validation names", () => {
   assert.equal(classify("Checkout"), "checkout")
   assert.equal(classify("Run pnpm install --frozen-lockfile"), "pnpm install")
   assert.equal(classify("Run integration tests"), "tests")
+  assert.equal(classify("Typecheck create-deesse-app e2e harness"), "typecheck")
+  assert.equal(classify("Run packed CLI init regression test:e2e:init"), "tests")
+})
+
+test("entrypoint comparison handles POSIX and Windows paths", () => {
+  assert.equal(isEntrypoint("file:///repo/scripts/ci-timings.mjs", "/repo/scripts/ci-timings.mjs", "linux"), true)
+  assert.equal(isEntrypoint("file:///C:/repo/scripts/ci-timings.mjs", "C:\\repo\\scripts\\ci-timings.mjs", "win32"), true)
+  assert.equal(isEntrypoint("file:///C:/repo/scripts/ci-timings.mjs", "C:\\repo\\scripts\\other.mjs", "win32"), false)
+})
+
+test("collectRuns paginates mixed workflows to requested matching cohort", async () => {
+  const calls = []
+  const pages = [
+    { total_count: 250, workflow_runs: Array.from({ length: 100 }, (_, i) => ({ id: i, event: "pull_request", name: i < 10 ? "CI" : "Other" })) },
+    { total_count: 250, workflow_runs: Array.from({ length: 100 }, (_, i) => ({ id: 100 + i, event: "pull_request", name: i < 20 ? "CI" : "Other" })) },
+    { total_count: 250, workflow_runs: Array.from({ length: 50 }, (_, i) => ({ id: 200 + i, event: "pull_request", name: "CI" })) },
+  ]
+  const runs = await collectRuns({ limit: 25, event: "pull_request", workflow: "CI", fetchPage: async (page, event) => { calls.push([page, event]); return pages[page - 1] } })
+  assert.equal(runs.length, 25)
+  assert.deepEqual(calls, [[1, "pull_request"], [2, "pull_request"]])
+  assert.equal(runs.at(-1).id, 114)
+})
+
+test("collectRuns fails rather than silently returning undersized samples", async () => {
+  await assert.rejects(collectRuns({ limit: 4, workflow: "CI", fetchPage: async () => ({ total_count: 4, workflow_runs: [{ name: "Other" }] }) }), /Only 0 matching runs found/)
+  await assert.rejects(collectRuns({ limit: 2, workflow: "CI", maxPages: 1, fetchPage: async () => ({ total_count: 250, workflow_runs: [{ name: "CI" }] }) }), /safety limit reached/)
 })
 
 test("analyze preserves provenance and reports cache hit as unknown", () => {
