@@ -21,6 +21,10 @@ The development server uses port 3000 by default. The root `pnpm dev` command st
 
 The route guard is `proxy.ts`. It resolves the session through the API and applies the email verification check to protected routes.
 
+## Shipped capabilities
+
+The authenticated product supports organization workspaces, organization creation and invitations, and GitHub App connection and project import. Imported organization projects have project home pages. The app does not yet provide a dedicated member-management interface. See the [organization and project routes](../../apps/app/app/(protected)/(workspace)) and the [auth and API implementation](../../packages/api/README.md).
+
 ## Architecture
 
 - `app/api/[[...route]]/route.ts` exposes the shared Hono API from `@workspace/api`.
