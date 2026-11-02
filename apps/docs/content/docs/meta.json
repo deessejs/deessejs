@@ -9,6 +9,8 @@
     "cli-introduction",
     "cli-auth",
     "cli-commands",
-    "cli-blocks"
+    "cli-blocks",
+    "---Projects---",
+    "projects-github-import"
   ]
 }
