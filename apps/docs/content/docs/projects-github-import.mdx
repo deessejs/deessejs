@@ -41,7 +41,7 @@ The supported project configuration is version 1. It may contain:
 
 An alias must correspond to a configured path. Paths must be safe repository-relative paths; the validator rejects absolute paths, backslashes, glob syntax, and other unsafe forms. Unknown or unsupported fields and format versions are reported as validation diagnostics. Use the diagnostics in the review to correct the file in GitHub, then retry inspection.
 
-The review shows whether configuration is valid, the pinned commit, and counts for configured paths and aliases. It does not display the raw configuration. **Confirm Import** is available only when the configuration is valid.
+The review shows whether configuration is valid, the pinned commit, and counts for configured paths and aliases. It doesn’t display the raw configuration. **Confirm Import** is available only when the configuration is valid.
 
 ## Import and open the project
 
@@ -52,7 +52,7 @@ The review shows whether configuration is valid, the pinned commit, and counts f
 
 ## Troubleshooting
 
-- **GitHub account is not connected:** return to organization Settings and choose **Connect GitHub account**.
+- **GitHub account isn’t connected:** return to organization Settings and choose **Connect GitHub account**.
 - **No installation is connected:** use **Manage GitHub** from the import page, then install the app in organization Settings.
 - **Repository is missing from the list:** confirm that the selected installation grants access to it and that the connected GitHub account can access it. Change the installation if needed.
 - **No `deesse.json` or no default branch:** add the file at the repository root on its default branch, or set a default branch in GitHub, then inspect again.
