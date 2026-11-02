@@ -241,7 +241,12 @@ jobs:
         id: validate-minio
         if: steps.minio-cache.outputs.cache-hit == 'true'
         run: |
-          if ! "$RUNNER_TEMP/minio-bin/minio" --version | grep -Fq 'RELEASE.2025-10-15T17-29-55Z'; then
+          # `go install` builds this revision as DEVELOPMENT.GOGET, so its
+          # runtime version does not include the source release tag. The exact
+          # revision is enforced by the cache key; check the expected build
+          # mode and that the cached executable can initialize the server CLI.
+          if ! "$RUNNER_TEMP/minio-bin/minio" --version | grep -Fq 'DEVELOPMENT.GOGET' || \
+            ! "$RUNNER_TEMP/minio-bin/minio" server --help >/dev/null 2>&1; then
             echo "valid=false" >> "$GITHUB_OUTPUT"
           else
             echo "valid=true" >> "$GITHUB_OUTPUT"
