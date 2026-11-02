@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/server"
 import {
   AvatarCompleteRequestV1,
   AvatarCompleteResponseV1,
@@ -34,15 +33,22 @@ const uploadInput = AvatarUploadRequestV1
 const uploadOutput = AvatarUploadResponseV1
 const avatarOutput = AvatarImageV1
 
-const rethrowAvatarError = (error: unknown): never => {
+const rethrowAvatarError = (
+  error: unknown,
+  errors: {
+    AVATAR_UPLOAD_INVALID: () => Error
+    AVATAR_UPLOAD_NOT_FOUND: () => Error
+    AVATAR_ACCESS_DENIED: () => Error
+  }
+): never => {
   if (error instanceof Error && error.message === "AVATAR_UPLOAD_INVALID") {
-    throw new ORPCError("AVATAR_UPLOAD_INVALID")
+    throw errors.AVATAR_UPLOAD_INVALID()
   }
   if (error instanceof Error && error.message === "AVATAR_UPLOAD_NOT_FOUND") {
-    throw new ORPCError("AVATAR_UPLOAD_NOT_FOUND")
+    throw errors.AVATAR_UPLOAD_NOT_FOUND()
   }
   if (error instanceof Error && error.message === "AVATAR_ACCESS_DENIED") {
-    throw new ORPCError("AVATAR_ACCESS_DENIED")
+    throw errors.AVATAR_ACCESS_DENIED()
   }
   throw error
 }
@@ -58,7 +64,7 @@ const createUpload = base
   .errors(avatarErrors)
   .use(authGuard)
   .output(uploadOutput)
-  .handler(async ({ context, input }) => {
+  .handler(async ({ context, input, errors }) => {
     try {
       return await createAvatarUpload(
         { kind: "user", userId: context.user.id },
@@ -66,7 +72,7 @@ const createUpload = base
         input.byteSize
       )
     } catch (error) {
-      return rethrowAvatarError(error)
+      return rethrowAvatarError(error, errors)
     }
   })
 
@@ -75,14 +81,14 @@ const complete = base
   .errors(avatarErrors)
   .use(authGuard)
   .output(AvatarCompleteResponseV1)
-  .handler(async ({ context, input }) => {
+  .handler(async ({ context, input, errors }) => {
     try {
       return await completeAvatarUpload(
         { kind: "user", userId: context.user.id },
         input.uploadId
       )
     } catch (error) {
-      return rethrowAvatarError(error)
+      return rethrowAvatarError(error, errors)
     }
   })
 
@@ -130,7 +136,7 @@ const organizationCreateUpload = base
         input.byteSize
       )
     } catch (error) {
-      return rethrowAvatarError(error)
+      return rethrowAvatarError(error, errors)
     }
   })
 
@@ -159,7 +165,7 @@ const organizationComplete = base
         input.uploadId
       )
     } catch (error) {
-      return rethrowAvatarError(error)
+      return rethrowAvatarError(error, errors)
     }
   })
 

@@ -2,7 +2,7 @@ import { createHmac, randomUUID } from "node:crypto"
 import { Readable } from "node:stream"
 import { eq, inArray } from "drizzle-orm"
 import sharp from "sharp"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { inject } from "vitest"
 
 import { auth } from "@workspace/auth"
@@ -17,26 +17,26 @@ import {
   userAvatars,
 } from "@workspace/database/schema"
 import { api } from "../../../src/index.js"
+import { findOrganizationForMember } from "../../../src/core/organization/membership.js"
+import { getAvatarStorage } from "../../../src/core/avatars/storage.js"
 
 const POSTGRES_READY = inject("postgres:ready") === true
 const SESSION_COOKIE_NAME = "better-auth.session_token"
 
 const storageFake = vi.hoisted(() => {
   const objects = new Map<string, Buffer>()
-  let keyNumber = 0
   return {
     objects,
     failPut: false,
     reset() {
       objects.clear()
       this.failPut = false
-      keyNumber = 0
     },
     createAvatarKeys() {
-      keyNumber += 1
+      const id = randomUUID()
       return {
-        stagedKey: `test/staged/${keyNumber}`,
-        objectKey: `test/final/${keyNumber}`,
+        stagedKey: `test/staged/${id}`,
+        objectKey: `test/final/${id}`,
       }
     },
     storage: {
@@ -152,7 +152,7 @@ const createdAvatar = async (actor: Actor, organizationSlug?: string) => {
     ? { slug: organizationSlug, contentType: "image/png", byteSize: png.byteLength }
     : { contentType: "image/png", byteSize: png.byteLength }
   const upload = await rpc(path, input, actor.cookie)
-  expect(upload.status).toBe(200)
+  expect(upload.status, JSON.stringify(upload.body)).toBe(200)
   const payload = upload.body.json as { uploadId: string; uploadUrl: string }
   const key = decodeURIComponent(lastPathSegment(payload.uploadUrl))
   storageFake.objects.set(key, png)
@@ -190,6 +190,9 @@ afterEach(async () => {
 })
 
 describe.skipIf(!POSTGRES_READY)("avatar API integration", () => {
+  beforeEach(() => {
+    expect(getAvatarStorage()).toBe(storageFake.storage)
+  })
   it("rejects unauthenticated requests and hides avatars from unrelated users", async () => {
     const owner = await createActor()
     const stranger = await createActor()
@@ -244,6 +247,15 @@ describe.skipIf(!POSTGRES_READY)("avatar API integration", () => {
     await addMember(org.id, viewer.id, "member")
     await addMember(org.id, admin.id, "admin")
     await addMember(otherOrg.id, outsider.id, "owner")
+    const memberships = await db
+      .select({ organizationId: member.organizationId, role: member.role })
+      .from(member)
+      .where(eq(member.userId, owner.id))
+    expect(memberships).toEqual([{ organizationId: org.id, role: "owner" }])
+    expect(await findOrganizationForMember(owner.id, org.slug)).toMatchObject({
+      id: org.id,
+      role: "owner",
+    })
 
     const deniedUpload = await rpc(
       ["organization", "avatar", "createUpload"],
