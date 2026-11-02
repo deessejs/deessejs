@@ -4,8 +4,10 @@ test("blog pagination appends, restores through history, and has a crawlable URL
   page,
 }) => {
   await page.goto("/blog")
-  const loadMore = page.getByRole("link", { name: "Load blog posts page 2" })
-  await expect(loadMore).toHaveAttribute("href", "/blog?page=2")
+  const loadMore = page.getByRole("button", { name: "Load blog posts page 2" })
+  await expect(
+    page.getByRole("link", { name: "Go to blog posts page 2" })
+  ).toHaveAttribute("href", "/blog?page=2")
   const initialCards = await page
     .locator("a[aria-label]")
     .evaluateAll((nodes) =>
@@ -15,8 +17,8 @@ test("blog pagination appends, restores through history, and has a crawlable URL
   await loadMore.click()
   await expect(page).toHaveURL(/\/blog\?page=2$/)
   await expect(
-    page.getByRole("link", { name: "Load blog posts page 3" })
-  ).toBeVisible()
+    page.getByRole("link", { name: "Go to blog posts page 3" })
+  ).toHaveCount(0)
   const appendedCards = await page
     .locator("a[aria-label]")
     .evaluateAll((nodes) =>
@@ -27,11 +29,11 @@ test("blog pagination appends, restores through history, and has a crawlable URL
 
   await page.reload()
   await expect(
-    page.getByRole("link", { name: "Load blog posts page 3" })
-  ).toBeVisible()
+    page.getByRole("link", { name: "Go to blog posts page 3" })
+  ).toHaveCount(0)
   await page.goBack()
   await expect(page).toHaveURL("/blog")
   await expect(
-    page.getByRole("link", { name: "Load blog posts page 2" })
+    page.getByRole("button", { name: "Load blog posts page 2" })
   ).toBeVisible()
 })

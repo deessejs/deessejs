@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { BLOG_PAGE_SIZE, getPostPage } from "../../src/lib/blog/pagination"
+import { vi } from "vitest"
+vi.mock("content-collections", () => ({ allPosts: [] }))
+import { BLOG_PAGE_SIZE, getPostPage } from "../../src/lib/blog/posts"
 import type { Post } from "../../src/lib/blog/types"
 
 const posts = Array.from({ length: BLOG_PAGE_SIZE * 2 + 1 }, (_, index) => ({

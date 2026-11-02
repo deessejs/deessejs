@@ -2,9 +2,9 @@
 
 import {
   useDeferredValue,
-  useEffect,
   useMemo,
   useState,
+  useEffect,
   type ReactNode,
 } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
@@ -13,7 +13,7 @@ import { Search, X } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import type { Post } from "@/lib/blog/types"
-import { BLOG_PAGE_SIZE } from "@/lib/blog/pagination"
+import { BLOG_PAGE_SIZE } from "@/lib/blog/posts"
 
 import { PostCardGrid } from "./blog-post-grid"
 
@@ -54,7 +54,7 @@ export function BlogSearch({
   const showEmpty = isSearching && filtered.length === 0
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [visibleCount, setVisibleCount] = useState(
+  const [visibleCount, setVisibleCount] = useState(() =>
     Math.min(page * BLOG_PAGE_SIZE, posts.length)
   )
   const [loading, setLoading] = useState(false)
@@ -158,23 +158,20 @@ export function BlogSearch({
         <div className="flex justify-center border-x border-b border-border py-6">
           <a
             href={nextHref}
-            onClick={(event) => {
-              if (
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              )
-                return
-              event.preventDefault()
-              loadMore()
-            }}
-            aria-disabled={loading}
-            aria-label={`Load blog posts page ${nextPage}`}
+            aria-label={`Go to blog posts page ${nextPage}`}
             className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
-            {loading ? "Loading…" : "Load more"}
+            Next page
           </a>
+          <Button
+            type="button"
+            disabled={loading}
+            aria-label={`Load blog posts page ${nextPage}`}
+            aria-busy={loading}
+            onClick={loadMore}
+          >
+            {loading ? "Loading…" : "Load more"}
+          </Button>
         </div>
       ) : null}
     </div>
