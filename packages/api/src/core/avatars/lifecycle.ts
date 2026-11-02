@@ -387,15 +387,8 @@ export async function removeOrganizationAvatar(organizationId: string) {
   return { success: true as const }
 }
 
-export async function cleanupAvatars() {
-  const now = new Date()
-  let cleaned = 0
-
-  // Delete successful rows as we go so each next page advances without offsets.
-  // The page and iteration caps keep a single cron request bounded while allowing
-  // subsequent daily runs to continue draining a larger backlog.
-  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
-    const expiredUploads = await db
+async function cleanupExpiredUploadBatch(now: Date) {
+  const expiredUploads = await db
       .select({
         id: storageUploads.id,
         objectId: storageUploads.objectId,
@@ -406,39 +399,39 @@ export async function cleanupAvatars() {
       .where(lte(storageUploads.cleanupAfter, now))
       .orderBy(asc(storageUploads.cleanupAfter), asc(storageUploads.id))
       .limit(CLEANUP_BATCH_SIZE)
-    if (expiredUploads.length === 0) break
+  let cleaned = 0
 
-    for (const upload of expiredUploads) {
-      if (!(await deleteStaged(upload.stagedKey))) continue
-      if (upload.state === "pending") {
-        const [object] = await db
+  for (const upload of expiredUploads) {
+    if (!(await deleteStaged(upload.stagedKey))) continue
+    if (upload.state === "pending") {
+      const [object] = await db
           .select({ objectKey: storageObjects.objectKey })
           .from(storageObjects)
           .where(eq(storageObjects.id, upload.objectId))
           .limit(1)
-        if (object) {
-          try {
-            await getAvatarStorage().deleteObject(object.objectKey)
-            await db
-              .delete(storageObjects)
-              .where(eq(storageObjects.id, upload.objectId))
-          } catch {
-            await db
-              .update(storageObjects)
-              .set({ state: "delete_pending", cleanupAfter: now })
-              .where(eq(storageObjects.id, upload.objectId))
-            continue
-          }
+      if (object) {
+        try {
+          await getAvatarStorage().deleteObject(object.objectKey)
+          await db
+            .delete(storageObjects)
+            .where(eq(storageObjects.id, upload.objectId))
+        } catch {
+          await db
+            .update(storageObjects)
+            .set({ state: "delete_pending", cleanupAfter: now })
+            .where(eq(storageObjects.id, upload.objectId))
+          continue
         }
       }
-      await db.delete(storageUploads).where(eq(storageUploads.id, upload.id))
-      cleaned += 1
     }
-    if (expiredUploads.length < CLEANUP_BATCH_SIZE) break
+    await db.delete(storageUploads).where(eq(storageUploads.id, upload.id))
+    cleaned += 1
   }
+  return { cleaned, count: expiredUploads.length }
+}
 
-  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
-    const expiredObjects = await db
+async function cleanupExpiredObjectBatch(now: Date) {
+  const expiredObjects = await db
       .select({ id: storageObjects.id, objectKey: storageObjects.objectKey })
       .from(storageObjects)
       .where(
@@ -449,12 +442,28 @@ export async function cleanupAvatars() {
       )
       .orderBy(asc(storageObjects.cleanupAfter), asc(storageObjects.id))
       .limit(CLEANUP_BATCH_SIZE)
-    if (expiredObjects.length === 0) break
-    for (const object of expiredObjects) {
-      await removeObject(object.id)
-      cleaned += 1
-    }
-    if (expiredObjects.length < CLEANUP_BATCH_SIZE) break
+  for (const object of expiredObjects) {
+    await removeObject(object.id)
+  }
+  return { count: expiredObjects.length }
+}
+
+export async function cleanupAvatars() {
+  const now = new Date()
+  let cleaned = 0
+
+  // Delete successful rows as we go so each next page advances without offsets.
+  // The page and iteration caps keep a single cron request bounded while allowing
+  // subsequent daily runs to continue draining a larger backlog.
+  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+    const result = await cleanupExpiredUploadBatch(now)
+    cleaned += result.cleaned
+    if (result.count < CLEANUP_BATCH_SIZE) break
+  }
+  for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+    const result = await cleanupExpiredObjectBatch(now)
+    cleaned += result.count
+    if (result.count < CLEANUP_BATCH_SIZE) break
   }
   return { cleaned }
 }
