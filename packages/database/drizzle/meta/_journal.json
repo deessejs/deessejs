@@ -57,6 +57,13 @@
       "when": 1793250143382,
       "tag": "0007_solid_hawkeye",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793322409997,
+      "tag": "0008_green_justin_hammer",
+      "breakpoints": true
     }
   ]
 }

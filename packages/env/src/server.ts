@@ -94,6 +94,13 @@ function getServerEnv(): Readonly<ServerEnv> {
     DOCS_URL: env.DOCS_URL,
     API_BASE_URL: env.API_BASE_URL,
     PARENT_DOMAIN: env.PARENT_DOMAIN,
+    R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
+    R2_AVATARS_BUCKET: env.R2_AVATARS_BUCKET,
+    R2_ENDPOINT: env.R2_ENDPOINT,
+    R2_REGION: env.R2_REGION,
+    CRON_SECRET: env.CRON_SECRET,
     // Test-only override for the email-verification-on-invitation
     // contract. See `schema.ts` for the rationale. The default
     // ("true") is applied by the schema when the env var is absent.

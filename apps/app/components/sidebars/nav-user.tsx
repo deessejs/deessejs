@@ -40,14 +40,21 @@ import {
   HouseIcon,
   LogOutIcon,
 } from "lucide-react"
-import { useQueryClient } from "@tanstack/react-query"
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
+import { orpcBrowser } from "@/lib/orpc-browser"
 import { SETTINGS_PATHS } from "@/lib/settings-paths"
 import { APP_URL, DOCS_URL, WEB_URL } from "@/lib/app-config"
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
 const HELP_URL = new URL("/help", WEB_URL).toString()
 const CHANGELOG_URL = new URL("/changelog", WEB_URL).toString()
+const profileAvatarQueryOptions = () =>
+  queryOptions({
+    queryKey: ["profile", "avatar"],
+    queryFn: () => orpcBrowser.profile.avatar.get(),
+    retry: false,
+  })
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -88,6 +95,10 @@ export function NavUser() {
   // async callback (useCallback body), which IS a violation. Here at
   // top-level, useSession() is correct.
   const { data: session } = authClient.useSession()
+  const avatar = useQuery({
+    ...profileAvatarQueryOptions(),
+    enabled: Boolean(session?.user),
+  })
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
@@ -115,7 +126,8 @@ export function NavUser() {
     )
   }
 
-  const avatarUrl = getAvatarUrl(user.email, user.image)
+  const avatarUrl =
+    avatar.data?.imageUrl ?? getAvatarUrl(user.email, user.image)
   const initials = getInitials(user.name)
 
   return (
