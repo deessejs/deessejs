@@ -25,9 +25,8 @@ Contracts cover needs shared across each app.
 - Email (Resend in prod, console in dev)
 - Storage (S3-compatible)
 - Cookies (General Data Protection Regulation (GDPR) consent banner and Zustand store)
-- Payments (Stripe via Better Auth)
 
-Each template combines one **surface** with a set of contracts. For example, `next-app-starter` combines `web` with `{auth, database, email, cookies}`. `expo-starter` combines `mobile` with `{auth, database}`. Every template uses the same contract wiring, so the patterns carry across projects.
+Each template combines one **surface** with the contracts it implements. For example, `next-app-starter` combines `web` with `{auth, database, email, cookies}`, while `expo-starter` combines `mobile` with `{auth, database}`. Contract availability varies by template. This repository provides no shared Stripe payments implementation.
 
 ## DeesseJS at a glance
 

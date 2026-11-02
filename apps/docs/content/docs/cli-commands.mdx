@@ -207,6 +207,24 @@ Exit code `0` means local sign-out finished, even if the server returned non-2xx
 
 ---
 
+## `deessejs organization`
+
+Organization commands require a session created with `deessejs auth login`.
+
+```bash
+deessejs organization list
+deessejs organization info acme
+deessejs organization create "Acme Studio"
+```
+
+| Command | Effect |
+| --- | --- |
+| `organization list` | List organizations the signed-in user belongs to. |
+| `organization info <slug>` | Show an organization the signed-in user belongs to. |
+| `organization create <name>` | Create an organization through the authenticated provisioning API. |
+
+Each command accepts `--json` for scripting. See the [CLI package reference](https://github.com/deessejs/deessejs/blob/staging/apps/cli/README.md) for details.
+
 ## Error codes reference
 
 These public error codes are intended for scripting. Some internal errors are also included in JSON output and may change between releases.

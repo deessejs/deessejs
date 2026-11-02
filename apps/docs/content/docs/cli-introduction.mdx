@@ -26,11 +26,11 @@ npm install -g @deessejs/cli
 deessejs init <slug>
 ```
 
-The CLI publishes to npm with provenance from its GitHub Actions release workflow. Every npm release ships as stable. The CLI offers no `@canary` or pre-release channel.
+The release workflow publishes stable releases to npm’s `latest` channel. It can also publish an on-demand prerelease of the current `staging` branch to npm’s `canary` channel. Pull requests receive temporary previews through [pkg.pr.new](https://pkg.pr.new).
 
 ## Requirements
 
-- **Node.js 20.0.0 or newer**: declared in `engines`. `npx` and global installs both enforce it.
+- **Node.js 22.14.0 or newer**: declared in [`apps/cli/package.json`](https://github.com/deessejs/deessejs/blob/staging/apps/cli/package.json). `npx` and global installs both enforce it.
 - **GitHub access**: required by `init` to download the repository archive and read its descriptor.
 - **A package manager**: `pnpm`, `npm`, `yarn`, or `bun`. `init` picks one based on the generated project. Override with `--pm <name>`.
 
