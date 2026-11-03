@@ -9,7 +9,7 @@ metadata:
 
 Read the repository-root `DESIGN.md` before design work. It remains the single design authority; Impeccable provides a repeatable workflow and diagnostic checks, not a competing visual system. Preserve the documented shadcn implementation foundation, Geist/Vercel visual reference, and DeesseJS brand choices. Evaluate findings in context. Intentional motifs, including the dotted motif when present, are not defects by default; exempt only the specific supported finding when appropriate.
 
-Use Impeccable for structured design work and its detector. Use `.claude/skills/unslop` for its distinct slop-removal workflow and story-video work. When both are relevant, follow `DESIGN.md` for visual decisions and assess either tool's suggestions against it. Do not blindly remove intentional project patterns.
+Use Impeccable for structured design work and its detector. Use `.agents/skills/unslop` for its distinct slop-removal workflow and story-video work. When both are relevant, follow `DESIGN.md` for visual decisions and assess either tool's suggestions against it. Do not blindly remove intentional project patterns.
 
 The detector is opt-in and manual during this pilot. Do not enable project hooks or add mandatory CI checks. Run `.agents/skills/impeccable/scripts/impeccable detect <file-or-url>` and interpret findings before recommending changes.
 
