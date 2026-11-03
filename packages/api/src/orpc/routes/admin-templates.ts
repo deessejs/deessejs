@@ -16,6 +16,8 @@ import {
   TemplateSourceFetchError,
 } from "../../core/templates/admin.js"
 import { adminProcedure } from "../admin-middleware.js"
+import { API_BASE_PATH } from "../../constants/base-path.js"
+import { serverEnv } from "@workspace/env/server"
 
 const adminTemplate = z.object({
   id: z.string().uuid(),
@@ -29,6 +31,7 @@ const adminTemplate = z.object({
   licenseFallback: z.string().nullable(),
   access: z.enum(["free", "paid"]),
   imageName: z.string().nullable(),
+  imageUrl: z.string().url().nullable(),
   repositoryName: z.string(),
   canonicalUrl: z.string().url(),
   stars: z.number().int().nonnegative().nullable(),
@@ -96,6 +99,7 @@ export const list = adminProcedure
         licenseFallback: templates.licenseFallback,
         access: templates.access,
         imageName: templates.imageName,
+        imageObjectId: templates.imageObjectId,
         repositoryName: templateRepositorySnapshots.repositoryName,
         canonicalUrl: templateRepositorySnapshots.canonicalUrl,
         stars: templateRepositorySnapshots.stars,
@@ -113,6 +117,9 @@ export const list = adminProcedure
       templates: rows.map((row) => ({
         ...row,
         fetchedAt: row.fetchedAt.toISOString(),
+        imageUrl: row.imageObjectId
+          ? `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`
+          : null,
       })),
     }
   })

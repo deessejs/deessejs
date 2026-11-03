@@ -12,7 +12,9 @@ import { Field, PasswordField } from "./field"
 import { PasswordStrength } from "./password-strength"
 import { signupSchema } from "@/components/auth/schemas"
 
-export function SignupForm() {
+export function SignupForm({
+	redirectTo = "/home",
+}: { redirectTo?: string } = {}) {
 	const router = useRouter()
 
 	const form = useForm({
@@ -43,7 +45,12 @@ export function SignupForm() {
 					name: value.name,
 				},
 				{
-					onSuccess: () => router.push("/verify-email"),
+					callbackURL: redirectTo,
+					onSuccess: () => {
+						const params = new URLSearchParams({ email: value.email })
+						if (redirectTo !== "/home") params.set("redirectTo", redirectTo)
+						router.push(`/verify-email?${params.toString()}`)
+					},
 				}
 			)
 			if (error) {
@@ -145,12 +152,12 @@ export function SignupForm() {
 				</div>
 			</div>
 
-			<OAuthButtons />
+			<OAuthButtons callbackURL={redirectTo} />
 
 			<p className="text-center text-sm text-muted-foreground">
 				Already have an account?{" "}
 				<Link
-					href="/login"
+					href={`/login?redirect=${encodeURIComponent(redirectTo)}`}
 					className="text-primary underline-offset-4 hover:underline"
 				>
 					Log in

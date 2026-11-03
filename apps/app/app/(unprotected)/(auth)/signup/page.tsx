@@ -1,6 +1,17 @@
 import { AuthContainer, SignupForm } from "@/components/auth"
+import { safeRedirect } from "@workspace/utils/safe-redirect"
 
-export default function SignupPage() {
+export default async function SignupPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ redirect?: string | string[] }>
+}) {
+	const params = await searchParams
+	const rawRedirect = Array.isArray(params.redirect)
+		? params.redirect[0]
+		: params.redirect
+	const redirectTo = safeRedirect(rawRedirect, "/home")
+
 	return (
 		<AuthContainer.Root>
 			<AuthContainer.Header
@@ -8,7 +19,7 @@ export default function SignupPage() {
 				description="Sign up to get started."
 			/>
 			<AuthContainer.Content>
-				<SignupForm />
+				<SignupForm redirectTo={redirectTo} />
 			</AuthContainer.Content>
 		</AuthContainer.Root>
 	)

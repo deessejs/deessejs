@@ -1,0 +1,7 @@
+[mcp_servers.codegraph]
+command = "npx"
+args = ["--yes", "@colbymchenry/codegraph@1.6.2", "serve", "--mcp"]
+enabled = true
+
+[mcp_servers.codegraph.env]
+CODEGRAPH_TELEMETRY = "0"

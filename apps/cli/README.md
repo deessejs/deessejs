@@ -2,6 +2,8 @@
 
 CLI for the DeesseJS template registry and block sources.
 
+Requires Node.js 22.14 or later.
+
 ## Install
 
 The package is published as `@deessejs/cli` and exposes the `deessejs` executable:
@@ -17,13 +19,16 @@ Other release channels:
 
 ## Commands
 
-| Command                              | Role                                                            |
-| ------------------------------------ | --------------------------------------------------------------- |
-| `deessejs init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
-| `deessejs list`                      | List available templates                                        |
-| `deessejs info <slug-or-github-url>` | Show validated descriptor details for a template                |
-| `deessejs block info <source>`       | Show a validated block descriptor summary                       |
-| `deessejs block check [source]`      | Validate a block descriptor and its referenced assets           |
+| Command                               | Role                                                            |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `deessejs init <slug-or-github-url>`  | Create a project from a catalog template or a GitHub repository |
+| `deessejs list`                       | List available templates                                        |
+| `deessejs info <slug-or-github-url>`  | Show validated descriptor details for a template                |
+| `deessejs block info <source>`        | Show a validated block descriptor summary                       |
+| `deessejs block check [source]`       | Validate a block descriptor and its referenced assets           |
+| `deessejs organization list`          | List organizations the signed-in user belongs to                |
+| `deessejs organization info <slug>`   | Show one of the signed-in user's organizations                  |
+| `deessejs organization create <name>` | Create an organization                                          |
 
 ## Examples
 
@@ -40,15 +45,29 @@ deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
 deessejs init https://github.com/owner/repository
 deessejs init saas-starter --verbose
+deessejs auth login
+deessejs organization list
+deessejs organization info acme
+deessejs organization create "Acme Studio"
+deessejs organization list --json
+deessejs organization template list acme --json
+deessejs organization template info acme starter-kit
+deessejs organization template add acme --slug starter-kit --name "Starter Kit" --repository https://github.com/acme/starter-kit --category saas
 ```
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
+
+If the selected files include a root `deesse.json`, `init` validates it against project config V1 and preserves its contents. If the template does not include one, `init` creates a default config with the project schema URL and `formatVersion: 1`.
 
 `info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
 
 `block info` accepts a local block directory, a public HTTPS GitHub repository URL, a shorthand GitHub directory URL such as `https://github.com/owner/repository/block`, or a canonical `/tree/<ref>/<block-path>` URL. It resolves a remote ref to a commit before reading the root `deesse-block.json` and the package manifests declared by its file mappings. It does not modify a project, install dependencies or execute package scripts. `--json` returns the descriptor, package summaries and source identity.
 
 `block check` accepts the same local and GitHub sources and defaults to the current directory when no source is given. It validates the descriptor and reads every file declared in `install.files`, including package manifests. It reports all unreadable assets without writing to the project, installing dependencies or executing package scripts. It does not yet plan changes against a receiving project. Use `--json` for stable diagnostic codes and source paths.
+
+Organization commands require an active session from `deessejs auth login`. `list` and `info` use Better Auth's authenticated organization endpoints and only show organizations the caller belongs to. `create` proposes a slug from the name, then sends the name and slug through DeesseJS's authenticated provisioning API. The server validates the slug, resolves collisions and returns the stored slug. Creating an organization does not change the active organization. Each command accepts `--json` for scripting.
+
+`organization template list <organization-slug>` lists all templates owned by that organization that the signed-in user can access, including templates that have not been submitted for publication. `info <organization-slug> <template-slug>` shows one owned template. Both expose review and publication state independently from organization ownership. `add <organization-slug>` requires `--slug`, `--name`, `--repository` and `--category`; optional metadata uses `--description`, repeatable `--label` (repeat the option for each label) and `--license`. The API validates the public GitHub repository and requires an organization owner or admin. Adding a template creates an organization-owned entry; it does not publish it. Use `--json` for scripting.
 
 By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to print the resolved template source, ref, destination, commit, and selected file count, as well as the full package manager output when installation runs. Verbose details go to stderr so `--json` keeps stdout machine-readable. The details are also shown with `--no-install`.
 

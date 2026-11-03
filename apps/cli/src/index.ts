@@ -10,6 +10,7 @@ import { blockCommand } from "./commands/block.js"
 import { initCommand } from "./commands/init.js"
 import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
+import { organizationCommand } from "./commands/organization.js"
 import { printError } from "./output/index.js"
 import { CliError } from "./errors/index.js"
 
@@ -24,6 +25,7 @@ program.addCommand(listCommand)
 program.addCommand(infoCommand)
 program.addCommand(initCommand)
 program.addCommand(blockCommand)
+program.addCommand(organizationCommand)
 
 // auth subcommand (the device-authorization flow). Three children: login (request
 // device code, open browser, poll), status (print stored

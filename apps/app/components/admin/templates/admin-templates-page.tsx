@@ -13,6 +13,7 @@ import {
 import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { Button } from "@workspace/ui/components/button"
+import Image from "next/image"
 import {
   InputGroup,
   InputGroupAddon,
@@ -26,6 +27,7 @@ import {
   SearchIcon,
 } from "lucide-react"
 import { CreateTemplateDialog } from "./create-template-dialog"
+import { TemplateImageUpload } from "./template-image-upload"
 
 type AdminClient = RouterClient<typeof appRouter>
 type AdminTemplate = Awaited<
@@ -106,6 +108,32 @@ const columns = column.columns([
       >
         {fetchedAtFormatter.format(new Date(getValue()))}
       </time>
+    ),
+  }),
+  column.display({
+    id: "presentation",
+    header: "Presentation image",
+    cell: ({ row }) => (
+      <div className="flex min-w-56 items-center gap-3">
+        {row.original.imageUrl ? (
+          <Image
+            src={row.original.imageUrl}
+            alt={`${row.original.name} presentation image`}
+            width={64}
+            height={64}
+            unoptimized
+            className="size-16 rounded-md border object-cover"
+          />
+        ) : (
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
+            No image
+          </div>
+        )}
+        <TemplateImageUpload
+          templateId={row.original.id}
+          onUploaded={() => window.location.reload()}
+        />
+      </div>
     ),
   }),
 ])

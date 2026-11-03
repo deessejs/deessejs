@@ -2,6 +2,7 @@ import pc from "picocolors"
 import type { NormalizedTemplateDescriptorV1 } from "@workspace/registry/v1"
 
 import type { Template } from "../api/index.js"
+import type { OrganizationTemplateV1Type } from "@workspace/contracts/v1"
 import type {
   BlockCheckResult,
   BlockDescriptorInfo,
@@ -15,6 +16,59 @@ export const printTemplatesTable = (templates: Template[]): void => {
   const headers = ["slug", "name", "category", "license"]
   const rows = templates.map((t) => [t.slug, t.name, t.category, t.license])
   printAlignedTable([headers, ...rows])
+}
+
+export type OrganizationRow = {
+  id: string
+  name: string
+  slug: string
+  logo: string | null
+}
+
+export type OrganizationInfo = OrganizationRow & { role: string }
+
+export const printOrganizationsTable = (
+  organizations: OrganizationRow[]
+): void => {
+  if (organizations.length === 0) {
+    process.stdout.write(pc.dim("No organizations found.\n"))
+    return
+  }
+  const rows = organizations.map((organization) => [
+    organization.name,
+    organization.slug,
+  ])
+  printAlignedTable([["name", "slug"], ...rows])
+}
+
+export const printOrganizationTemplatesTable = (
+  templates: OrganizationTemplateV1Type[]
+): void => {
+  if (templates.length === 0) {
+    process.stdout.write(pc.dim("No organization templates found.\n"))
+    return
+  }
+  const headers = ["slug", "name", "ownership", "publication", "review"]
+  const rows = templates.map((template) => [
+    template.slug,
+    template.name,
+    "organization-owned",
+    template.currentlyPublished
+      ? "current"
+      : (template.publication?.publicationState ?? "unpublished"),
+    template.publication?.reviewStatus ?? "not submitted",
+  ])
+  printAlignedTable([headers, ...rows])
+}
+
+export const printOrganizationInfo = (organization: OrganizationInfo): void => {
+  printKeyValueSection("Organization", [
+    ["name", organization.name],
+    ["slug", organization.slug],
+    ["role", organization.role],
+    ["id", organization.id],
+    ["logo", organization.logo ?? "(none)"],
+  ])
 }
 
 export const printTemplateInfo = (

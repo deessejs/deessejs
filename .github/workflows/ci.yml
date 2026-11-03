@@ -10,14 +10,13 @@ on:
 permissions:
   contents: read
 
-env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +29,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - name: Verify generated template descriptor schema
         run: pnpm --filter @workspace/registry schema:check
       - name: Verify generated project configuration schema
@@ -38,11 +40,14 @@ jobs:
         run: pnpm lint:directives
       - name: Lint suppression guard
         run: pnpm lint:guard
-      - run: pnpm turbo lint --force -- --max-warnings=0
+      - run: pnpm turbo lint --summarize -- --max-warnings=0
 
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -65,8 +70,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo build --filter=web --force
-      - run: pnpm turbo typecheck --force
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+      - run: pnpm turbo build --filter=web --summarize
+      - run: pnpm turbo typecheck --summarize
       - name: Typecheck create-deesse-app e2e harness
         # The e2e harness has its own tsconfig (tsconfig.e2e.json)
         # that includes test/e2e/**/*.ts. The main typecheck above
@@ -84,6 +92,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -118,15 +129,21 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       # Env validation: fail fast if production invariants are violated
       # (DATABASE_URL required, BETTER_AUTH_SECRET >= 32 chars, etc.)
       - name: Validate env
         run: pnpm env:check
-      - run: pnpm turbo build --force
+      - run: pnpm turbo build --summarize
 
   test-unit:
     name: Test (Unit)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: test
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -142,6 +159,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - run: pnpm turbo build
       - run: pnpm turbo test
 
@@ -151,6 +171,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,18 +184,24 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+      - name: Build CLI and workspace dependencies
+        run: pnpm turbo build --filter=@deessejs/cli
+
       - name: Typecheck CLI E2E harness
         run: pnpm --filter @deessejs/cli typecheck:e2e
 
-      - name: Build CLI and workspace dependencies
-        run: pnpm turbo build --filter=@deessejs/cli --force
-
       - name: Run packed CLI init regression test
-        run: pnpm --filter @deessejs/cli test:e2e
+        run: pnpm --filter @deessejs/cli test:e2e:init
 
   test-integration:
     name: Test (Integration)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:16-alpine
@@ -196,6 +223,14 @@ jobs:
       # injected via ${{ secrets.* }} in deploy workflows.
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      R2_ACCOUNT_ID: minio
+      R2_ACCESS_KEY_ID: minio-test
+      R2_SECRET_ACCESS_KEY: minio-test-password
+      R2_AVATARS_BUCKET: avatar-e2e
+      R2_ENDPOINT: http://localhost:9000
+      R2_REGION: us-east-1
+      MINIO_ROOT_USER: minio-test
+      MINIO_ROOT_PASSWORD: minio-test-password
       # The templates integration test hits the real GitHub REST
       # API. The standard `secrets.GITHUB_TOKEN` grants 1000 req/min
       # on the workflow run; without it, the anonymous 60 req/h
@@ -216,9 +251,68 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Install Go for the pinned MinIO source build
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.8
+
+      - name: Cache pinned MinIO binary
+        id: minio-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/minio-bin/minio
+          key: minio-${{ runner.os }}-${{ runner.arch }}-go1.24.8-9e49d5e7a648
+
+      - name: Validate cached MinIO binary
+        id: validate-minio
+        if: steps.minio-cache.outputs.cache-hit == 'true'
+        run: |
+          # `go install` builds this revision as DEVELOPMENT.GOGET, so its
+          # runtime version does not include the source release tag. The exact
+          # revision is enforced by the cache key; check the expected build
+          # mode and that the cached executable can initialize the server CLI.
+          if ! "$RUNNER_TEMP/minio-bin/minio" --version | grep -Fq 'DEVELOPMENT.GOGET' || \
+            ! "$RUNNER_TEMP/minio-bin/minio" server --help >/dev/null 2>&1; then
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build MinIO Community Edition from its pinned source release
+        if: steps.minio-cache.outputs.cache-hit != 'true' || steps.validate-minio.outputs.valid != 'true'
+        run: go install github.com/minio/minio@v0.0.0-20251015172955-9e49d5e7a648
+        env:
+          GOBIN: ${{ runner.temp }}/minio-bin
+
+      - name: Add MinIO to PATH
+        run: echo "$RUNNER_TEMP/minio-bin" >> "$GITHUB_PATH"
+
+      - name: Start MinIO and require readiness
+        run: |
+          mkdir -p "$RUNNER_TEMP/minio-data"
+          minio server "$RUNNER_TEMP/minio-data" --address :9000 > "$RUNNER_TEMP/minio.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/ready >/dev/null; then
+              echo "MinIO is ready at http://127.0.0.1:9000"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/minio.log"
+          echo "MinIO failed readiness at http://127.0.0.1:9000" >&2
+          exit 1
 
       - name: Build dependencies
-        run: pnpm turbo build
+        run: >-
+          pnpm turbo build
+          --filter=@workspace/auth
+          --filter=@workspace/api
+          --filter=@workspace/database
+          --filter=@deessejs/cli
 
       - name: Generate migrations
         run: pnpm db:generate
@@ -226,12 +320,21 @@ jobs:
       - name: Apply migrations
         run: pnpm db:migrate
 
+      - name: Run CLI end-to-end tests
+        run: pnpm --filter @deessejs/cli test:e2e:organization
+
       - name: Run integration tests
         # @workspace/database is included so the template catalog
         # constraint tests run against this real PostgreSQL service.
         # The package's own suite is a no-op without a database, so the
         # unit job stays green.
         run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
+
+      - name: Run avatar HTTP E2E against MinIO
+        run: pnpm --filter @workspace/api test:e2e:avatar
+
+      - name: Run template image reference lifecycle tests
+        run: pnpm --filter @workspace/api exec vitest run tests/unit/template-image-lifecycle.test.ts
 
   # create-deesse-app native smoke. Runs the bundled CLI directly on
   # each supported OS so we catch any platform-specific regression in

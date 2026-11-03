@@ -24,6 +24,9 @@ export type InternalCliErrorCode =
   | "invalid_target"
   | "template_invalid"
   | "block_invalid"
+  | "auth_required"
+  | "organization_not_found"
+  | "organization_api_error"
   | "materialize_failed"
   | "install_failed"
   | "internal"
@@ -34,8 +37,13 @@ export class CliError extends Error {
   public readonly code: AnyCliErrorCode
   public readonly hint: string | undefined
 
-  constructor(code: AnyCliErrorCode, message: string, hint?: string) {
-    super(message)
+  constructor(
+    code: AnyCliErrorCode,
+    message: string,
+    hint?: string,
+    cause?: Error
+  ) {
+    super(message, cause ? { cause } : undefined)
     this.name = "CliError"
     this.code = code
     this.hint = hint
@@ -75,11 +83,16 @@ export const invalidTarget = (dir: string, detail: string): CliError =>
     detail
   )
 
-export const templateInvalid = (repository: string, detail: string): CliError =>
+export const templateInvalid = (
+  repository: string,
+  detail: string,
+  cause?: Error
+): CliError =>
   new CliError(
     "template_invalid",
     `template source "${repository}" cannot be installed`,
-    detail
+    detail,
+    cause
   )
 
 export const blockInvalid = (source: string, detail: string): CliError =>

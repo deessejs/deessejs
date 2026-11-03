@@ -1,7 +1,13 @@
 import type { ORPCError } from "@orpc/server"
+import { and, desc, eq } from "drizzle-orm"
 import { z } from "zod"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
-import { assertOrganizationName } from "@workspace/auth/organization/policy"
+import {
+  assertOrganizationName,
+  slugifyOrganizationName,
+} from "@workspace/auth/organization/policy"
+import { db } from "@workspace/database"
+import { invitation, user } from "@workspace/database/schema"
 
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
@@ -41,6 +47,15 @@ const accessDeniedErrors = {
   },
 }
 
+const invitationSummary = z.object({
+  id: z.string(),
+  email: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
+  expiresAt: z.string(),
+  inviterName: z.string(),
+})
+
 /**
  * Reads the organization the caller named, if they belong to it.
  *
@@ -54,7 +69,7 @@ const accessDeniedErrors = {
 const resolveForCaller = async (
   options: { context: { user: { id: string } } },
   slug: string,
-  accessDenied: () => ORPCError<"ORGANIZATION_ACCESS_DENIED", unknown>,
+  accessDenied: () => ORPCError<"ORGANIZATION_ACCESS_DENIED", unknown>
 ) => {
   const org = await findOrganizationForMember(options.context.user.id, slug)
   if (!org) throw accessDenied()
@@ -76,7 +91,7 @@ export const bySlug = base
     const org = await resolveForCaller(
       options,
       input.slug,
-      options.errors.ORGANIZATION_ACCESS_DENIED,
+      options.errors.ORGANIZATION_ACCESS_DENIED
     )
     return options.next({
       context: { ...options.context, organization: org },
@@ -103,7 +118,7 @@ export const settings = base
     const org = await resolveForCaller(
       options,
       input.slug,
-      options.errors.ORGANIZATION_ACCESS_DENIED,
+      options.errors.ORGANIZATION_ACCESS_DENIED
     )
     if (!hasManagingRole(org.role)) {
       throw options.errors.ORGANIZATION_ACCESS_DENIED()
@@ -114,6 +129,53 @@ export const settings = base
   })
   .output(organizationSummary)
   .handler(async ({ context }) => context.organization)
+
+/** Pending invitations are visible to owners and admins only. */
+export const pendingInvitations = base
+  .input(z.object({ slug: z.string() }))
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED
+    )
+    if (!hasManagingRole(org.role)) {
+      throw options.errors.ORGANIZATION_ACCESS_DENIED()
+    }
+    return options.next({
+      context: { ...options.context, organization: org },
+    })
+  })
+  .output(z.array(invitationSummary))
+  .handler(async ({ context }) => {
+    const rows = await db
+      .select({
+        id: invitation.id,
+        email: invitation.email,
+        status: invitation.status,
+        createdAt: invitation.createdAt,
+        expiresAt: invitation.expiresAt,
+        inviterName: user.name,
+      })
+      .from(invitation)
+      .innerJoin(user, eq(invitation.inviterId, user.id))
+      .where(
+        and(
+          eq(invitation.organizationId, context.organization.id),
+          eq(invitation.status, "pending")
+        )
+      )
+      .orderBy(desc(invitation.createdAt))
+      .limit(100)
+
+    return rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    }))
+  })
 
 /**
  * The state of the caller's active organization.
@@ -145,7 +207,7 @@ export const active = base
     const org = activeOrganizationId
       ? await findOrganizationForMemberById(
           options.context.user.id,
-          activeOrganizationId,
+          activeOrganizationId
         )
       : null
 
@@ -176,7 +238,7 @@ export const active = base
         }),
         role: z.string(),
       }),
-    ]),
+    ])
   )
   .handler(async ({ context }) => context.activeState)
 
@@ -195,6 +257,10 @@ const createErrors = {
     status: 400,
     message: "That organization name cannot be used.",
   },
+  ORGANIZATION_SLUG_INVALID: {
+    status: 400,
+    message: "That organization slug cannot be used.",
+  },
   ORGANIZATION_EMAIL_VERIFICATION_REQUIRED: {
     status: 403,
     message: "Verify your email before creating an organization.",
@@ -212,10 +278,9 @@ const createErrors = {
 /**
  * Creates an organization for the caller.
  *
- * The caller gives a name and nothing else. The slug is the
- * server's: the input schema has no slug field, and Zod drops the
- * unknown key, so a slug that arrives in the body is discarded before
- * the handler sees it. The creation itself belongs to the
+ * The caller gives a name and a proposed slug. The server validates
+ * the slug and decides the stored value after collision handling. The
+ * creation itself belongs to the
  * provisioning flow, which owns the operation row, the retry against
  * the database, the compensation and the recovery.
  *
@@ -224,7 +289,7 @@ const createErrors = {
  * ones.
  */
 export const create = base
-  .input(z.object({ name: z.string() }))
+  .input(z.object({ name: z.string(), slug: z.string().optional() }))
   .errors(createErrors)
   .use(authGuard)
   .use(async (options, input) => {
@@ -250,12 +315,16 @@ export const create = base
       created = await provisionOrganization({
         userId: options.context.user.id,
         name: input.name,
+        slug: input.slug ?? slugifyOrganizationName(input.name),
         headers: options.context.headers,
       })
     } catch (error) {
       if (error instanceof OrganizationProvisioningError) {
         if (error.code === "ORGANIZATION_NAME_INVALID") {
           throw options.errors.ORGANIZATION_NAME_INVALID()
+        }
+        if (error.code === "ORGANIZATION_SLUG_INVALID") {
+          throw options.errors.ORGANIZATION_SLUG_INVALID()
         }
         if (error.code === "ORGANIZATION_CREATE_IN_PROGRESS") {
           throw options.errors.ORGANIZATION_CREATE_IN_PROGRESS()
@@ -281,6 +350,7 @@ export const create = base
 export const organizationRouter = {
   bySlug,
   settings,
+  pendingInvitations,
   active,
   create,
 }

@@ -1,5 +1,9 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
+import {
+  OrganizationTemplateCreateInputV1,
+  OrganizationTemplatesListResponseV1,
+} from "@workspace/contracts/v1"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   db,
@@ -9,7 +13,6 @@ import {
   templateRepositorySnapshots,
   templates,
 } from "@workspace/database"
-import { CATEGORY_SLUGS } from "../../templates-labels.js"
 import {
   acquireTemplateRepository,
   InvalidTemplateSourceError,
@@ -22,6 +25,7 @@ import {
 } from "../../core/templates/validate-publication-source.js"
 import { findOrganizationForMember } from "../../core/organization/membership.js"
 import { authGuard } from "../auth-middleware.js"
+import { transitionPendingPublicationImageReference } from "../../core/templates/images.js"
 import { base } from "../base.js"
 
 const accessDeniedErrors = {
@@ -38,38 +42,6 @@ const resolveOrganizationForInput = async (
   organizationSlug: string
 ) => findOrganizationForMember(userId, organizationSlug)
 
-const organizationTemplate = z.object({
-  id: z.string().uuid(),
-  slug: z.string(),
-  name: z.string(),
-  description: z.string(),
-  owner: z.string(),
-  repo: z.string(),
-  category: z.string(),
-  labels: z.array(z.string()),
-  license: z.string(),
-  canonicalUrl: z.string().url(),
-  repositoryName: z.string(),
-  stars: z.number().int().nonnegative().nullable(),
-  fetchedAt: z.string().datetime(),
-  currentlyPublished: z.boolean(),
-  publication: z
-    .object({
-      reviewStatus: z.enum(["pending", "approved", "rejected", "withdrawn"]),
-      publicationState: z.enum([
-        "unpublished",
-        "current",
-        "superseded",
-        "removed",
-      ]),
-      submittedAt: z.string().datetime(),
-      reviewReason: z.string().nullable(),
-    })
-    .nullable(),
-})
-
-const listOutput = z.object({ templates: z.array(organizationTemplate) })
-
 export const list = base
   .input(listInput)
   .errors(accessDeniedErrors)
@@ -85,7 +57,7 @@ export const list = base
     })
   })
 
-  .output(listOutput)
+  .output(OrganizationTemplatesListResponseV1)
   .handler(async ({ context }) => {
     const rows = await db
       .select({
@@ -196,17 +168,6 @@ export const list = base
     }
   })
 
-const createInput = z.object({
-  organizationSlug: z.string().min(1),
-  slug: z.string().trim().min(1).max(100),
-  name: z.string().trim().min(1).max(200),
-  repositoryUrl: z.string().trim().min(1).max(2048),
-  descriptionOverride: z.string().trim().max(10000).nullable().optional(),
-  category: z.enum(CATEGORY_SLUGS),
-  labels: z.array(z.string().trim().min(1).max(64)).max(50),
-  licenseFallback: z.string().trim().max(128).nullable().optional(),
-})
-
 const createOutput = z.object({
   id: z.string().uuid(),
   slug: z.string(),
@@ -240,7 +201,7 @@ function hasPostgresCode(error: unknown, code: string): boolean {
 }
 
 export const create = base
-  .input(createInput)
+  .input(OrganizationTemplateCreateInputV1)
   .errors(createErrors)
   .use(authGuard)
   .use(async (options, input) => {
@@ -417,6 +378,7 @@ export const submit = base
         category: templates.category,
         labels: templates.labels,
         imageName: templates.imageName,
+        imageObjectId: templates.imageObjectId,
         licenseFallback: templates.licenseFallback,
       })
       .from(templates)
@@ -483,6 +445,21 @@ export const submit = base
           throw errors.ORGANIZATION_ACCESS_DENIED()
         }
 
+        // Serialize submission snapshotting with working-image replacement.
+        const [lockedTemplate] = await tx
+          .select({ imageObjectId: templates.imageObjectId })
+          .from(templates)
+          .where(
+            and(
+              eq(templates.id, template.id),
+              eq(templates.ownerType, "organization"),
+              eq(templates.organizationId, context.organization.id)
+            )
+          )
+          .for("update")
+          .limit(1)
+        if (!lockedTemplate) throw errors.ORGANIZATION_ACCESS_DENIED()
+
         const [pending] = await tx
           .select({ id: templatePublications.id })
           .from(templatePublications)
@@ -515,6 +492,7 @@ export const submit = base
             category: template.category,
             labels: template.labels,
             imageName: template.imageName,
+            imageObjectId: lockedTemplate.imageObjectId,
             license,
             repositoryName: acquired.snapshot.repositoryName,
             canonicalUrl: acquired.snapshot.canonicalUrl,
@@ -589,9 +567,9 @@ export const withdraw = base
         throw errors.ORGANIZATION_ACCESS_DENIED()
       }
 
-      const [withdrawn] = await tx
-        .update(templatePublications)
-        .set({ reviewStatus: "withdrawn" })
+      const [pending] = await tx
+        .select({ id: templatePublications.id })
+        .from(templatePublications)
         .where(
           and(
             eq(templatePublications.templateId, input.templateId),
@@ -599,7 +577,14 @@ export const withdraw = base
             eq(templatePublications.reviewStatus, "pending")
           )
         )
-        .returning({ id: templatePublications.id })
+        .limit(1)
+      const withdrawn = pending
+        ? await transitionPendingPublicationImageReference(
+            tx,
+            pending.id,
+            "withdrawn"
+          )
+        : null
       if (!withdrawn) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
       return withdrawn
     })

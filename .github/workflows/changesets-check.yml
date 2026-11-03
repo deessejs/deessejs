@@ -23,7 +23,7 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF" --depth=1
+          git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
           if git merge-base "origin/$BASE_REF" "$HEAD_SHA" >/dev/null 2>&1; then
             DIFF_ARGS=("origin/$BASE_REF...$HEAD_SHA")
           else
