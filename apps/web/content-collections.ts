@@ -266,10 +266,21 @@ const kbTopics = defineCollection({
     description: z.string().min(1).max(280),
     order: z.number().int().nonnegative().default(0),
     tags: z.array(z.string()).default([]),
+    recommendedGuides: z.array(z.string().min(1)).default([]),
     content: z.string(),
   }),
   transform: async (topic, context) => {
     const slug = topic._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")
+
+    const guides = context.documents(kbGuides)
+    for (const guideSlug of topic.recommendedGuides) {
+      if (!guides.some((guide) => guide._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "") === guideSlug)) {
+        throw new Error(
+          `Topic "${slug}" recommends unknown guide "${guideSlug}". ` +
+            `Add content/knowledge-base/guides/${guideSlug}.mdx or fix recommendedGuides.`
+        )
+      }
+    }
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [

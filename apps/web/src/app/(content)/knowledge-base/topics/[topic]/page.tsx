@@ -35,6 +35,11 @@ export default async function KnowledgeTopicPage({
   const topicGuides = allKbGuides
     .filter((g) => g.topic === topicDoc.slug)
     .sort((a, b) => a.order - b.order)
+  const recommendedGuides = topicDoc.recommendedGuides.map((slug) => {
+    const guide = allKbGuides.find((candidate) => candidate.slug === slug)
+    if (!guide) throw new Error(`Topic "${topicDoc.slug}" recommends unknown guide "${slug}".`)
+    return guide
+  })
 
   return (
     <section className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
@@ -71,6 +76,17 @@ export default async function KnowledgeTopicPage({
       </header>
 
       <MdxRenderer className="mt-8" code={topicDoc.mdxCode} />
+
+      {recommendedGuides.length > 0 ? (
+        <section className="mt-12 flex flex-col gap-4" aria-labelledby="recommended-guides-heading">
+          <h2 id="recommended-guides-heading" className="text-3xl font-semibold tracking-tight">
+            Recommended guides
+          </h2>
+          <div className="-mx-4 sm:-mx-6 lg:mx-0">
+            <TopicGuideList guides={recommendedGuides} />
+          </div>
+        </section>
+      ) : null}
 
       <section
         id="guides-in-this-topic"
