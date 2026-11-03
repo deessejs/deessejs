@@ -19,7 +19,7 @@ const program = new Command()
 program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry and blocks")
-  .version(readPackageVersion())
+  .version(readPackageVersion(), "-v, --version")
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)
