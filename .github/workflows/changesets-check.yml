@@ -72,6 +72,7 @@ jobs:
             .changeset/bright-org-templates.md \
             .changeset/bright-pandas-config.md \
             .changeset/clever-orgs-list.md \
+            .github/workflows/changesets-check.yml \
             .github/workflows/release.yml \
             apps/cli/CHANGELOG.md \
             apps/cli/package.json)
