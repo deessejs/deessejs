@@ -12,7 +12,7 @@ import { TRUST_BADGES } from "@/lib/enterprise/trust-badges"
  * badges. The eyebrow + heading pair rides above the grid inside
  * a full-width band, matching the homepage section header recipe.
  *
- * Border strategy (Pattern C from `.claude/skills/tailwind-borders`):
+ * Border strategy (Pattern C from `border strategy guidance`):
  * the shared `KbCardGrid` paints the wrapper with `bg-border`,
  * lets `gap-px` carry the separator between cells, and per-cell
  * `bg-background` covers the inside. This handles the last-row

@@ -18,7 +18,7 @@ export type TemplateGridProps = {
  * - `flex` on each `<li>` lets the child Card fill the cell height.
  *   The Card itself is `h-full` (see `TemplateCard`).
  *
- * Border strategy (Pattern B — see `.claude/skills/tailwind-borders`):
+ * Border strategy (Pattern B — see `border strategy guidance`):
  * - Each cell carries `border-r border-b` always.
  * - The inner `<ul>` shifts by `-mr-px -mb-px` so the last column's
  *   right border and the last row's bottom border are clipped by the

@@ -3,7 +3,7 @@ import { cn } from "@workspace/ui/lib/utils"
 /**
  * Responsive grid wrapper for KB cards.
  *
- * Border strategy (Pattern C from `.claude/skills/tailwind-borders`):
+ * Border strategy (Pattern C from `border strategy guidance`):
  * - Wrapper paints in `bg-border` (the border color).
  * - `gap-px` leaves a 1-px stripe of that bg between cells and along
  *   the wrapper's outer edges.
@@ -31,7 +31,7 @@ import { cn } from "@workspace/ui/lib/utils"
  * Pattern C has no such rule, so the top of the first row aligns to
  * the wrapper's border with no duplicate.
  *
- * Pattern C is documented in `.claude/skills/tailwind-borders` as
+ * Pattern C is documented in `border strategy guidance` as
  * the right recipe for "grids needing both axes". It is what
  * `PostCardGrid` would converge to if Pattern B (negative margins
  * + overflow-hidden) were not already shipped.
