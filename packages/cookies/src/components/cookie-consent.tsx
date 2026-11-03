@@ -144,9 +144,9 @@ export function CookieConsent() {
   // Banner — only shown on first visit (hasDecided is false)
   if (!hasDecided) {
     return (
-      <div className="fixed right-0 bottom-0 left-0 z-50 p-4 sm:right-4 sm:bottom-4 sm:left-auto sm:max-w-sm">
+      <div className="fixed right-0 bottom-0 left-0 z-50 p-2 sm:right-4 sm:bottom-4 sm:left-auto sm:max-w-sm sm:p-0">
         <Card className="shadow-lg">
-          <CardHeader className="pb-2">
+          <CardHeader className="gap-1 p-3 pb-2 sm:gap-2 sm:p-6 sm:pb-2">
             <div className="flex items-center gap-2">
               <Cookie className="size-5" />
               <CardTitle className="text-lg">We use cookies</CardTitle>
@@ -162,7 +162,7 @@ export function CookieConsent() {
               </Link>
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 sm:flex-row">
+          <CardContent className="flex flex-row gap-2 p-3 pt-0 sm:p-6 sm:pt-0">
             <Button
               variant="outline"
               size="sm"

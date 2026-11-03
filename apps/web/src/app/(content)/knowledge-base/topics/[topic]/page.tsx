@@ -10,6 +10,7 @@ import {
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
+import { RecommendedGuides } from "@/components/knowledge-base/recommended-guides"
 import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
 import { TopicEmptyState } from "@/components/knowledge-base/topic-empty-state"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
@@ -35,6 +36,11 @@ export default async function KnowledgeTopicPage({
   const topicGuides = allKbGuides
     .filter((g) => g.topic === topicDoc.slug)
     .sort((a, b) => a.order - b.order)
+  const recommendedGuides = topicDoc.recommendedGuides.map((slug) => {
+    const guide = allKbGuides.find((candidate) => candidate.slug === slug)
+    if (!guide) throw new Error(`Topic "${topicDoc.slug}" recommends unknown guide "${slug}".`)
+    return guide
+  })
 
   return (
     <section className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
@@ -71,6 +77,8 @@ export default async function KnowledgeTopicPage({
       </header>
 
       <MdxRenderer className="mt-8" code={topicDoc.mdxCode} />
+
+      <RecommendedGuides guides={recommendedGuides} />
 
       <section
         id="guides-in-this-topic"

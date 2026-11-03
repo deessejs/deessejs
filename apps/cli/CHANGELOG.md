@@ -1,5 +1,16 @@
 # @deessejs/cli
 
+## 3.0.0
+
+### Major Changes
+
+- Create a default `deesse.json` when initializing templates that do not include one, and validate project configs provided by templates. Requires Node.js 22.14 or later.
+
+### Minor Changes
+
+- Add commands to list, inspect, and add organization-owned templates.
+- Add organization list, info, and create commands.
+
 ## 2.0.1
 
 ### Patch Changes

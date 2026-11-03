@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
@@ -328,6 +329,20 @@ function TemplateRows({
       {templates.map((template) => (
         <tr key={template.id}>
           <td className="max-w-sm px-4 py-3">
+            {template.imageUrl ? (
+              <Image
+                src={template.imageUrl}
+                alt={`${template.name} presentation image`}
+                width={48}
+                height={48}
+                unoptimized
+                className="mb-2 size-12 rounded-md border object-cover"
+              />
+            ) : (
+              <div className="mb-2 flex size-12 items-center justify-center rounded-md border border-dashed text-center text-[10px] text-muted-foreground">
+                No image
+              </div>
+            )}
             <a
               className="font-medium underline-offset-4 hover:underline"
               href={template.canonicalUrl}

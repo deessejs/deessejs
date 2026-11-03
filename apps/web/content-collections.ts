@@ -5,6 +5,7 @@ import type { Element, Root } from "hast"
 import { visit } from "unist-util-visit"
 import { z } from "zod"
 import readingTime from "reading-time"
+import { validateRecommendedGuideSlugs } from "./src/lib/knowledge-base/recommended-guides.js"
 
 /**
  * Build-time rehype plugin that assigns stable `id` attributes to
@@ -266,10 +267,18 @@ const kbTopics = defineCollection({
     description: z.string().min(1).max(280),
     order: z.number().int().nonnegative().default(0),
     tags: z.array(z.string()).default([]),
+    recommendedGuides: z.array(z.string().min(1)).default([]),
     content: z.string(),
   }),
   transform: async (topic, context) => {
     const slug = topic._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")
+
+    const guides = context.documents(kbGuides)
+    validateRecommendedGuideSlugs(
+      slug,
+      topic.recommendedGuides,
+      new Set(guides.map((guide) => guide._meta.filePath.replace(/^.*\//, "").replace(/\.mdx$/, "")))
+    )
 
     const mdxCode = await compileMDX(context, topic, {
       rehypePlugins: [
