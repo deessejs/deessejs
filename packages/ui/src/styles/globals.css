@@ -11,15 +11,44 @@
     --font-heading: var(--font-sans);
     /* Heading scale — page/section titles (DESIGN.md §2.5) */
     --text-heading-72: 4.5rem;
+    --text-heading-72--line-height: 1.05;
+    --text-heading-72--font-weight: 600;
+    --text-heading-72--letter-spacing: -0.04em;
     --text-heading-64: 4rem;
+    --text-heading-64--line-height: 1.05;
+    --text-heading-64--font-weight: 600;
+    --text-heading-64--letter-spacing: -0.04em;
     --text-heading-56: 3.5rem;
+    --text-heading-56--line-height: 1.08;
+    --text-heading-56--font-weight: 600;
+    --text-heading-56--letter-spacing: -0.04em;
     --text-heading-48: 3rem;
+    --text-heading-48--line-height: 1.1;
+    --text-heading-48--font-weight: 600;
+    --text-heading-48--letter-spacing: -0.03em;
     --text-heading-40: 2.5rem;
+    --text-heading-40--line-height: 1.1;
+    --text-heading-40--font-weight: 600;
+    --text-heading-40--letter-spacing: -0.03em;
     --text-heading-32: 2rem;
+    --text-heading-32--line-height: 1.15;
+    --text-heading-32--font-weight: 600;
+    --text-heading-32--letter-spacing: -0.03em;
     --text-heading-24: 1.5rem;
+    --text-heading-24--line-height: 1.2;
+    --text-heading-24--font-weight: 600;
+    --text-heading-24--letter-spacing: -0.02em;
     --text-heading-20: 1.25rem;
+    --text-heading-20--line-height: 1.25;
+    --text-heading-20--font-weight: 600;
+    --text-heading-20--letter-spacing: -0.02em;
     --text-heading-16: 1rem;
+    --text-heading-16--line-height: 1.3;
+    --text-heading-16--font-weight: 600;
+    --text-heading-16--letter-spacing: -0.01em;
     --text-heading-14: 0.875rem;
+    --text-heading-14--line-height: 1.35;
+    --text-heading-14--font-weight: 600;
 
     /* Label scale — single-line scannable text */
     --text-label-20: 1.25rem;
@@ -31,11 +60,23 @@
 
     /* Copy scale — multi-line body text */
     --text-copy-24: 1.5rem;
+    --text-copy-24--line-height: 1.5;
+    --text-copy-24--font-weight: 400;
     --text-copy-20: 1.25rem;
+    --text-copy-20--line-height: 1.55;
+    --text-copy-20--font-weight: 400;
     --text-copy-18: 1.125rem;
+    --text-copy-18--line-height: 1.6;
+    --text-copy-18--font-weight: 400;
     --text-copy-16: 1rem;
+    --text-copy-16--line-height: 1.6;
+    --text-copy-16--font-weight: 400;
     --text-copy-14: 0.875rem;
+    --text-copy-14--line-height: 1.6;
+    --text-copy-14--font-weight: 400;
     --text-copy-13: 0.8125rem;
+    --text-copy-13--line-height: 1.55;
+    --text-copy-13--font-weight: 400;
 
     /* Button scale */
     --text-button-16: 1rem;

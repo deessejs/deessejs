@@ -2,7 +2,9 @@
 
 > **The spec the code implements.** This document is the source of truth. If a design decision lives only in code, it's a bug — bring it back here.
 >
-> Lives at the **root of the monorepo** (`DESIGN.md`). Applies to all apps — `apps/web`, `apps/template/apps/web`, `apps/cloud`, and any future surface. When the buyer-facing template package is built, the tokens and primitives will be extracted into `@deessejs/ui`; this document remains the single spec that drives both the implementation in `apps/web` and the eventual package.
+> Lives at the root of the DeesseJS monorepo. It applies to `apps/web`, `apps/app`, `apps/docs`, `apps/storybook`, and future DeesseJS surfaces. `@workspace/ui` implements the shared tokens and primitives.
+
+The visual reference is Vercel's Geist: restrained neutrals, precise typography, subtle borders and purposeful motion. Geist informs visual decisions; it does not define our implementation contract. The implementation remains shadcn with the `radix-nova` style, `neutral` base, current semantic token values, derived radius scale, and `.dark` class managed by next-themes. Preserve DeesseJS's name, logo, and restrained brand accents. Do not use Vercel brand assets.
 
 ---
 
@@ -29,7 +31,7 @@ These are inherited from the product brief and apply to every component and toke
 3. **One coherent product, not a collection of parts.** Same patterns, same naming, same errors, same focus ring, same spacing rhythm.
 4. **Polished UX everywhere.** Every screen, every empty state, every error. Not a chatbot demo — a *product*.
 5. **No half-built features.** Ship the v0.1 inventory (17 primitives + 1 custom) at 100%, not 30 components at 80%. The DS that ships is the DS that's documented.
-6. **CSS variables only.** No JavaScript theme manager. No `next-themes`. The `data-mode` attribute (light/dark) is set in HTML; CSS does the rest.
+6. **Semantic CSS tokens.** Theme values are CSS variables; next-themes toggles the `.dark` class.
 
 ---
 
@@ -116,9 +118,9 @@ oklch keeps the lightness value readable as the perceptual lightness, which make
 
 ### 2.4 Dark mode
 
-Class-based. Both `.dark` and `[data-mode="dark"]` selectors apply dark values. The FOUC script sets `data-mode` on `<html>`; the CSS selector `[data-mode="dark"]` picks up the dark values before paint.
+Class-based. `.dark` applies dark values and next-themes manages the class before paint.
 
-The pattern is **identical token names, different values** (per Geist's dark theme convention): same `--background`, `--foreground`, `--primary`, etc., just re-mapped to dark-appropriate oklch values. Components never change — only the token values change.
+The pattern is identical token names with theme-specific values: same `--background`, `--foreground`, `--primary`, etc. Components do not change between themes.
 
 ### 2.5 Typography
 
@@ -185,9 +187,11 @@ The pattern is **identical token names, different values** (per Geist's dark the
 - Never set `font-size`, `font-weight`, or `line-height` by hand — always use a token class.
 - Tabular figures (numbers that align in columns): always use Geist Mono or a mono token variant.
 
+**Role metrics:** Heading sizes use a 1.05–1.2 line-height, weight 500–600, and progressively tighter tracking at display sizes (about -0.04em at 56px and above, -0.03em at 32–48px, -0.02em below). Labels use 1.25–1.4 line-height and weight 500–600. Copy uses 1.5–1.65 line-height at weight 400, with 500–600 for Strong. Button labels use 1.2 line-height and weight 500–600. Keep these role metrics in shared typography utilities; retain shadcn component typography classes unless a specific conflict requires a narrow correction.
+
 ### 2.6 Geometry
 
-**Radius scale** (Geist pixel values, not shadcn's calculated ratios):
+**Radius scale:** retain shadcn's derived scale from the existing `--radius` value.
 
 ```css
 --radius-sm:  0.375rem;   /*  6px — inputs, small controls */
@@ -196,9 +200,13 @@ The pattern is **identical token names, different values** (per Geist's dark the
 --radius-full:  9999px;    /* pills, avatars, circular controls */
 ```
 
-Shadcn's calculated `radius-*` scale (`sm` through `4xl`) is **not used** — Geist's three-tier system (`sm` / default / `lg`) is the standard.
+Geist is a visual reference only. Do not replace shadcn's calculated radius utilities with Geist radius values.
 
 **Rule:** One radius family per view. Don't mix sharp and rounded corners.
+
+### Marketing patterns
+
+Dot grids and hatching are existing DeesseJS decorative details. Keep them confined to selected marketing sections, low contrast, and subordinate to content. Prefer a single restrained pattern treatment in a section; avoid stacking prominent patterns or extending them across product, documentation, and application surfaces. Do not use patterns as a reason for a broad homepage redesign.
 
 **Spacing scale** (4px base, Geist values):
 

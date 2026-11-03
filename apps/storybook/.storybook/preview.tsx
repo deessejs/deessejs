@@ -1,5 +1,6 @@
 import type { Preview } from "@storybook/react-vite"
 import "@workspace/ui/globals.css"
+import "./fonts.css"
 
 const preview: Preview = {
   globalTypes: {
@@ -24,7 +25,7 @@ const preview: Preview = {
       )
 
       return (
-        <div className="min-h-screen bg-background p-6 text-foreground">
+        <div className="min-h-screen bg-background p-6 font-sans text-foreground antialiased">
           <Story />
         </div>
       )
