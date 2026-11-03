@@ -6,6 +6,10 @@ import { githubAppRouter } from "./github-app.js"
 import { organizationTemplatesRouter } from "./organization-templates.js"
 import { adminTemplatePublicationsRouter } from "./admin-template-publications.js"
 import { organizationAvatarRouter, profileAvatarRouter } from "./avatars.js"
+import {
+  organizationTemplateImageRouter,
+  adminTemplateImageRouter,
+} from "./template-images.js"
 
 export const appRouter = {
   templates: templatesRouter,
@@ -13,12 +17,14 @@ export const appRouter = {
     templates: {
       ...adminTemplatesRouter,
       publications: adminTemplatePublicationsRouter,
+      image: adminTemplateImageRouter,
     },
   },
   organization: {
     ...organizationRouter,
     avatar: organizationAvatarRouter,
     templates: organizationTemplatesRouter,
+    templateImages: organizationTemplateImageRouter,
   },
   profile: { avatar: profileAvatarRouter },
   githubApp: githubAppRouter,

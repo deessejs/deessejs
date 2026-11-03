@@ -15,6 +15,8 @@ import {
 } from "@workspace/database"
 import { base } from "../base.js"
 import { logger } from "../../constants/logger.js"
+import { serverEnv } from "@workspace/env/server"
+import { API_BASE_PATH } from "../../constants/base-path.js"
 
 const publicTemplateColumns = {
   slug: templates.slug,
@@ -26,6 +28,7 @@ const publicTemplateColumns = {
   labels: templates.labels,
   licenseFallback: templates.licenseFallback,
   imageName: templates.imageName,
+  imageObjectId: templates.imageObjectId,
   repositoryDescription: templateRepositorySnapshots.repositoryDescription,
   canonicalUrl: templateRepositorySnapshots.canonicalUrl,
   license: templateRepositorySnapshots.license,
@@ -44,6 +47,7 @@ type PublicTemplateRow = {
   labels: string[]
   licenseFallback: string | null
   imageName: string | null
+  imageObjectId: string | null
   repositoryDescription: string | null
   canonicalUrl: string
   license: string | null
@@ -67,7 +71,13 @@ function toPublicTemplate(row: PublicTemplateRow): TemplateV1 {
     license: row.licenseFallback ?? row.license ?? "",
     category: row.category,
     labels: row.labels,
-    ...(row.imageName ? { image: `/${row.imageName}` } : {}),
+    ...(row.imageObjectId
+      ? {
+          image: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+        }
+      : row.imageName
+        ? { image: `/${row.imageName}` }
+        : {}),
     cloneUrl: row.canonicalUrl,
     ...(row.readme !== null ? { readme: row.readme } : {}),
     ...(row.repositoryUpdatedAt
@@ -200,7 +210,13 @@ const community = {
           license: row.license,
           category: row.category,
           labels: row.labels,
-          ...(row.imageName ? { image: `/${row.imageName}` } : {}),
+          ...(row.imageObjectId
+            ? {
+                image: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+              }
+            : row.imageName
+              ? { image: `/${row.imageName}` }
+              : {}),
           cloneUrl: row.canonicalUrl,
           ...(row.readme !== null ? { readme: row.readme } : {}),
           ...(row.repositoryUpdatedAt

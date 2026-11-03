@@ -1,6 +1,10 @@
 import type { NextConfig } from "next"
 import { withContentCollections } from "@content-collections/next"
 
+const apiUrl = new URL(
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001"
+)
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@workspace/ui"],
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
@@ -11,6 +15,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "picsum.photos" },
+      {
+        protocol: apiUrl.protocol.replace(":", "") as "http" | "https",
+        hostname: apiUrl.hostname,
+        port: apiUrl.port,
+        pathname: "/api/v1/images/**",
+      },
       // Vercel avatar endpoint. The session-aware header uses this
       // for the user avatar — same universal fallback that
       // apps/app/components/sidebars/nav-user.tsx uses. The avatar

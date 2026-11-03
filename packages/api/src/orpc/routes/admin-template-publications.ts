@@ -1,8 +1,14 @@
 import { ORPCError } from "@orpc/server"
 import { and, asc, eq } from "drizzle-orm"
 import { z } from "zod"
-import { db, templatePublications, user } from "@workspace/database"
+import { db, templatePublications, templates, user } from "@workspace/database"
 import { adminProcedure } from "../admin-middleware.js"
+import { API_BASE_PATH } from "../../constants/base-path.js"
+import { serverEnv } from "@workspace/env/server"
+import {
+  detachSupersededPublicationImageReferences,
+  transitionPendingPublicationImageReference,
+} from "../../core/templates/images.js"
 
 const publicationSummary = z.object({
   id: z.string().uuid(),
@@ -23,6 +29,7 @@ const publicationSummary = z.object({
   distributionRightsConfirmed: z.boolean(),
   stars: z.number().int().nonnegative().nullable(),
   repositoryName: z.string(),
+  imageUrl: z.string().url().nullable(),
 })
 
 const listOutput = z.object({ submissions: z.array(publicationSummary) })
@@ -61,6 +68,7 @@ export const list = adminProcedure.output(listOutput).handler(async () => {
         templatePublications.distributionRightsConfirmed,
       stars: templatePublications.stars,
       repositoryName: templatePublications.repositoryName,
+      imageObjectId: templatePublications.imageObjectId,
     })
     .from(templatePublications)
     .where(eq(templatePublications.reviewStatus, "pending"))
@@ -70,6 +78,9 @@ export const list = adminProcedure.output(listOutput).handler(async () => {
     submissions: rows.map((row) => ({
       ...row,
       submittedAt: row.submittedAt.toISOString(),
+      imageUrl: row.imageObjectId
+        ? `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`
+        : null,
     })),
   }
 })
@@ -111,14 +122,13 @@ export const approve = adminProcedure
         if (!pending) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
 
         await tx
-          .update(templatePublications)
-          .set({ publicationState: "superseded" })
-          .where(
-            and(
-              eq(templatePublications.templateId, pending.templateId),
-              eq(templatePublications.publicationState, "current")
-            )
-          )
+          .select({ id: templates.id })
+          .from(templates)
+          .where(eq(templates.id, pending.templateId))
+          .for("update")
+          .limit(1)
+
+        await detachSupersededPublicationImageReferences(tx, pending.templateId)
 
         const [approved] = await tx
           .update(templatePublications)
@@ -170,21 +180,16 @@ export const reject = adminProcedure
         .limit(1)
       if (!actor) throw new ORPCError("FORBIDDEN")
 
-      const [rejected] = await tx
-        .update(templatePublications)
-        .set({
-          reviewStatus: "rejected",
+      const rejected = await transitionPendingPublicationImageReference(
+        tx,
+        input.publicationId,
+        "rejected",
+        {
           reviewedBy: context.user.id,
           reviewedAt: new Date(),
           reviewReason: input.reason,
-        })
-        .where(
-          and(
-            eq(templatePublications.id, input.publicationId),
-            eq(templatePublications.reviewStatus, "pending")
-          )
-        )
-        .returning({ id: templatePublications.id })
+        }
+      )
 
       if (!rejected) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
       return rejected

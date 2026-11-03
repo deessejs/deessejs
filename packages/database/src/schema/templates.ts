@@ -35,7 +35,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core"
-import { organization } from "./auth.js"
+import { organization, user } from "./auth.js"
+import { storageObjects } from "./avatars.js"
 
 /**
  * Access classification for an official template.
@@ -71,6 +72,10 @@ export const templates = pgTable(
     licenseFallback: text("license_fallback"),
     access: templateAccess("access").notNull().default("free"),
     imageName: text("image_name"),
+    /** Private working image for organization templates, current image for platform templates. */
+    imageObjectId: uuid("image_object_id").references(() => storageObjects.id, {
+      onDelete: "restrict",
+    }),
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (table) => [
@@ -147,6 +152,20 @@ export const templateRepositorySnapshots = pgTable(
     ),
   ]
 )
+
+/** Pending template-image transfers, scoped to one server-selected template. */
+export const templateImageUploads = pgTable("template_image_uploads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  templateId: uuid("template_id").notNull().references(() => templates.id, { onDelete: "cascade" }),
+  objectId: uuid("object_id").notNull().unique().references(() => storageObjects.id, { onDelete: "cascade" }),
+  stagedKey: text("staged_key").notNull().unique(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
+  expectedContentType: text("expected_content_type").notNull(),
+  expectedByteSize: integer("expected_byte_size").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+})
 
 export const templateRelations = relations(templates, ({ one }) => ({
   snapshot: one(templateRepositorySnapshots, {
