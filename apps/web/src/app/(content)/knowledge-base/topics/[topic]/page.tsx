@@ -10,6 +10,7 @@ import {
   BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb"
 import { MdxRenderer } from "@/components/blog/mdx-renderer"
+import { RecommendedGuides } from "@/components/knowledge-base/recommended-guides"
 import { TopicGuideList } from "@/components/knowledge-base/topic-guide-list"
 import { TopicEmptyState } from "@/components/knowledge-base/topic-empty-state"
 import { TopicTagPill } from "@/components/knowledge-base/badges"
@@ -77,16 +78,7 @@ export default async function KnowledgeTopicPage({
 
       <MdxRenderer className="mt-8" code={topicDoc.mdxCode} />
 
-      {recommendedGuides.length > 0 ? (
-        <section className="mt-12 flex flex-col gap-4" aria-labelledby="recommended-guides-heading">
-          <h2 id="recommended-guides-heading" className="text-3xl font-semibold tracking-tight">
-            Recommended guides
-          </h2>
-          <div className="-mx-4 sm:-mx-6 lg:mx-0">
-            <TopicGuideList guides={recommendedGuides} />
-          </div>
-        </section>
-      ) : null}
+      <RecommendedGuides guides={recommendedGuides} />
 
       <section
         id="guides-in-this-topic"
