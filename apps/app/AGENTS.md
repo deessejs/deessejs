@@ -17,7 +17,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 | `proxy.ts` | The request guard. Protected prefixes, auth prefixes, the session lookup and the email-verification check. |
 | `lib/settings-paths.ts` | The account settings routes and `SETTINGS_PREFIX`, the constant the proxy imports. |
 | `lib/auth-client.ts` | The browser-side Better Auth client and the plugins it enables. |
-| `lib/fetch-auth-interceptor.ts` | Attaches the session to the outgoing calls. |
+| `lib/auth-base-url.ts` | Resolves the browser auth endpoint to the active app origin. |
 | `lib/orpc.ts` | The typed oRPC client pointed at the API base path. A server module. |
 | `lib/orpc-browser.ts` | The same client for the browser, for the client components. |
 | `lib/workspace-paths.ts` | The workspace paths, and the organizations page's path. |

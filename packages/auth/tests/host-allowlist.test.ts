@@ -7,10 +7,10 @@ describe("isHostAllowed", () => {
     expect(isHostAllowed("deessejs.com")).toBe(true)
     expect(isHostAllowed("app.deessejs.com")).toBe(true)
     expect(
-      isHostAllowed("deessejs-app-git-staging-aliiibenns-projects.vercel.app"),
+      isHostAllowed("deessejs-app-git-staging-deessejs.vercel.app"),
     ).toBe(true)
     expect(
-      isHostAllowed("deessejs-web-git-feature-branch-aliiibenns-projects.vercel.app"),
+      isHostAllowed("deessejs-web-git-feature-branch-deessejs.vercel.app"),
     ).toBe(true)
   })
 
@@ -23,7 +23,7 @@ describe("isHostAllowed", () => {
       isHostAllowed("deessejs-app-git-pr-123-someone-elses-projects.vercel.app"),
     ).toBe(false)
     expect(
-      isHostAllowed("attacker-git-staging-aliiibenns-projects.vercel.app"),
+      isHostAllowed("attacker-git-staging-deessejs.vercel.app"),
     ).toBe(false)
   })
 })

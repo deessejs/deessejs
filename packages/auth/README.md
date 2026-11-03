@@ -45,17 +45,16 @@ Build the browser client in the application. The base path must match the Hono m
 
 ```ts
 import { createAuthClient } from "better-auth/react"
-import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
-import "./fetch-auth-interceptor"
+import { getAuthBaseUrl } from "@/lib/auth-base-url"
 
 export const authClient = createAuthClient({
-  baseURL: clientEnv.NEXT_PUBLIC_APP_URL,
+  baseURL: getAuthBaseUrl(),
   basePath: API_AUTH_PATH,
 })
 ```
 
-The authenticated app also imports its preview interceptor so auth requests on Vercel preview deployments stay on the preview origin. See `apps/app/lib/auth-client.ts` for the complete configured client and plugins.
+The authenticated app resolves this URL to `window.location.origin` in the browser, so auth requests stay on the active deployment origin. See `apps/app/lib/auth-client.ts` for the complete configured client and plugins.
 
 ## Exports
 

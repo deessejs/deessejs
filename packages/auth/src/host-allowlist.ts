@@ -10,10 +10,10 @@
 const PRODUCTION_HOSTS = [
   "deessejs.com",
   "*.deessejs.com",
-  "deessejs-app-*-aliiibenns-projects.vercel.app",
-  "deessejs-web-*-aliiibenns-projects.vercel.app",
-  "deessejs-docs-*-aliiibenns-projects.vercel.app",
-  "deessejs-agent-*-aliiibenns-projects.vercel.app",
+  "deessejs-app-*-deessejs.vercel.app",
+  "deessejs-web-*-deessejs.vercel.app",
+  "deessejs-docs-*-deessejs.vercel.app",
+  "deessejs-agent-*-deessejs.vercel.app",
 ] as const
 
 const DEV_HOSTS = [
