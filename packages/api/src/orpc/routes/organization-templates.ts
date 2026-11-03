@@ -27,6 +27,8 @@ import { findOrganizationForMember } from "../../core/organization/membership.js
 import { authGuard } from "../auth-middleware.js"
 import { transitionPendingPublicationImageReference } from "../../core/templates/images.js"
 import { base } from "../base.js"
+import { API_BASE_PATH } from "../../constants/base-path.js"
+import { serverEnv } from "@workspace/env/server"
 
 const accessDeniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
@@ -69,6 +71,7 @@ export const list = base
         repo: templates.repo,
         category: templates.category,
         labels: templates.labels,
+        imageObjectId: templates.imageObjectId,
         licenseFallback: templates.licenseFallback,
         canonicalUrl: templateRepositorySnapshots.canonicalUrl,
         repositoryName: templateRepositorySnapshots.repositoryName,
@@ -154,6 +157,9 @@ export const list = base
           repositoryName: row.repositoryName,
           stars: row.stars,
           fetchedAt: row.fetchedAt.toISOString(),
+          ...(row.imageObjectId
+            ? { imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}` }
+            : {}),
           currentlyPublished: currentlyPublished.has(row.id),
           publication: publication
             ? {

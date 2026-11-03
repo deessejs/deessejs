@@ -18,6 +18,7 @@ export const OrganizationTemplateV1 = z.object({
   repositoryName: z.string(),
   stars: z.number().int().nonnegative().nullable(),
   fetchedAt: z.string().datetime(),
+  imageUrl: z.string().url().optional(),
   currentlyPublished: z.boolean(),
   publication: z
     .object({
