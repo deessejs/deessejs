@@ -10,14 +10,13 @@ on:
 permissions:
   contents: read
 
-env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +29,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - name: Verify generated template descriptor schema
         run: pnpm --filter @workspace/registry schema:check
       - name: Verify generated project configuration schema
@@ -38,11 +40,14 @@ jobs:
         run: pnpm lint:directives
       - name: Lint suppression guard
         run: pnpm lint:guard
-      - run: pnpm turbo lint --force -- --max-warnings=0
+      - run: pnpm turbo lint --summarize -- --max-warnings=0
 
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -65,8 +70,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo build --filter=web --force
-      - run: pnpm turbo typecheck --force
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+      - run: pnpm turbo build --filter=web --summarize
+      - run: pnpm turbo typecheck --summarize
       - name: Typecheck create-deesse-app e2e harness
         # The e2e harness has its own tsconfig (tsconfig.e2e.json)
         # that includes test/e2e/**/*.ts. The main typecheck above
@@ -84,6 +92,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -118,15 +129,21 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       # Env validation: fail fast if production invariants are violated
       # (DATABASE_URL required, BETTER_AUTH_SECRET >= 32 chars, etc.)
       - name: Validate env
         run: pnpm env:check
-      - run: pnpm turbo build --force
+      - run: pnpm turbo build --summarize
 
   test-unit:
     name: Test (Unit)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       NODE_ENV: test
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
@@ -142,6 +159,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - run: pnpm turbo build
       - run: pnpm turbo test
 
@@ -151,6 +171,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -163,8 +184,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
       - name: Build CLI and workspace dependencies
-        run: pnpm turbo build --filter=@deessejs/cli --force
+        run: pnpm turbo build --filter=@deessejs/cli
 
       - name: Typecheck CLI E2E harness
         run: pnpm --filter @deessejs/cli typecheck:e2e
@@ -175,6 +199,9 @@ jobs:
   test-integration:
     name: Test (Integration)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     services:
       postgres:
         image: postgres:16-alpine
@@ -224,6 +251,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - uses: vercel/setup-turborepo-remote-cache-action@v1.1.0
+        with:
+          team: ${{ vars.TURBO_TEAM }}
 
       - name: Install Go for the pinned MinIO source build
         uses: actions/setup-go@v6
