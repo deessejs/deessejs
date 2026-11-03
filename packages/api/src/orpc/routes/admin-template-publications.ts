@@ -5,7 +5,10 @@ import { db, templatePublications, templates, user } from "@workspace/database"
 import { adminProcedure } from "../admin-middleware.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
-import { detachSupersededPublicationImageReferences } from "../../core/templates/images.js"
+import {
+  detachSupersededPublicationImageReferences,
+  transitionPendingPublicationImageReference,
+} from "../../core/templates/images.js"
 
 const publicationSummary = z.object({
   id: z.string().uuid(),
@@ -177,21 +180,16 @@ export const reject = adminProcedure
         .limit(1)
       if (!actor) throw new ORPCError("FORBIDDEN")
 
-      const [rejected] = await tx
-        .update(templatePublications)
-        .set({
-          reviewStatus: "rejected",
+      const rejected = await transitionPendingPublicationImageReference(
+        tx,
+        input.publicationId,
+        "rejected",
+        {
           reviewedBy: context.user.id,
           reviewedAt: new Date(),
           reviewReason: input.reason,
-        })
-        .where(
-          and(
-            eq(templatePublications.id, input.publicationId),
-            eq(templatePublications.reviewStatus, "pending")
-          )
-        )
-        .returning({ id: templatePublications.id })
+        }
+      )
 
       if (!rejected) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
       return rejected

@@ -25,6 +25,7 @@ import {
 } from "../../core/templates/validate-publication-source.js"
 import { findOrganizationForMember } from "../../core/organization/membership.js"
 import { authGuard } from "../auth-middleware.js"
+import { transitionPendingPublicationImageReference } from "../../core/templates/images.js"
 import { base } from "../base.js"
 
 const accessDeniedErrors = {
@@ -566,9 +567,9 @@ export const withdraw = base
         throw errors.ORGANIZATION_ACCESS_DENIED()
       }
 
-      const [withdrawn] = await tx
-        .update(templatePublications)
-        .set({ reviewStatus: "withdrawn" })
+      const [pending] = await tx
+        .select({ id: templatePublications.id })
+        .from(templatePublications)
         .where(
           and(
             eq(templatePublications.templateId, input.templateId),
@@ -576,7 +577,14 @@ export const withdraw = base
             eq(templatePublications.reviewStatus, "pending")
           )
         )
-        .returning({ id: templatePublications.id })
+        .limit(1)
+      const withdrawn = pending
+        ? await transitionPendingPublicationImageReference(
+            tx,
+            pending.id,
+            "withdrawn"
+          )
+        : null
       if (!withdrawn) throw errors.TEMPLATE_SUBMISSION_NOT_PENDING()
       return withdrawn
     })

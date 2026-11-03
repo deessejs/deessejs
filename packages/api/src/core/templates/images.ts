@@ -308,6 +308,47 @@ export async function detachSupersededPublicationImageReferences(
   }
 }
 
+export async function transitionPendingPublicationImageReference(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  publicationId: string,
+  reviewStatus: "rejected" | "withdrawn",
+  metadata: {
+    reviewedBy?: string
+    reviewedAt?: Date
+    reviewReason?: string
+  } = {}
+) {
+  const [existing] = await tx
+    .select({
+      id: templatePublications.id,
+      imageObjectId: templatePublications.imageObjectId,
+    })
+    .from(templatePublications)
+    .where(
+      and(
+        eq(templatePublications.id, publicationId),
+        eq(templatePublications.reviewStatus, "pending")
+      )
+    )
+    .for("update")
+    .limit(1)
+  if (!existing) return null
+  await tx
+    .update(templatePublications)
+    .set({ reviewStatus, imageObjectId: null, ...metadata })
+    .where(eq(templatePublications.id, publicationId))
+  if (existing.imageObjectId) {
+    const refs = await findActiveReferences(tx, existing.imageObjectId)
+    if (!hasActiveTemplateImageReferences(refs)) {
+      await tx
+        .update(storageObjects)
+        .set({ state: "delete_pending", cleanupAfter: new Date() })
+        .where(eq(storageObjects.id, existing.imageObjectId))
+    }
+  }
+  return { id: existing.id }
+}
+
 export async function cleanupTemplateImageUploads() {
   const expired = await db
     .select()
