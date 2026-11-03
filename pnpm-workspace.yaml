@@ -17,7 +17,6 @@ allowBuilds:
 
 # Shared dependency versions: update here, propagate everywhere
 catalog:
-  "@hono/node-server": ^1.19.14
   # Core
   "@aws-sdk/client-s3": ^3.1159.0
   "@aws-sdk/s3-request-presigner": ^3.1159.0
@@ -26,6 +25,7 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.7
+  "@better-auth/stripe": 1.6.21
   "@changesets/changelog-git": ^0.2.1
   "@changesets/cli": ^2.31.0
   "@content-collections/cli": ^0.1.9
@@ -34,6 +34,7 @@ catalog:
   "@content-collections/next": ^0.2.11
   "@deessejs/errors": ^1.1.1
   "@deessejs/fp": ^1.0.0
+  "@hono/node-server": ^1.19.14
   "@hookform/resolvers": ^5.0.0
 
   # Next.js
@@ -44,12 +45,16 @@ catalog:
   "@react-email/render": ^2.0.6
   "@shadcn/react": 0.3.1
   "@shikijs/rehype": ^4.3.1
-  "@t3-oss/env-core": ^0.13.0
 
   # Shared tooling
   "@smithy/types": ^4.19.0
-  sharp: ^0.35.5
+
+  '@storybook/addon-docs': ^10.6.5
+  '@storybook/mcp': ^10.6.5
+  '@storybook/react-vite': ^10.6.5
+  "@t3-oss/env-core": ^0.13.0
   "@tailwindcss/postcss": ^4.3.2
+  "@tanstack/eslint-plugin-query": ^5.105.0
   "@tanstack/react-form": ^1.33.0
   "@tanstack/react-query": ^5.101.4
   "@tanstack/react-table": ^9.2.4
@@ -58,8 +63,8 @@ catalog:
 
   # Types
   "@types/node": ^24
-  "@types/picomatch": ^4.0.3
   "@types/pg": ^8.20.0
+  "@types/picomatch": ^4.0.3
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
   "@vercel/analytics": ^2.0.1
@@ -79,16 +84,10 @@ catalog:
   drizzle-kit: ^0.31.10
   drizzle-orm: ^0.45.2
 
-  # Code quality
-  oxlint: ^1.90.0
-  oxlint-tsgolint: ^7.0.2005
-  oxfmt: ^0.75.0
-  oxlint-plugin-eslint: ^1.90.0
-  eslint-plugin-sonarjs: ^3.0.7
-  ts-api-utils: ^2.5.0
-
   # UI
   embla-carousel-react: ^8.6.0
+  eslint-plugin-react-you-might-not-need-an-effect: ^1.0.2
+  eslint-plugin-sonarjs: ^3.0.7
   eve: ^0.60.0
   fuse.js: ^7.4.2
 
@@ -103,6 +102,12 @@ catalog:
   motion: ^13.1.1
   "next": ^16.4.3
   open: ^11.0.1
+  oxfmt: ^0.75.0
+
+  # Code quality
+  oxlint: ^1.90.0
+  oxlint-plugin-eslint: ^1.90.0
+  oxlint-tsgolint: ^7.0.2005
   pg: ^8.22.0
   picomatch: ^4.0.7
 
@@ -123,27 +128,24 @@ catalog:
   rehype-sanitize: ^6.0.0
   remark-gfm: ^4.0.1
   resend: ^6.33.0
+  sharp: ^0.35.5
   shiki: ^4.3.1
   sonner: ^2.0.7
+  storybook: ^10.6.5
+  stripe: ^22.6.2
   tailwind-merge: ^3.6.0
   tar: ^7.5.22
+  ts-api-utils: ^2.5.0
   tsup: ^8.3.5
   typescript: ^6.0.3
   unist-util-visit: ^5.1.0
   "vercel-minimax-ai-provider": ^0.0.2
+  vite: ^8.3.5
 
   # Testing
   vitest: ^4.1.10
   zod: ^4.4.3
   zustand: ^5.0.14
-  "@tanstack/eslint-plugin-query": ^5.105.0
-  eslint-plugin-react-you-might-not-need-an-effect: ^1.0.2
-
-  '@storybook/addon-docs': ^10.6.5
-  '@storybook/mcp': ^10.6.5
-  '@storybook/react-vite': ^10.6.5
-  storybook: ^10.6.5
-  vite: ^8.3.5
 
 # Strict mode: all dependencies MUST come from a catalog
 catalogMode: strict
