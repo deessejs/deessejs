@@ -46,7 +46,7 @@ There is no build step. The applications resolve this package as source, through
 - **Semantic tokens only.** A component references `--primary`, `bg-primary`, `text-foreground`. It never hardcodes a color.
 - **Colors are `oklch()`.** The lightness value `L` approximates the perceived lightness and is the first lever to tune. It is not the contrast: WCAG computes the ratio from the relative luminance, which comes from the RGB components, so the chroma and the hue do contribute. Verify the pairs you ship with a contrast checker.
 - **The dark theme redefines the same token names.** A component never changes between themes, only the values behind the tokens do.
-- **The radius scale is Geist's three tiers,** `sm`, the default and `lg`.
+- **The radius scale follows shadcn defaults**, using the existing base radius and derived utilities. Geist is a visual reference only.
 - **The focus ring is the signature of this system:** a 2px gap in the surface color, then a 2px ring.
 - **Motion is functional.** The default duration for a state change is 0ms, and `prefers-reduced-motion` is respected.
 

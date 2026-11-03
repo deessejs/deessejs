@@ -33,7 +33,7 @@ There is no build step. The applications resolve this package as source, through
 - **Semantic tokens only.** A component references `--primary`, `bg-primary`, `text-foreground`. It never hardcodes a color, and it never reaches for a raw hex value. The token table lives in `DESIGN.md`.
 - **Colors are `oklch()`.** The lightness value `L` approximates the perceived lightness, and it is the first thing to tune. It is not the contrast: WCAG computes the ratio from the relative luminance, which comes from the RGB components, so the chroma and the hue do contribute. Verify the pairs you actually ship with a contrast checker, and never infer conformance from `L` alone.
 - **The dark theme redefines the same token names.** A component never changes between themes, only the values behind the tokens do.
-- **The radius scale is Geist's three tiers,** `sm`, the default and `lg`. The shadcn `radius-2xl` family is not used.
+- **The radius scale follows shadcn defaults.** Preserve the existing `--radius` value and derived `radius-*` utilities; Geist is the visual reference, not an implementation preset.
 - **The focus ring is the signature of this system.** A 2px gap in the surface color, then a 2px ring: `box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring)`. Copy it exactly.
 - **Every primitive ships its states.** Default, hover, focus, active, disabled, and the empty, loading and error states of anything asynchronous.
 - **Motion is functional.** The default duration for a state change is 0ms. Animation that only decorates does not ship, and `prefers-reduced-motion` is respected.
