@@ -1,9 +1,6 @@
 import type { Preview } from "@storybook/react-vite"
 import "@workspace/ui/globals.css"
-import { Geist, Geist_Mono } from "next/font/google"
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
+import "./fonts.css"
 
 const preview: Preview = {
   globalTypes: {
@@ -28,7 +25,7 @@ const preview: Preview = {
       )
 
       return (
-        <div className={`${geist.variable} ${geistMono.variable} min-h-screen bg-background p-6 font-sans text-foreground antialiased`}>
+        <div className="min-h-screen bg-background p-6 font-sans text-foreground antialiased">
           <Story />
         </div>
       )
