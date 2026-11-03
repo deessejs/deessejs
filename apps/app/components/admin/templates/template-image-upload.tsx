@@ -5,6 +5,22 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { orpcBrowser } from "@/lib/orpc-browser"
 
+function getUploadErrorMessage(cause: unknown, step: string) {
+  const message = cause instanceof Error ? cause.message : ""
+  if (message === "storage-network")
+    return "The browser could not reach image storage. Check your connection and storage CORS settings, then try again."
+  if (message.startsWith("storage-http-"))
+    return `Image storage rejected the upload (HTTP ${message.slice("storage-http-".length)}). Try again or contact support.`
+
+  const safeMessage = message
+    .replace(/https?:\/\/\S+/gi, "[redacted URL]")
+    .replace(/[?&][^\s]*/g, "[redacted query]")
+    .slice(0, 240)
+  return safeMessage
+    ? `Could not complete image upload while ${step}: ${safeMessage}`
+    : `Could not complete image upload while ${step}. Try again or contact support.`
+}
+
 export function TemplateImageUpload({
   templateId,
   organizationSlug,
@@ -73,26 +89,7 @@ export function TemplateImageUpload({
               })
             onUploaded()
           } catch (cause) {
-            const message = cause instanceof Error ? cause.message : ""
-            if (message === "storage-network") {
-              setError(
-                "The browser could not reach image storage. Check your connection and storage CORS settings, then try again."
-              )
-            } else if (message.startsWith("storage-http-")) {
-              setError(
-                `Image storage rejected the upload (HTTP ${message.slice("storage-http-".length)}). Try again or contact support.`
-              )
-            } else {
-              const safeMessage = message
-                .replace(/https?:\/\/\S+/gi, "[redacted URL]")
-                .replace(/[?&][^\s]*/g, "[redacted query]")
-                .slice(0, 240)
-              setError(
-                safeMessage
-                  ? `Could not complete image upload while ${step}: ${safeMessage}`
-                  : `Could not complete image upload while ${step}. Try again or contact support.`
-              )
-            }
+            setError(getUploadErrorMessage(cause, step))
           } finally {
             setBusy(false)
             inputElement.value = ""
