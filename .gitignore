@@ -13,3 +13,6 @@ B-VIOLATIONS.txt
 # and the CI preset writes the HTML report to its own path.
 apps/web/tests/e2e/test-results/
 apps/web/playwright-report/
+
+# CodeGraph local index and database
+.codegraph/
