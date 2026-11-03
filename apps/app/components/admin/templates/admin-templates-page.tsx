@@ -121,6 +121,7 @@ const columns = column.columns([
             alt={`${row.original.name} presentation image`}
             width={64}
             height={64}
+            unoptimized
             className="size-16 rounded-md border object-cover"
           />
         ) : (
