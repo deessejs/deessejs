@@ -69,7 +69,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # 0. Configure git (changesets will commit on our behalf via `commit: true`)
+      # Configure git for release tags.
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
@@ -81,7 +81,7 @@ jobs:
       #   push to staging → canary/prerelease.
       #     (auto-trigger; the merge carries the changeset check via
       #      changesets-check.yml on the feature PR.)
-      #   push to main (commit message contains .changeset) → latest/stable.
+      #   push to main → latest/stable.
       # Downstream steps condition their behavior on these outputs.
       - name: Determine release channel
         id: channel
@@ -97,8 +97,44 @@ jobs:
           else
             echo "dist_tag=latest"        >> "$GITHUB_OUTPUT"
             echo "release_type=stable"    >> "$GITHUB_OUTPUT"
-            echo "version_source=changeset" >> "$GITHUB_OUTPUT"
+            echo "version_source=manifest" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Check whether stable CLI release is needed
+        id: stable-release
+        if: steps.channel.outputs.dist_tag == 'latest'
+        run: |
+          set -euo pipefail
+          LOCAL_VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          LATEST_VERSION=$(npm view @deessejs/cli dist-tags.latest)
+          EXACT_VERSION=$(npm view "@deessejs/cli@${LOCAL_VERSION}" version 2>/dev/null || true)
+          ORDER=$(LOCAL_VERSION="$LOCAL_VERSION" LATEST_VERSION="$LATEST_VERSION" node -e '
+            const parse = (v) => {
+              const match = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(v)
+              if (!match) throw new Error(`Expected stable X.Y.Z versions, got ${v}`)
+              return match.slice(1).map(Number)
+            }
+            const local = parse(process.env.LOCAL_VERSION)
+            const latest = parse(process.env.LATEST_VERSION)
+            for (let i = 0; i < 3; i++) {
+              if (local[i] !== latest[i]) {
+                process.stdout.write(local[i] > latest[i] ? "ahead" : "behind")
+                process.exit(0)
+              }
+            }
+            process.stdout.write("equal")
+          ')
+          if [ "$ORDER" = behind ]; then
+            echo "::error::CLI source version $LOCAL_VERSION is behind npm latest $LATEST_VERSION. Refusing a stable release."
+            exit 1
+          fi
+          if [ "$ORDER" = equal ] || [ "$EXACT_VERSION" = "$LOCAL_VERSION" ]; then
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            echo "No stable CLI release needed: source=$LOCAL_VERSION, npm latest=$LATEST_VERSION, exact=${EXACT_VERSION:-absent}."
+            exit 0
+          fi
+          echo "release_needed=true" >> "$GITHUB_OUTPUT"
+          echo "Stable CLI release needed: $LOCAL_VERSION is ahead of npm latest $LATEST_VERSION."
 
       # Tier 2 — @canary version computation (synthetic, no changesets).
       # We deliberately do NOT run `pnpm changeset version` on the canary
@@ -209,20 +245,15 @@ jobs:
       #   --no-git-checks  suppresses npm's "dirty working tree" error caused
       #                    by the synthetic version bump above.
       - name: Pack CLI stable tarball
-        if: steps.channel.outputs.dist_tag == 'latest'
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-release.outputs.release_needed == 'true'
         run: pnpm --dir apps/cli pack
 
       - name: Publish CLI to npm (latest)
-        if: steps.channel.outputs.dist_tag == 'latest'
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-release.outputs.release_needed == 'true'
         env:
           NPM_CONFIG_PROVENANCE: true
         run: |
           set -eu
-          VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
-          if npm view "@deessejs/cli@${VERSION}" version >/dev/null 2>&1; then
-            echo "@deessejs/cli@${VERSION} is already published; skipping."
-            exit 0
-          fi
           TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
           npm publish "$TARBALL" --tag latest --provenance --no-git-checks
 
@@ -328,6 +359,7 @@ jobs:
       # in the GitHub Releases feed marked as prereleases via the
       # `prerelease` flag on the action below.
       - name: Tag release
+        if: steps.channel.outputs.dist_tag == 'canary' || steps.stable-release.outputs.release_needed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -340,6 +372,7 @@ jobs:
       # (visually distinct from @latest stable releases). The tag and title
       # follow the same convention for both channels.
       - name: GitHub Release
+        if: steps.channel.outputs.dist_tag == 'canary' || steps.stable-release.outputs.release_needed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: release/v${{ steps.version.outputs.version }}
