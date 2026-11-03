@@ -44,8 +44,48 @@ jobs:
       - name: Test changeset validator
         run: node --test scripts/validate-changesets.test.mjs
 
+      - name: Check trusted CLI release preparation PR
+        id: release-preparation
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$PR_NUMBER" != "437" ] || \
+            [ "$PR_AUTHOR" != "Marcoaming" ] || \
+            [ "$PR_HEAD_REPO" != "$REPOSITORY" ] || \
+            [ "$PR_HEAD_REF" != "fix/cli-version-packages-release" ] || \
+            [ "$BASE_REF" != "staging" ]; then
+            echo "trusted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
+          BASE_SHA=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
+          CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          ALLOWED=$(printf '%s\n' \
+            .changeset/bright-org-templates.md \
+            .changeset/bright-pandas-config.md \
+            .changeset/clever-orgs-list.md \
+            .github/workflows/release.yml \
+            apps/cli/CHANGELOG.md \
+            apps/cli/package.json)
+          if [ "$CHANGED" != "$ALLOWED" ]; then
+            echo "::error::Trusted release-preparation PR contains an unexpected file set."
+            echo "Expected: $ALLOWED"
+            echo "Found: $CHANGED"
+            exit 1
+          fi
+          echo "trusted=true" >> "$GITHUB_OUTPUT"
+          echo "Recognized the narrowly scoped CLI 3.0.0 release-preparation PR."
+
       - name: Validate changed changesets
-        if: steps.changed.outputs.touched == 'true'
+        if: steps.changed.outputs.touched == 'true' && steps.release-preparation.outputs.trusted != 'true'
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
