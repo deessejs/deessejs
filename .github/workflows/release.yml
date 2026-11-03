@@ -1,13 +1,12 @@
 name: Release
 
-# Senior release pattern: single workflow does version bump + npm publish +
+# Senior release pattern: single workflow publishes +
 # tag + GitHub Release in one job. Triggered by push to main or staging, or
 # by manual workflow_dispatch.
 #
 # Two publish channels, both handled by this single workflow:
-#   - @latest: push to main (Tier 3). Changesets-driven version bump;
-#     pnpm changeset publish; stable GitHub Release. Auto-publishes
-#     when the commit message contains '.changeset'.
+#   - @latest: push to main (Tier 3). Publishes the source-recorded CLI
+#     version when it is not yet on npm, then creates a stable GitHub Release.
 #   - @canary: push to staging (Tier 2), or on-demand workflow_dispatch
 #     with `canary: true`. Synthetic version string (date+SHA);
 #     npm publish --tag canary; GitHub Release marked as prerelease.
@@ -57,7 +56,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.ref == 'refs/heads/staging' ||
-      contains(github.event.head_commit.message, '.changeset')
+      github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -163,32 +162,8 @@ jobs:
           # the in-place bump leaves the tree dirty, which `--no-git-checks`
           # on the publish step below handles.
 
-      # Tier 3 — @latest version bump (changesets-driven).
-      # Consumes changesets, bumps apps/cli/package.json, regenerates CHANGELOG.
-      # Runs only when the channel is `latest`. The canary branch skips this
-      # so changesets on staging stay available for the eventual main publish.
-      - name: Bump versions
-        if: steps.channel.outputs.version_source == 'changeset'
-        run: pnpm changeset version
-      - name: Refresh lockfile after bump
-        if: steps.channel.outputs.version_source == 'changeset'
-        run: pnpm install --frozen-lockfile
-
-      # 1a. Note: pnpm changeset version creates the version-bump commit
-      # locally (commit: true in .changeset/config.json). That commit is
-      # intentionally NOT pushed to origin/main in this workflow — the
-      # ruleset 'protect main' (ruleset id 20040100) requires changes to
-      # reach main through a pull request, and a direct push from
-      # github-actions[bot] is refused with GH013. The bump commit
-      # therefore sits only on the runner; the consumed .changeset/*.md
-      # files are also lost. main is advanced by the next human-driven
-      # staging -> main promotion, which re-runs changeset version
-      # against the same changesets that were consumed here.
-      #
-      # Implication: between a @latest publish and the next promotion,
-      # apps/cli/package.json#version on main may lag behind the
-      # published npm version. This is by design; the version-bump-orphan
-      # behaviour is documented in the release process notes.
+      # Stable versions are persisted on staging by the Version Packages PR.
+      # The main promotion carries that manifest and changelog state here.
 
       # 1b. Build all packages that produce publishable artifacts.
       # Without this, `dist/` (the actual bundle) is missing from the
@@ -205,9 +180,8 @@ jobs:
 
       # 2. Publish to npm.
       #
-      # Tier 3 (@latest): `pnpm changeset publish` defaults to the `latest`
-      # dist-tag with provenance triple-belt (publishConfig.provenance + env
-      # var + --provenance if supported).
+      # Tier 3 (@latest): publish only the already-versioned CLI tarball.
+      # Registry existence check makes promotion re-runs idempotent.
       #
       # Tier 2 (@canary): pack a tarball locally with `pnpm pack` (which
       # resolves pnpm-only protocol specifiers like `catalog:` and
@@ -234,11 +208,23 @@ jobs:
       #   --provenance     belt-and-suspenders alongside `publishConfig.provenance: true`.
       #   --no-git-checks  suppresses npm's "dirty working tree" error caused
       #                    by the synthetic version bump above.
-      - name: Publish to npm (latest)
+      - name: Pack CLI stable tarball
+        if: steps.channel.outputs.dist_tag == 'latest'
+        run: pnpm --dir apps/cli pack
+
+      - name: Publish CLI to npm (latest)
         if: steps.channel.outputs.dist_tag == 'latest'
         env:
           NPM_CONFIG_PROVENANCE: true
-        run: pnpm changeset publish
+        run: |
+          set -eu
+          VERSION=$(node -e "console.log(require('./apps/cli/package.json').version)")
+          if npm view "@deessejs/cli@${VERSION}" version >/dev/null 2>&1; then
+            echo "@deessejs/cli@${VERSION} is already published; skipping."
+            exit 0
+          fi
+          TARBALL=$(ls apps/cli/deessejs-cli-*.tgz | head -1)
+          npm publish "$TARBALL" --tag latest --provenance --no-git-checks
 
       - name: Pack CLI canary tarball
         if: steps.channel.outputs.dist_tag == 'canary'
