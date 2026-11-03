@@ -5,6 +5,22 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { orpcBrowser } from "@/lib/orpc-browser"
 
+function getUploadErrorMessage(cause: unknown, step: string) {
+  const message = cause instanceof Error ? cause.message : ""
+  if (message === "storage-network")
+    return "The browser could not reach image storage. Check your connection and storage CORS settings, then try again."
+  if (message.startsWith("storage-http-"))
+    return `Image storage rejected the upload (HTTP ${message.slice("storage-http-".length)}). Try again or contact support.`
+
+  const safeMessage = message
+    .replace(/https?:\/\/\S+/gi, "[redacted URL]")
+    .replace(/[?&][^\s]*/g, "[redacted query]")
+    .slice(0, 240)
+  return safeMessage
+    ? `Could not complete image upload while ${step}: ${safeMessage}`
+    : `Could not complete image upload while ${step}. Try again or contact support.`
+}
+
 export function TemplateImageUpload({
   templateId,
   organizationSlug,
@@ -29,6 +45,8 @@ export function TemplateImageUpload({
           if (!file) return
           setBusy(true)
           setError(null)
+          let step: "requesting upload" | "uploading to storage" | "validating upload" =
+            "requesting upload"
           try {
             const input = {
               templateId,
@@ -44,12 +62,20 @@ export function TemplateImageUpload({
                   organizationSlug,
                 })
               : await orpcBrowser.admin.templates.image.createUpload(input)
-            const response = await fetch(upload.uploadUrl, {
-              method: "PUT",
-              headers: upload.requiredHeaders,
-              body: file,
-            })
-            if (!response.ok) throw new Error("Upload failed")
+            step = "uploading to storage"
+            let response: Response
+            try {
+              response = await fetch(upload.uploadUrl, {
+                method: "PUT",
+                headers: upload.requiredHeaders,
+                body: file,
+              })
+            } catch {
+              throw new Error("storage-network")
+            }
+            if (!response.ok)
+              throw new Error(`storage-http-${response.status}`)
+            step = "validating upload"
             if (organizationSlug)
               await orpcBrowser.organization.templateImages.complete({
                 organizationSlug,
@@ -62,10 +88,8 @@ export function TemplateImageUpload({
                 uploadId: upload.uploadId,
               })
             onUploaded()
-          } catch {
-            setError(
-              "The image could not be uploaded. Use a JPEG, PNG, or WebP image under 5 MiB."
-            )
+          } catch (cause) {
+            setError(getUploadErrorMessage(cause, step))
           } finally {
             setBusy(false)
             inputElement.value = ""
