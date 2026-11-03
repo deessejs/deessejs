@@ -14,6 +14,7 @@ import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
 import { organizationPlugin } from "./organization/plugin.js"
+import { canAccessOrganizationBilling } from "./organization/billing-authorization.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -354,7 +355,7 @@ const authConfig: BetterAuthOptions = {
                   : []),
               ],
               authorizeReference: async ({ user, referenceId, action }) => {
-                if (!referenceId || action === "list-subscription") return false
+                if (!referenceId) return false
                 const [membership] = await db
                   .select({ role: member.role })
                   .from(member)
@@ -365,9 +366,7 @@ const authConfig: BetterAuthOptions = {
                     )
                   )
                   .limit(1)
-                return membership?.role
-                  .split(",")
-                  .some((role) => role === "owner" || role === "admin") ?? false
+                return canAccessOrganizationBilling(membership?.role, action)
               },
             },
             organization: { enabled: true },

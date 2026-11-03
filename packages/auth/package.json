@@ -29,6 +29,11 @@
       "import": "./dist/organization/roles.js",
       "default": "./dist/organization/roles.js"
     },
+    "./organization/billing-authorization": {
+      "types": "./dist/organization/billing-authorization.d.ts",
+      "import": "./dist/organization/billing-authorization.js",
+      "default": "./dist/organization/billing-authorization.js"
+    },
     "./organization/reserved-slugs": {
       "types": "./dist/organization/reserved-slugs.d.ts",
       "import": "./dist/organization/reserved-slugs.js",
