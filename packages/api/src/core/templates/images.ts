@@ -318,6 +318,20 @@ export async function transitionPendingPublicationImageReference(
     reviewReason?: string
   } = {}
 ) {
+  const [target] = await tx
+    .select({ templateId: templatePublications.templateId })
+    .from(templatePublications)
+    .where(eq(templatePublications.id, publicationId))
+    .limit(1)
+  if (!target) return null
+  // Use the same lock order as image completion and submission to serialize
+  // reference checks with working-image replacement.
+  await tx
+    .select({ id: templates.id })
+    .from(templates)
+    .where(eq(templates.id, target.templateId))
+    .for("update")
+    .limit(1)
   const [existing] = await tx
     .select({
       id: templatePublications.id,

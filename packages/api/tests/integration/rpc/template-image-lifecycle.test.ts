@@ -3,8 +3,9 @@
  * @database postgres
  */
 import { randomUUID } from "node:crypto"
+import { Readable } from "node:stream"
 import { eq } from "drizzle-orm"
-import { describe, expect, inject, it } from "vitest"
+import { describe, expect, inject, it, vi } from "vitest"
 import { db } from "@workspace/database"
 import {
   organization,
@@ -14,6 +15,19 @@ import {
   user,
 } from "@workspace/database/schema"
 import { transitionPendingPublicationImageReference } from "../../../src/core/templates/images.js"
+import { api } from "../../../src/index.js"
+
+const storageFake = vi.hoisted(() => ({
+  storage: {
+    async getObject() {
+      const body = Buffer.from("image-bytes")
+      return { body: Readable.from([body]), contentLength: body.length }
+    },
+  },
+}))
+vi.mock("../../../src/core/avatars/storage.js", () => ({
+  getAvatarStorage: () => storageFake.storage,
+}))
 
 const POSTGRES_READY = inject("postgres:ready") === true
 
@@ -148,6 +162,92 @@ describe("terminal template publication image references", () => {
         expect(publication?.imageObjectId).toBeNull()
         expect(object?.state).toBe("ready")
       } finally {
+        await dispose(value)
+      }
+    })
+
+    it("detaches a terminal snapshot but retains an image shared with a current publication", async () => {
+      const value = await fixture()
+      const currentPublicationId = randomUUID()
+      try {
+        await db.insert(templatePublications).values({
+          id: currentPublicationId,
+          templateId: value.templateId,
+          organizationId: value.orgId,
+          organizationSlug: "fixture-org",
+          organizationName: "Fixture",
+          submittedBy: value.userId,
+          sourceCommit: "b".repeat(40),
+          slug: "fixture-current",
+          name: "Current fixture",
+          description: "Fixture",
+          owner: "owner",
+          repo: "repo",
+          category: "saas",
+          license: "MIT",
+          repositoryName: "repo",
+          canonicalUrl: "https://github.com/owner/repo",
+          distributionRightsConfirmed: true,
+          reviewStatus: "approved",
+          publicationState: "current",
+          imageObjectId: value.objectId,
+        })
+        await db.transaction((tx) =>
+          transitionPendingPublicationImageReference(
+            tx,
+            value.publicationId,
+            "withdrawn"
+          )
+        )
+        const [terminal] = await db
+          .select({ imageObjectId: templatePublications.imageObjectId })
+          .from(templatePublications)
+          .where(eq(templatePublications.id, value.publicationId))
+        const [object] = await db
+          .select({ state: storageObjects.state })
+          .from(storageObjects)
+          .where(eq(storageObjects.id, value.objectId))
+        expect(terminal?.imageObjectId).toBeNull()
+        expect(object?.state).toBe("ready")
+      } finally {
+        await db
+          .delete(templatePublications)
+          .where(eq(templatePublications.id, currentPublicationId))
+        await dispose(value)
+      }
+    })
+
+    it("serves only current approved snapshots publicly and hides working images anonymously", async () => {
+      const value = await fixture()
+      try {
+        await db
+          .update(templates)
+          .set({ imageObjectId: value.objectId })
+          .where(eq(templates.id, value.templateId))
+        const privateResponse = await api.request(
+          `/api/v1/images/${value.objectId}`
+        )
+        expect(privateResponse.status).toBe(404)
+
+        await db
+          .update(templatePublications)
+          .set({ reviewStatus: "approved", publicationState: "current" })
+          .where(eq(templatePublications.id, value.publicationId))
+        const publicResponse = await api.request(
+          `/api/v1/images/${value.objectId}`
+        )
+        expect(publicResponse.status).toBe(200)
+        expect(publicResponse.headers.get("cache-control")).toContain(
+          "max-age=300"
+        )
+        expect(Buffer.from(await publicResponse.arrayBuffer()).toString()).toBe(
+          "image-bytes"
+        )
+      } finally {
+        await db
+          .update(templatePublications)
+          .set({ imageObjectId: null })
+          .where(eq(templatePublications.id, value.publicationId))
         await dispose(value)
       }
     })

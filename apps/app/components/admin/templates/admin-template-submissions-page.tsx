@@ -7,6 +7,7 @@ import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -268,9 +269,18 @@ function SubmissionReviewDetails({ submission }: { submission: Submission }) {
     <dl className="grid gap-3 rounded-md border p-4 text-sm sm:grid-cols-2">
       {submission.imageUrl ? (
         <div className="sm:col-span-2">
-          <dt className="text-muted-foreground">Submitted presentation image</dt>
+          <dt className="text-muted-foreground">
+            Submitted presentation image
+          </dt>
           <dd className="mt-2">
-            <img src={submission.imageUrl} alt={`${submission.name} submitted presentation`} className="max-h-64 rounded-md border object-contain" />
+            <Image
+              src={submission.imageUrl}
+              alt={`${submission.name} submitted presentation`}
+              width={800}
+              height={600}
+              unoptimized
+              className="max-h-64 w-auto rounded-md border object-contain"
+            />
           </dd>
         </div>
       ) : null}

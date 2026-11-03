@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
 import { orpcBrowser } from "@/lib/orpc-browser"
 
 export function TemplateImageUpload({
@@ -17,13 +18,14 @@ export function TemplateImageUpload({
   const [error, setError] = useState<string | null>(null)
   return (
     <label className="inline-flex items-center gap-2">
-      <input
+      <Input
         className="sr-only"
         type="file"
         accept="image/jpeg,image/png,image/webp"
         disabled={busy}
         onChange={async (event) => {
-          const file = event.currentTarget.files?.[0]
+          const inputElement = event.currentTarget
+          const file = inputElement.files?.[0]
           if (!file) return
           setBusy(true)
           setError(null)
@@ -66,7 +68,7 @@ export function TemplateImageUpload({
             )
           } finally {
             setBusy(false)
-            event.currentTarget.value = ""
+            inputElement.value = ""
           }
         }}
       />
