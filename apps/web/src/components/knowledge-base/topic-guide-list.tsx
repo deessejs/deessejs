@@ -10,7 +10,7 @@ import type { allKbGuides } from "content-collections"
  * full-width cards, comfortable reading widths, no awkward right-column
  * gutters, no division-of-attention across columns.
  *
- * Border strategy (Pattern A from `.claude/skills/tailwind-borders`):
+ * Border strategy (Pattern A from `border strategy guidance`):
  * `flex flex-col` on the wrapper with `divide-y divide-border` so each
  * row shares a hairline rule with its neighbours. A wrapper-level
  * `border border-border bg-background` closes the outer edges so the

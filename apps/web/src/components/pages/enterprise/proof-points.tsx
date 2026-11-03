@@ -11,7 +11,7 @@ import { PROOF_POINTS } from "@/lib/enterprise/proof-points"
  * visual signal that says "every one of these is a delivered
  * capability" without badges or external validation marks.
  *
- * Border strategy (Pattern C from `.claude/skills/tailwind-borders`):
+ * Border strategy (Pattern C from `border strategy guidance`):
  * `KbCardGrid` with `md:grid-cols-2` paints the wrapper with
  * `bg-border` and `gap-px` carries the separator between cells. This
  * replaces the old Pattern A (per-position border-r) arithmetic

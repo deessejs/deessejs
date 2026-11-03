@@ -49,7 +49,7 @@ gh api "https://api.github.com/repos/deessejs/deessejs/check-runs?per_page=100"
 gh api "https://api.github.com/repos/deessejs/deessejs/issues/{n}"
 
 # Spec if it exists (try to extract issue number from PR body)
-# e.g. "Closes #2" → fetch .claude/plans/2/plan.md from impl/2-{slug}
+# e.g. "Closes #2" → fetch temp/specs/2.md from impl/2-{slug}
 
 # Diff
 gh pr view {n} --json diff
@@ -106,7 +106,7 @@ if [ -n "$ISSUE_N" ]; then
   # Try to find the branch: list branches matching impl/{ISSUE_N}
   gh api "https://api.github.com/repos/deessejs/deessejs/pulls/{n}" --jq '.head.ref'
   SPEC_BRANCH=$(gh api "..." --jq '.head.ref')
-  gh api "https://api.github.com/repos/deessejs/deessejs/contents/.claude/plans/${ISSUE_N}/plan.md?ref=${SPEC_BRANCH}" \
+  gh api "https://api.github.com/repos/deessejs/deessejs/contents/temp/specs/${ISSUE_N}.md?ref=${SPEC_BRANCH}" \
     --jq '.content' 2>/dev/null | base64 -d -
 fi
 ```
@@ -144,7 +144,7 @@ Ask for confirmation before posting (unless the user explicitly said "review and
 ```bash
 gh pr review {n} --approve --body "## Review
 
-**Spec:** `.claude/plans/{issue}/plan.md`
+**Spec:** `temp/specs/{issue}.md`
 **Files:** {count}
 **CI:** {passed}/{total} ✅
 
@@ -159,7 +159,7 @@ Reviewed against the implementation spec. Changes look good.
 ```bash
 gh pr review {n} --request-changes --body "## Review
 
-**Spec:** `.claude/plans/{issue}/plan.md`
+**Spec:** `temp/specs/{issue}.md`
 **Files:** {count}
 **CI:** {passed}/{total} {⚠️/❌}
 

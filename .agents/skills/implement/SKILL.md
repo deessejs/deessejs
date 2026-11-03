@@ -75,10 +75,10 @@ Refuse if `status:ready` label is absent:
 
 **Gate B — spec exists**
 
-Look for `.claude/plans/{n}/plan.md` on the branch `impl/{n}-{slug}`:
+Look for `temp/specs/{n}.md` on the branch `impl/{n}-{slug}`:
 
 ```bash
-gh api "https://api.github.com/repos/deessejs/deessejs/contents/.claude/plans/{n}/plan.md?ref=impl/{n}-{slug}" \
+gh api "https://api.github.com/repos/deessejs/deessejs/contents/temp/specs/{n}.md?ref=impl/{n}-{slug}" \
   --jq '.content' 2>/dev/null | base64 -d -
 ```
 
@@ -98,7 +98,7 @@ Refuse if not on origin:
 
 ## §3 — Review
 
-Read the spec at `.claude/plans/{n}/plan.md` on the branch. Check the YAML `status` field.
+Read the spec at `temp/specs/{n}.md` on the branch. Check the YAML `status` field.
 
 - **`status: approved`** → proceed to §4 without asking
 - **`status: draft`** → **blocking**: present a summary and ask for approval
@@ -118,7 +118,7 @@ When asking for approval, include:
 3. Proceed to §4
 
 **If rejected:**
-> "Implementation blocked. The spec remains on `impl/{n}-{slug}` at `.claude/plans/{n}/plan.md`."
+> "Implementation blocked. The spec remains on `impl/{n}-{slug}` at `temp/specs/{n}.md`."
 
 ## §4 — Checkout the branch
 
@@ -130,7 +130,7 @@ git merge origin/impl/{n}-{slug}  # pull latest spec if updated
 
 ## §5 — Implement
 
-Read `.claude/plans/{n}/plan.md` and follow it exactly.
+Read `temp/specs/{n}.md` and follow it exactly.
 
 - Use `Edit` and `Write` to modify/create files
 - Execute steps in the order listed in the Outline

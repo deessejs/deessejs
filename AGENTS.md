@@ -174,8 +174,6 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 
 ## Agent tooling
 
-- **Skills** live in `.claude/skills/`: `spec`, `implement`, `create-pr`, `review-pr`, `create-issue`, `triage`, `product-design` and `use-shadcn`. Read the `SKILL.md` before running one.
-- **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
 - **Web research** follows the protocol in "Where your facts come from".
 
 ## Where the documentation lives
@@ -193,3 +191,9 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 ## CodeGraph
 
 - CodeGraph is an optional navigation aid. Use its relevant context, callers, callees, impact and test tools when helpful, but verify findings against source and tests. The graph is not authoritative.
+
+## Agent tooling
+
+- **Skills** live in `.agents/skills/`: `spec`, `implement`, `create-pr`, `review-pr`, `create-issue`, `triage`, `product-design`, `use-shadcn`, `impeccable` and `unslop`. Read the relevant `SKILL.md` before running one.
+- **Agent profiles**: no project agent profiles are maintained. The former Claude agent profiles targeted `@deessejs/type-testing`, which is not this repository, and are not portable instructions.
+- **Local Claude configuration and memory**: the local permissions file contained developer-specific broad permissions; the agent memory directory contained personal, time-sensitive notes and worktree snapshots. These are intentionally not migrated into shared guidance. The the audit-fix workflow script script depended on Claude-only Explore and code-fixer agents and auto-committed fixes to `main`; there is no supported shared equivalent, so it is removed. These details are recorded here to make the compatibility change explicit.

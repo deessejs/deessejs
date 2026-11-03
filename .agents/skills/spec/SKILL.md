@@ -82,7 +82,7 @@ Create the spec directory and copy the template:
 
 ```bash
 mkdir -p "temp/specs"
-cp .claude/skills/spec/PLAN_TEMPLATE.md "temp/specs/{n}.md"
+cp .agents/skills/spec/PLAN_TEMPLATE.md "temp/specs/{n}.md"
 ```
 
 Fill in every section. Key points:
