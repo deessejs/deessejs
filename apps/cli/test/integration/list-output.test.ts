@@ -25,11 +25,12 @@ describe("list output modes", () => {
     { name: "default", args: [] },
     { name: "--json", args: ["--json"] },
   ])("prints one JSON result in $name mode", async ({ args }) => {
-    fetchTemplates.mockResolvedValue([{ slug: "demo", name: "Demo", description: "", owner: "acme", repo: "demo", license: "MIT", category: "saas", labels: [] }])
+    fetchTemplates.mockResolvedValue([{ slug: "demo", name: "Demo", description: "", owner: "acme", repo: "demo", license: "MIT", category: "saas", labels: [], readme: "# Demo\nLong README body" }])
     await run(args)
     expect(JSON.parse(stdout.join(""))).toEqual({
       templates: [expect.objectContaining({ slug: "demo", name: "Demo" })],
     })
+    expect(JSON.parse(stdout.join("")).templates[0]).not.toHaveProperty("readme")
     expect(stderr.join("")).toBe("")
   })
   it("keeps the human table in verbose mode", async () => {
