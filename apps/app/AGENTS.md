@@ -16,10 +16,11 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 |---|---|
 | `proxy.ts` | The request guard. Protected prefixes, auth prefixes, the session lookup and the email-verification check. |
 | `lib/settings-paths.ts` | The account settings routes and `SETTINGS_PREFIX`, the constant the proxy imports. |
-| `lib/auth-client.ts` | The browser-side Better Auth client and the plugins it enables. |
+| `lib/client.ts` | The browser facade, with Better Auth under `client.auth` and oRPC under `client.rpc`. |
+| `lib/auth-client.ts` | The Better Auth browser client and its plugins, used by the facade. |
 | `lib/fetch-auth-interceptor.ts` | Attaches the session to the outgoing calls. |
 | `lib/orpc.ts` | The typed oRPC client pointed at the API base path. A server module. |
-| `lib/orpc-browser.ts` | The same client for the browser, for the client components. |
+| `lib/orpc-browser.ts` | The browser oRPC client used by the facade. |
 | `lib/workspace-paths.ts` | The workspace paths, and the organizations page's path. |
 | `lib/workspace-organization.ts` | The organization a workspace page belongs to, read once per request. |
 | `lib/admin-auth.ts` | The `role` check behind the `/admin` area. |
@@ -48,7 +49,8 @@ Inside `(protected)`, the workspace is a group of its own: `(workspace)/[organiz
 - **The proxy classifies a path, it does not match a list.** The workspace tree's first segment is not known in advance, so the matcher is a regular expression and the function decides what a path is: a first segment the application owns is an application route, any other first segment is an organization slug and is protected, and a path with a file extension is a file and is never gated. The reserved slug set tells the proxy which segments the application owns.
 - **The proxy reads the session on every request,** with `cache: "no-store"`. A cached session turns the gate into a stale decision.
 - **The session payload shape is `{ session, user }` at the top level.** An earlier revision assumed `session.user`, which silently disabled the email-verification check on every protected route because the property was always undefined.
-- **App code talks to auth and data through clients.** Browser auth uses `lib/auth-client.ts`; app data uses `lib/orpc.ts` and `@workspace/api`. Never import runtime `auth` from `@workspace/auth` or `db` / tables from `@workspace/database` in an application. A server component that needs auth state must call the HTTP endpoint through an app-owned server client and forward the request headers. Put client-safe shared types in `@workspace/contracts`; direct type-only service imports require a concrete reason and must not import runtime code.
+- **App code talks to auth and data through clients.** Browser components use `lib/client.ts`, which composes the Better Auth client at `client.auth` and the oRPC client at `client.rpc`; each retains its own transport. Server code uses `lib/orpc.ts` for typed API calls. Never import runtime `auth` from `@workspace/auth` or `db` / tables from `@workspace/database` in an application. A server component that needs auth state must call the HTTP endpoint through an app-owned server client and forward the request headers. Put client-safe shared types in `@workspace/contracts`; direct type-only service imports require a concrete reason and must not import runtime code.
+- **The wrapper is the browser call-site API.** Components and hooks must import `client` from `@/lib/client` and use `client.auth.*` or `client.rpc.*`. Do not import `@/lib/auth-client` or `@/lib/orpc-browser` in product call sites. Those modules are implementation details used by the wrapper; transport tests may import them directly. Server modules continue using `@/lib/orpc` and must not import the browser wrapper.
 - The current direct `auth.api.getSession()` calls in `lib/admin-auth.ts` and the device page, plus the session-token helpers imported from `@workspace/auth/types`, are legacy migration targets. Do not copy those patterns.
 
 ## Commands

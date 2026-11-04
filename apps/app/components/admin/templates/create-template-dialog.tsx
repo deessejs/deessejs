@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
@@ -31,7 +32,6 @@ import {
 } from "@workspace/ui/components/select"
 import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
-import { orpcBrowser } from "@/lib/orpc-browser"
 
 const formSchema = z.object({
   repositoryUrl: z
@@ -100,7 +100,7 @@ export function CreateTemplateDialog({
   async function create(values: FormValues) {
     setFailure(null)
     try {
-      await orpcBrowser.admin.templates.create({
+      await client.rpc.admin.templates.create({
         repositoryUrl: values.repositoryUrl,
         slug: values.slug,
         name: values.name,

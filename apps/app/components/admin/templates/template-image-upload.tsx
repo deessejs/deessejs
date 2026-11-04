@@ -1,9 +1,9 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { orpcBrowser } from "@/lib/orpc-browser"
 
 function getUploadErrorMessage(cause: unknown, step: string) {
   const message = cause instanceof Error ? cause.message : ""
@@ -57,11 +57,11 @@ export function TemplateImageUpload({
               byteSize: file.size,
             }
             const upload = organizationSlug
-              ? await orpcBrowser.organization.templateImages.createUpload({
+              ? await client.rpc.organization.templateImages.createUpload({
                   ...input,
                   organizationSlug,
                 })
-              : await orpcBrowser.admin.templates.image.createUpload(input)
+              : await client.rpc.admin.templates.image.createUpload(input)
             step = "uploading to storage"
             let response: Response
             try {
@@ -77,13 +77,13 @@ export function TemplateImageUpload({
               throw new Error(`storage-http-${response.status}`)
             step = "validating upload"
             if (organizationSlug)
-              await orpcBrowser.organization.templateImages.complete({
+              await client.rpc.organization.templateImages.complete({
                 organizationSlug,
                 templateId,
                 uploadId: upload.uploadId,
               })
             else
-              await orpcBrowser.admin.templates.image.complete({
+              await client.rpc.admin.templates.image.complete({
                 templateId,
                 uploadId: upload.uploadId,
               })
