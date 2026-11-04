@@ -29,6 +29,7 @@ Other release channels:
 | `deessejs organization list`          | List organizations the signed-in user belongs to                |
 | `deessejs organization info <slug>`   | Show one of the signed-in user's organizations                  |
 | `deessejs organization create <name>` | Create an organization                                          |
+| `deessejs update` / `deessejs upgrade` | Check for and install a CLI update                              |
 
 ## Examples
 
@@ -68,6 +69,15 @@ If the selected files include a root `deesse.json`, `init` validates it against 
 Organization commands require an active session from `deessejs auth login`. `list` and `info` use Better Auth's authenticated organization endpoints and only show organizations the caller belongs to. `create` proposes a slug from the name, then sends the name and slug through DeesseJS's authenticated provisioning API. The server validates the slug, resolves collisions and returns the stored slug. Creating an organization does not change the active organization. Each command accepts `--json` for scripting.
 
 `organization template list <organization-slug>` lists all templates owned by that organization that the signed-in user can access, including templates that have not been submitted for publication. `info <organization-slug> <template-slug>` shows one owned template. Both expose review and publication state independently from organization ownership. `add <organization-slug>` requires `--slug`, `--name`, `--repository` and `--category`; optional metadata uses `--description`, repeatable `--label` (repeat the option for each label) and `--license`. The API validates the public GitHub repository and requires an organization owner or admin. Adding a template creates an organization-owned entry; it does not publish it. Use `--json` for scripting.
+
+`deessejs update` and its `upgrade` alias check the npm `latest` dist-tag, which is the stable release channel. A recognized global npm or pnpm installation is updated through its owning package manager. A local dependency or an installation whose location cannot be identified is left unchanged; the command prints a manual global install command instead. For ephemeral launches, rerun the launcher to use the new version:
+
+```bash
+npx @deessejs/cli@latest update
+pnpm dlx @deessejs/cli@latest update
+```
+
+The command emits one JSON result by default. Pass `--verbose` for human-readable output. Registry/network failures produce a structured JSON error and nonzero exit status (or a readable error in verbose mode). Package-manager failures produce `status: "update-failed"`, include a recovery command, and return nonzero; child-process diagnostics are written to stderr so they do not corrupt JSON stdout.
 
 By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to print the resolved template source, ref, destination, commit, and selected file count, as well as the full package manager output when installation runs. Verbose details go to stderr so `--json` keeps stdout machine-readable. The details are also shown with `--no-install`.
 
