@@ -40,13 +40,15 @@ import { printError, printJson } from "../../output/index.js"
 export const loginCommand = new Command("login")
   .description("Authorize this machine against the DeesseJS server")
   .option("--json", "JSON output for scripting")
-  .action(async (opts: { json?: boolean }) => {
-    const spinner = opts.json ? null : ora("Requesting device code...").start()
+  .option("--verbose", "show human-readable output")
+  .action(async (opts: { json?: boolean; verbose?: boolean }) => {
+    const json = !opts.verbose || !!opts.json
+    const spinner = json ? null : ora("Requesting device code...").start()
     try {
       const issued = await requestDeviceCode()
       spinner?.stop()
 
-      if (!opts.json) {
+      if (!json) {
         console.log()
         console.log(
           pc.cyan(
@@ -59,7 +61,7 @@ export const loginCommand = new Command("login")
 
       await openVerificationUrl(issued.url)
 
-      const pollSpinner = opts.json
+      const pollSpinner = json
         ? null
         : ora("Waiting for browser approval...").start()
       try {
@@ -71,7 +73,7 @@ export const loginCommand = new Command("login")
           fetchedAt: new Date().toISOString(),
         })
         pollSpinner?.stop()
-        if (opts.json) {
+        if (json) {
           printJson({ ok: true, user })
         } else {
           console.log()
@@ -87,7 +89,7 @@ export const loginCommand = new Command("login")
       spinner?.stop()
       if (e instanceof CliError) {
         const err = e
-        if (opts.json) {
+        if (json) {
           printJson({ ok: false, code: err.code, message: err.message })
         } else {
           printError(err)

@@ -28,8 +28,10 @@ const blockInfoCommand = new Command("info")
     "Git ref to inspect (defaults to the URL ref or repository default branch)"
   )
   .option("--json", "JSON output for scripting")
-  .action(async (source: string, options: { ref?: string; json?: boolean }) => {
-    const spinner = options.json
+  .option("--verbose", "show human-readable output")
+  .action(async (source: string, options: { ref?: string; json?: boolean; verbose?: boolean }) => {
+    const json = !options.verbose || !!options.json
+    const spinner = json
       ? null
       : ora("Reading block details...").start()
 
@@ -39,7 +41,7 @@ const blockInfoCommand = new Command("info")
       })
       spinner?.succeed("Block details loaded")
 
-      if (options.json) {
+      if (json) {
         printJson({
           ok: true,
           command: "block info",
@@ -51,7 +53,7 @@ const blockInfoCommand = new Command("info")
     } catch (error) {
       spinner?.fail("Failed to read block details")
       if (error instanceof CliError) {
-        if (options.json) {
+        if (json) {
           printJson({
             ok: false,
             code: error.code,
@@ -79,6 +81,7 @@ const blockCheckCommand = new Command("check")
     "Git ref to check (defaults to the URL ref or repository default branch)"
   )
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action((source: string, options: BlockCommandOptions) =>
     runBlockCheck(source, options)
   )
@@ -86,21 +89,22 @@ const blockCheckCommand = new Command("check")
 blockCommand.addCommand(blockInfoCommand)
 blockCommand.addCommand(blockCheckCommand)
 
-type BlockCommandOptions = { ref?: string; json?: boolean }
+type BlockCommandOptions = { ref?: string; json?: boolean; verbose?: boolean }
 type BlockSpinner = ReturnType<typeof ora> | null
 
 async function runBlockCheck(
   source: string,
   options: BlockCommandOptions
 ): Promise<void> {
-  const spinner = options.json ? null : ora("Checking block source...").start()
+  const json = !options.verbose || !!options.json
+  const spinner = json ? null : ora("Checking block source...").start()
   try {
     const result = await checkBlockSource(source, {
       ...(options.ref ? { ref: options.ref } : {}),
     })
-    reportBlockCheck(result, options.json ?? false, spinner)
+    reportBlockCheck(result, json, spinner)
   } catch (error) {
-    handleBlockCheckError(error, options.json ?? false, spinner)
+    handleBlockCheckError(error, json, spinner)
   }
 }
 
