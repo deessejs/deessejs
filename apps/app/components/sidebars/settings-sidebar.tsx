@@ -28,7 +28,7 @@ import {
 import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import { APP_CONFIG } from "@/lib/app-config"
-import { SETTINGS_PATHS } from "@/lib/settings-paths"
+import { ACCOUNT_PATHS, SETTINGS_PATHS } from "@/lib/settings-paths"
 
 const MAIN_NAV = [
   { label: "Dashboard", href: APP_CONFIG.links.home, icon: HomeIcon },
@@ -39,7 +39,7 @@ const SETTINGS_NAV = [
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },
   { label: "Account", href: SETTINGS_PATHS.account, icon: BadgeCheckIcon },
-  { label: "Support", href: "/account/support", icon: LifeBuoyIcon },
+  { label: "Support", href: ACCOUNT_PATHS.support, icon: LifeBuoyIcon },
 ]
 
 export function SettingsSidebar() {

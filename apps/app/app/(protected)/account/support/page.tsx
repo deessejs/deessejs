@@ -29,26 +29,43 @@ function getHttpUrl(base: string | undefined, path?: string): string | undefined
 const HELP_URL = getHttpUrl(WEB_URL, "/help")
 const DOCUMENTATION_URL = getHttpUrl(DOCS_URL)
 
-const RESOURCE_LINKS = [
-  HELP_URL && {
-    title: "In-app help",
-    description: "Browse answers and guidance for using DeesseJS.",
-    href: HELP_URL,
-    label: "Visit help",
-    icon: CircleHelpIcon,
-    external: true,
-  },
-  DOCUMENTATION_URL && {
-    title: "Documentation",
-    description: "Read product guides, setup instructions, and references.",
-    href: DOCUMENTATION_URL,
-    label: "Browse documentation",
-    icon: BookOpenIcon,
-    external: true,
-  },
-].filter((link): link is NonNullable<typeof link> => Boolean(link))
+type SupportLinkItem = {
+  title: string
+  description: string
+  href: string
+  label: string
+  icon: LucideIcon
+  external: boolean
+}
 
-const CONTACT_LINKS = [
+const RESOURCE_LINKS: SupportLinkItem[] = [
+  ...(HELP_URL
+    ? [
+        {
+          title: "In-app help",
+          description: "Browse answers and guidance for using DeesseJS.",
+          href: HELP_URL,
+          label: "Visit help",
+          icon: CircleHelpIcon,
+          external: true,
+        },
+      ]
+    : []),
+  ...(DOCUMENTATION_URL
+    ? [
+        {
+          title: "Documentation",
+          description: "Read product guides, setup instructions, and references.",
+          href: DOCUMENTATION_URL,
+          label: "Browse documentation",
+          icon: BookOpenIcon,
+          external: true,
+        },
+      ]
+    : []),
+]
+
+const CONTACT_LINKS: SupportLinkItem[] = [
   {
     title: "GitHub Discussions",
     description: "Ask the community a question or share an idea.",
@@ -74,14 +91,7 @@ function SupportLink({
   label,
   icon: Icon,
   external,
-}: {
-  title: string
-  description: string
-  href: string
-  label: string
-  icon: LucideIcon
-  external: boolean
-}) {
+}: SupportLinkItem) {
   return (
     <a
       className="group flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

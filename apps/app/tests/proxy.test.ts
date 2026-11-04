@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
+import {
+  ACCOUNT_PATHS,
+  SETTINGS_PATHS,
+  SETTINGS_PREFIX,
+} from "../lib/settings-paths"
 import { ORGANIZATIONS_PATH } from "../lib/workspace-paths"
 import { config, proxy } from "../proxy"
 
@@ -104,6 +108,16 @@ describe("proxy: the account settings are protected", () => {
 })
 
 describe("proxy: account routes are protected", () => {
+  it("bounces a signed-out visitor from support to login", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request(ACCOUNT_PATHS.support))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).searchParams.get("redirect")).toBe(
+      ACCOUNT_PATHS.support,
+    )
+  })
+
   it("bounces a signed-out visitor from an account route to login", async () => {
     stubSession({ signedIn: false })
     const response = await proxy(request("/account/overview"))
@@ -124,7 +138,7 @@ describe("proxy: account routes are protected", () => {
 
   it("lets a verified visitor access an account route", async () => {
     stubSession()
-    const response = await proxy(request("/account/support"))
+    const response = await proxy(request(ACCOUNT_PATHS.support))
 
     expect(response.status).toBe(200)
     expect(response.headers.get("location")).toBeNull()
