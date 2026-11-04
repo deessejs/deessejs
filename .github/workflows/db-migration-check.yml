@@ -68,7 +68,7 @@ jobs:
       - name: Apply migrations
         run: pnpm --filter @workspace/database db:migrate
 
-      # Canonical table check: count must be 21 and the names must
+      # Canonical table check: count must be 20 and the names must
       # match the Better Auth and organization plugin output, the
       # organization provisioning and avatar tables, generic storage
       # tables, template catalog and publication tables, and GitHub App
@@ -82,7 +82,7 @@ jobs:
       - name: Verify table set
         run: |
           set -euo pipefail
-          EXPECTED='account|device_code|github_app_installation|github_project|github_project_check|github_user_connection|invitation|member|organization|organization_avatars|organization_provisioning|session|storage_objects|storage_uploads|block_publications|template_image_uploads|template_publications|template_repository_snapshots|templates|user|user_avatars|verification'
+          EXPECTED='account|block_publications|device_code|github_app_installation|github_project|github_project_check|github_user_connection|invitation|member|organization|organization_avatars|organization_provisioning|session|storage_objects|storage_uploads|template_publications|template_repository_snapshots|templates|user|user_avatars|verification'
           ACTUAL=$(psql "$DATABASE_URL" -tA -c "SELECT string_agg(table_name, '|' ORDER BY table_name COLLATE \"C\") FROM information_schema.tables WHERE table_schema = 'public'")
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Expected: $EXPECTED"
