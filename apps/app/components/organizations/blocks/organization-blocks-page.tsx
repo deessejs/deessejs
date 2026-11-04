@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { orpcBrowser } from "@/lib/orpc-browser"
+import { client } from "@/lib/client"
 
 export function OrganizationBlocksPage({
   organizationSlug,
@@ -32,7 +32,7 @@ export function OrganizationBlocksPage({
     event.preventDefault()
     setMessage("")
     try {
-      await orpcBrowser.organization.blocks.create({
+      await client.rpc.organization.blocks.create({
         organizationSlug,
         slug,
         name,
@@ -51,7 +51,7 @@ export function OrganizationBlocksPage({
   }
   async function submit(id: string) {
     try {
-      await orpcBrowser.organization.blocks.submit({
+      await client.rpc.organization.blocks.submit({
         organizationSlug,
         blockId: id,
         ref: "HEAD",

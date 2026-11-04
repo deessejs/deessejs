@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { orpcBrowser } from "@/lib/orpc-browser"
+import { client } from "@/lib/client"
 
 export function AdminBlockSubmissionsPage({
   submissions,
@@ -25,12 +25,12 @@ export function AdminBlockSubmissionsPage({
     setError("")
     try {
       if (approve) {
-        await orpcBrowser.admin.templates.blockPublications.approve({
+        await client.rpc.admin.templates.blockPublications.approve({
           publicationId: id,
           reason: reason || null,
         })
       } else {
-        await orpcBrowser.admin.templates.blockPublications.reject({
+        await client.rpc.admin.templates.blockPublications.reject({
           publicationId: id,
           reason,
         })
