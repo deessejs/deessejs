@@ -125,6 +125,13 @@ export const serverInputShape = {
   // the rate limit to 5000 req/h. See packages/api/src/core/templates/enrich.ts.
   GITHUB_TOKEN: z.string().optional(),
 
+  // Optional organization billing. Stripe remains disabled until a secret,
+  // webhook secret, and at least one configured plan price are supplied.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_PRO_MONTHLY_PRICE_ID: z.string().min(1).optional(),
+  STRIPE_PRO_ANNUAL_PRICE_ID: z.string().min(1).optional(),
+
   // GitHub OAuth credentials (optional). Used by better-auth's
   // `socialProviders.github` block in packages/auth/src/auth.ts to
   // light up "Continue with GitHub". CI / Vitest run without these

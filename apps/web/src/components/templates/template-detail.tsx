@@ -58,6 +58,7 @@ export const TemplateDetail = ({
   className,
 }: TemplateDetailProps) => {
   const isCommunity = isCommunityTemplate(template)
+  const isPro = template.labels.some((label) => label.toLowerCase() === "pro")
   const installCommand = `deessejs init ${template.slug}`
   const sourceUrl = `https://github.com/${template.owner}/${template.repo}`
   // Demo URL is derived from the template slug. Each template ships
@@ -87,6 +88,7 @@ export const TemplateDetail = ({
               Community template
             </Badge>
           ) : null}
+          {isPro ? <Badge variant="secondary" className="w-fit">Pro template</Badge> : null}
           <h1 className="text-heading-56 tracking-tight">{template.name}</h1>
           <p className="max-w-3xl text-copy-18 text-muted-foreground">
             {template.description}
@@ -100,11 +102,11 @@ export const TemplateDetail = ({
               </a>
             </Button>
           ) : null}
-          <Button variant="outline" asChild>
+          {!isPro ? <Button variant="outline" asChild>
             <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
               View source
             </a>
-          </Button>
+          </Button> : <Button asChild><a href={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.deessejs.com"}/organizations?template=${encodeURIComponent(template.slug)}`}>Get Pro access</a></Button>}
         </div>
       </header>
 
@@ -131,7 +133,7 @@ export const TemplateDetail = ({
             </p>
           </section>
 
-          <TemplateReadme readme={template.readme} />
+          {!isPro ? <TemplateReadme readme={template.readme} /> : null}
 
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">Install</h2>

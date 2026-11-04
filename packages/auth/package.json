@@ -29,6 +29,11 @@
       "import": "./dist/organization/roles.js",
       "default": "./dist/organization/roles.js"
     },
+    "./organization/billing-authorization": {
+      "types": "./dist/organization/billing-authorization.d.ts",
+      "import": "./dist/organization/billing-authorization.js",
+      "default": "./dist/organization/billing-authorization.js"
+    },
     "./organization/reserved-slugs": {
       "types": "./dist/organization/reserved-slugs.d.ts",
       "import": "./dist/organization/reserved-slugs.js",
@@ -62,13 +67,15 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
+    "@better-auth/stripe": "catalog:",
     "@workspace/database": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/env": "workspace:*",
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",
-    "postgres": "catalog:"
+    "postgres": "catalog:",
+    "stripe": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -76,7 +83,7 @@
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
     "auth": "catalog:",
-    "vitest": "catalog:",
-    "oxlint": "catalog:"
+    "oxlint": "catalog:",
+    "vitest": "catalog:"
   }
 }

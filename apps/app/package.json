@@ -12,8 +12,9 @@
     "test:run": "vitest run"
   },
   "dependencies": {
-    "@nanostores/react": "^1.0.0",
+    "@better-auth/stripe": "catalog:",
     "@hookform/resolvers": "catalog:",
+    "@nanostores/react": "^1.0.0",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",
