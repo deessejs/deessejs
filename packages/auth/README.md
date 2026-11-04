@@ -55,7 +55,7 @@ export const authClient = createAuthClient({
 })
 ```
 
-The authenticated app also imports its preview interceptor so auth requests on Vercel preview deployments stay on the preview origin. See `apps/app/lib/auth-client.ts` for the complete configured client and plugins.
+The authenticated app also imports its preview interceptor so auth requests on Vercel preview deployments stay on the preview origin. `apps/app/lib/auth-client.ts` contains the configured Better Auth client and plugins; app browser call sites must use the wrapper in `apps/app/lib/client.ts` as `client.auth.*`, not import this implementation directly.
 
 ## Exports
 
