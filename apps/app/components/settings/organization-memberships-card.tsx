@@ -14,7 +14,7 @@ interface OrganizationMembership {
   id: string
   name: string
   slug: string
-  logo?: string | null
+  logo?: string | null | undefined
 }
 
 export function OrganizationMembershipsCard({
