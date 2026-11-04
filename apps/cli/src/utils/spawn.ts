@@ -11,6 +11,30 @@ export type SpawnOptions = {
   reject?: boolean
 }
 
+export type SpawnResult = { code: number | null; signal: NodeJS.Signals | null }
+
+export const spawnResult = (
+  command: string,
+  args: string[],
+  options: Omit<SpawnOptions, "reject"> = {}
+): Promise<SpawnResult> => {
+  const { cwd, env, stdio = "inherit" } = options
+  return new Promise((resolve, rejectFn) => {
+    const child = crossSpawn.spawn(command, args, {
+      cwd,
+      env: env ?? process.env,
+      stdio: stdio === "pipe" ? ["ignore", "pipe", "pipe"] : stdio,
+      shell: false,
+    })
+    if (stdio === "pipe") {
+      child.stdout?.pipe(process.stderr)
+      child.stderr?.pipe(process.stderr)
+    }
+    child.on("error", rejectFn)
+    child.on("exit", (code, signal) => resolve({ code, signal }))
+  })
+}
+
 /**
  * Run a command and resolve with its exit code. Never throws on non-zero by
  * default; pass `reject: true` to opt into throwing.
