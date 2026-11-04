@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BadgeCheckIcon,
   HomeIcon,
+  MailIcon,
   LinkIcon,
   SmartphoneIcon,
   UserIcon,
@@ -34,6 +35,7 @@ const MAIN_NAV = [
 ]
 
 const SETTINGS_NAV = [
+  { label: "Invitations", href: SETTINGS_PATHS.invitations, icon: MailIcon },
   { label: "Profile", href: SETTINGS_PATHS.profile, icon: UserIcon },
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },

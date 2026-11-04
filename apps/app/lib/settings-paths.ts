@@ -18,6 +18,7 @@ export const SETTINGS_PREFIX = "/account/settings"
 
 /** The account settings leaves, in navigation order. */
 export const SETTINGS_PATHS = {
+  invitations: "/account/invites",
   profile: `${SETTINGS_PREFIX}/profile`,
   sessions: `${SETTINGS_PREFIX}/sessions`,
   connections: `${SETTINGS_PREFIX}/connections`,
