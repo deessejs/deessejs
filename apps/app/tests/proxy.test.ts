@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
+import {
+  ACCOUNT_PATHS,
+  SETTINGS_PATHS,
+  SETTINGS_PREFIX,
+} from "../lib/settings-paths"
 import { ORGANIZATIONS_PATH } from "../lib/workspace-paths"
 import { config, proxy } from "../proxy"
 
@@ -116,7 +120,7 @@ describe("proxy: account routes are protected", () => {
 
   it("sends an unverified visitor from an account route to verify-email", async () => {
     stubSession({ emailVerified: false })
-    const response = await proxy(request("/account/invites"))
+    const response = await proxy(request(ACCOUNT_PATHS.invitations))
 
     expect(response.status).toBe(307)
     expect(locationOf(response).pathname).toBe("/verify-email")

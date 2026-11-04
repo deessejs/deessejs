@@ -13,12 +13,19 @@
 // protects them, the navigation rail links to them, and the pages
 // link to each other. No other file may hardcode one.
 
+/** The prefix shared by all account-level routes. */
+export const ACCOUNT_PREFIX = "/account"
+
+/** Account pages that sit outside the settings section. */
+export const ACCOUNT_PATHS = {
+  invitations: `${ACCOUNT_PREFIX}/invites`,
+} as const
+
 /** The prefix the account settings live under. */
 export const SETTINGS_PREFIX = "/account/settings"
 
 /** The account settings leaves, in navigation order. */
 export const SETTINGS_PATHS = {
-  invitations: "/account/invites",
   profile: `${SETTINGS_PREFIX}/profile`,
   sessions: `${SETTINGS_PREFIX}/sessions`,
   connections: `${SETTINGS_PREFIX}/connections`,

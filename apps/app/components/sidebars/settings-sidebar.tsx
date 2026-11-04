@@ -28,14 +28,14 @@ import {
 import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import { APP_CONFIG } from "@/lib/app-config"
-import { SETTINGS_PATHS } from "@/lib/settings-paths"
+import { ACCOUNT_PATHS, SETTINGS_PATHS } from "@/lib/settings-paths"
 
 const MAIN_NAV = [
   { label: "Dashboard", href: APP_CONFIG.links.home, icon: HomeIcon },
 ]
 
 const SETTINGS_NAV = [
-  { label: "Invitations", href: SETTINGS_PATHS.invitations, icon: MailIcon },
+  { label: "Invitations", href: ACCOUNT_PATHS.invitations, icon: MailIcon },
   { label: "Profile", href: SETTINGS_PATHS.profile, icon: UserIcon },
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },

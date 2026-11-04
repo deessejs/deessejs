@@ -3,13 +3,13 @@ import type { NextRequest } from "next/server"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 import { RESERVED_SLUGS } from "@workspace/auth/organization/reserved-slugs"
 
-import { SETTINGS_PREFIX } from "@/lib/settings-paths"
+import { ACCOUNT_PREFIX, SETTINGS_PREFIX } from "@/lib/settings-paths"
 import { ORGANIZATIONS_PATH } from "@/lib/workspace-paths"
 
 const PROTECTED_PREFIXES = [
   "/home",
   SETTINGS_PREFIX,
-  "/account",
+  ACCOUNT_PREFIX,
   "/admin",
   ORGANIZATIONS_PATH,
 ]
