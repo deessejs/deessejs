@@ -9,6 +9,7 @@ import { ORGANIZATIONS_PATH } from "@/lib/workspace-paths"
 const PROTECTED_PREFIXES = [
   "/home",
   SETTINGS_PREFIX,
+  "/account",
   "/admin",
   ORGANIZATIONS_PATH,
 ]
