@@ -1,9 +1,12 @@
 import { CLI_PACKAGE_NAME } from "./constants.js"
 import type {
   CliInstallation,
+  EphemeralInstallation,
   EphemeralLauncher,
+  GlobalInstallation,
   InstallationDetectionOptions,
   RunCommandAndCaptureStdout,
+  UnknownInstallation,
 } from "./types.js"
 import { realpathSync } from "node:fs"
 import { dirname, relative, sep } from "node:path"
@@ -42,6 +45,41 @@ export const runCommandAndCaptureStdout: RunCommandAndCaptureStdout = (
   })
 
 /**
+ * Constructs the persistent installation state after the package root has
+ * been matched against a manager's global root.
+ *
+ * @param manager - Package manager that owns the global installation.
+ * @param globalRoot - Canonical global node_modules directory.
+ * @returns A discriminated persistent-installation value.
+ */
+export const createGlobalInstallation = (
+  manager: GlobalInstallation["manager"],
+  globalRoot: string
+): GlobalInstallation => ({ kind: "global", manager, globalRoot })
+
+/**
+ * Constructs the state for a recognized temporary package launcher.
+ *
+ * @param launcher - Ephemeral launcher identified from process evidence.
+ * @returns A discriminated ephemeral-installation value.
+ */
+export const createEphemeralInstallation = (
+  launcher: EphemeralLauncher
+): EphemeralInstallation => ({
+  kind: "ephemeral",
+  launcher,
+})
+
+/**
+ * Constructs the conservative fallback state used when ownership is unproven.
+ *
+ * @returns An unknown installation value, which must never trigger an update.
+ */
+export const createUnknownInstallation = (): UnknownInstallation => ({
+  kind: "unknown",
+})
+
+/**
  * Classifies how this running CLI was installed. Ephemeral launcher evidence
  * takes precedence. Otherwise, the resolved CLI package directory must be
  * inside a global npm or pnpm package root before the result is considered
@@ -61,14 +99,14 @@ export const detectCliInstallation = async (
   const executablePath = options.executablePath ?? process.argv[1] ?? ""
   const userAgent = options.userAgent ?? process.env.npm_config_user_agent ?? ""
   const ephemeral = detectEphemeralLauncher(userAgent, executablePath)
-  if (ephemeral) return { kind: "ephemeral", launcher: ephemeral }
+  if (ephemeral) return createEphemeralInstallation(ephemeral)
 
   const runningPackageRoot = options.packageRoot ?? PACKAGE_ROOT
   let canonicalPackageRoot: string
   try {
     canonicalPackageRoot = realpathSync(runningPackageRoot)
   } catch {
-    return { kind: "unknown" }
+    return createUnknownInstallation()
   }
 
   const runCommand = options.runCommand ?? runCommandAndCaptureStdout
@@ -78,10 +116,10 @@ export const detectCliInstallation = async (
     const globalRoot = canonicalize(stdout.trim())
     if (!globalRoot) continue
     if (isPackageInsideGlobalRoot(globalRoot, canonicalPackageRoot)) {
-      return { kind: "global", manager, globalRoot }
+      return createGlobalInstallation(manager, globalRoot)
     }
   }
-  return { kind: "unknown" }
+  return createUnknownInstallation()
 }
 
 /**

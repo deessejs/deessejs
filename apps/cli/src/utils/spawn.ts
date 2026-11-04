@@ -13,6 +13,20 @@ export type SpawnOptions = {
 
 export type SpawnResult = { code: number | null; signal: NodeJS.Signals | null }
 
+/**
+ * Starts a subprocess with an argv array and reports both its exit code and
+ * terminating signal. This variant is used when callers must distinguish a
+ * normal failure from cancellation and need to choose the correct recovery
+ * behavior. Windows command shims are resolved by `cross-spawn`; shell parsing
+ * remains disabled. With `stdio: "pipe"`, child output is forwarded to stderr
+ * so structured stdout from the parent command is preserved.
+ *
+ * @param command - Executable name or path.
+ * @param args - Individual arguments passed to the executable.
+ * @param options - Optional working directory, environment, and stdio policy.
+ * @returns Exit code and signal; a signal termination has a null exit code.
+ * @throws If the process cannot be started.
+ */
 export const spawnResult = (
   command: string,
   args: string[],
@@ -36,8 +50,18 @@ export const spawnResult = (
 }
 
 /**
- * Run a command and resolve with its exit code. Never throws on non-zero by
- * default; pass `reject: true` to opt into throwing.
+ * Starts a subprocess and resolves with its exit code. Non-zero exits are
+ * values by default; callers may opt into rejection with `reject: true`. A
+ * spawn error rejects regardless of that option. The function uses argv-based
+ * execution with shell processing disabled and cross-platform command-shim
+ * resolution.
+ *
+ * @param command - Executable name or path.
+ * @param args - Individual arguments passed to the executable.
+ * @param options - Working directory, environment, stdio, and exit policy.
+ * @returns Child exit code, normalized to `1` when terminated by a signal.
+ * @throws If the process cannot be started or if `reject` is true and it exits
+ * with a non-zero code.
  */
 export const spawn = (
   command: string,

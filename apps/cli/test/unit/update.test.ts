@@ -6,11 +6,13 @@ import {
   createUpdatePlan,
   runGlobalUpdate,
 } from "../../src/commands/update/action.js"
-import { executeUpdateCommand } from "../../src/commands/update.js"
+import { executeUpdateCommand } from "../../src/commands/update/command.js"
 import { detectCliInstallation } from "../../src/commands/update/installation.js"
-import type { CliInstallation } from "../../src/commands/update/installation.js"
+import type {
+  CliInstallation,
+  UpdateCommandDependencies,
+} from "../../src/commands/update/types.js"
 import { fetchLatestStableCliVersion } from "../../src/commands/update/version.js"
-import type { UpdateCommandDependencies } from "../../src/commands/update.js"
 
 const temporaryPaths: string[] = []
 const makeDirectory = (path: string): string => {
