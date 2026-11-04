@@ -8,25 +8,25 @@ import { CatalogCard } from "@/components/catalog/catalog-card"
 import { CatalogEmptyState } from "@/components/catalog/catalog-empty-state"
 import { CatalogSidebar } from "@/components/catalog/catalog-sidebar"
 import { SearchInput } from "@/components/catalog/shared/search-input"
-import { BLOCK_ICONS } from "@/components/catalog/blocks/icons"
-import { BlockCardPreview } from "@/components/catalog/blocks/card-preview"
-import type { BlockCategory } from "@/components/catalog/blocks/categories"
-import type { CatalogueBlock } from "@/components/catalog/blocks/catalogue"
+import { SECTION_ICONS } from "@/components/catalog/sections/icons"
+import { SectionCardPreview } from "@/components/catalog/sections/card-preview"
+import type { SectionCategory } from "@/components/catalog/sections/categories"
+import type { CatalogueSection } from "@/components/catalog/sections/catalogue"
 
 type Props = {
-  blocks: ReadonlyArray<CatalogueBlock>
-  categories: ReadonlyArray<BlockCategory>
-  pinnedCategory: BlockCategory["id"]
+  sections: ReadonlyArray<CatalogueSection>
+  categories: ReadonlyArray<SectionCategory>
+  pinnedCategory: SectionCategory["id"]
 }
 
 /**
- * Client-side category browser for `/blocks/[category]`.
+ * Client-side category browser for `/sections/[category]`.
  *
  * Owns the search-with-debounce state, the per-category count
  * calculation, and the two-column layout (sidebar + grid).
  *
  * Pre-refactor: this lived in
- * `apps/web/src/app/(product)/blocks/_components/blocks-category-browser.tsx`
+ * `apps/web/src/app/(product)/sections/_components/sections-category-browser.tsx`
  * — moved here to remove the per-surface `_components/`
  * directory.
  */
@@ -35,10 +35,10 @@ type Props = {
 // `createElement` to satisfy the react-hooks/static-components
 // rule (a `const Icon = ...` inside the render body would
 // trigger it).
-const ICON_BY_SLUG = new Map(Object.entries(BLOCK_ICONS))
+const ICON_BY_SLUG = new Map(Object.entries(SECTION_ICONS))
 
-export function BlocksCategoryBrowserClient({
-  blocks,
+export function SectionsCategoryBrowserClient({
+  sections,
   categories,
   pinnedCategory,
 }: Props) {
@@ -47,14 +47,14 @@ export function BlocksCategoryBrowserClient({
   const normalizedQuery = deferredQuery.trim().toLowerCase()
 
   const counts = useMemo(() => {
-    const out = new Map<BlockCategory["id"], number>(
+    const out = new Map<SectionCategory["id"], number>(
       categories.map((category) => [category.id, 0] as const)
     )
-    for (const block of blocks) {
-      out.set(block.category, (out.get(block.category) ?? 0) + 1)
+    for (const section of sections) {
+      out.set(section.category, (out.get(section.category) ?? 0) + 1)
     }
     return out
-  }, [blocks, categories])
+  }, [sections, categories])
 
   const pinnedCategoryData = useMemo(
     () => categories.find((c) => c.id === pinnedCategory),
@@ -63,26 +63,26 @@ export function BlocksCategoryBrowserClient({
 
   const filtered = useMemo(() => {
     if (!pinnedCategoryData) return []
-    return blocks.filter((block) => {
-      if (block.category !== pinnedCategory) return false
+    return sections.filter((section) => {
+      if (section.category !== pinnedCategory) return false
       if (normalizedQuery.length > 0) {
-        const haystack = `${block.name} ${block.description}`.toLowerCase()
+        const haystack = `${section.name} ${section.description}`.toLowerCase()
         if (!haystack.includes(normalizedQuery)) return false
       }
       return true
     })
-  }, [blocks, pinnedCategory, pinnedCategoryData, normalizedQuery])
+  }, [sections, pinnedCategory, pinnedCategoryData, normalizedQuery])
 
   if (!pinnedCategoryData) return null
 
   return (
     <section
-      aria-label={`${pinnedCategoryData.name} blocks`}
+      aria-label={`${pinnedCategoryData.name} sections`}
       className="grid grid-cols-1 gap-8 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-0 lg:divide-x lg:divide-border"
     >
       <CatalogSidebar
-        heading="Blocks"
-        basePath="/blocks"
+        heading="Sections"
+        basePath="/sections"
         entries={categories}
         pinned={pinnedCategory}
         counts={counts}
@@ -94,36 +94,36 @@ export function BlocksCategoryBrowserClient({
             value={query}
             onChange={setQuery}
             placeholder={`Search ${pinnedCategoryData.name.toLowerCase()}…`}
-            aria-label={`Search blocks in ${pinnedCategoryData.name}`}
+            aria-label={`Search sections in ${pinnedCategoryData.name}`}
             className="flex-1 sm:max-w-sm"
           />
         </div>
         {filtered.length > 0 ? (
           <ul className="grid list-none grid-cols-1 gap-0 p-0 sm:grid-cols-2 lg:grid-cols-3 [&>li]:border-r [&>li]:border-b [&>li]:border-border [&>li:nth-child(2n)]:md:border-r-0 [&>li:nth-child(3n)]:lg:border-r-0 [&>li:nth-last-child(-n+2)]:md:border-b-0 [&>li:nth-last-child(-n+3)]:lg:border-b-0">
-            {filtered.map((block) => (
-              <li key={block.slug}>
+            {filtered.map((section) => (
+              <li key={section.slug}>
                 <CatalogCard
-                  href={`/blocks/${block.category}/${block.slug}`}
-                  ariaLabel={`Read the ${block.name} block`}
-                  preview={<BlockCardPreview block={block} />}
+                  href={`/sections/${section.category}/${section.slug}`}
+                  ariaLabel={`Read the ${section.name} section`}
+                  preview={<SectionCardPreview section={section} />}
                   title={
                     <div className="flex items-start gap-3">
-                      {createElement(ICON_BY_SLUG.get(block.slug) ?? Wrench, {
+                      {createElement(ICON_BY_SLUG.get(section.slug) ?? Wrench, {
                         "aria-hidden": true,
                         className:
                           "text-muted-foreground mt-0.5 size-4 shrink-0",
                       })}
-                      <span>{block.name}</span>
+                      <span>{section.name}</span>
                     </div>
                   }
-                  description={block.description}
+                  description={section.description}
                 />
               </li>
             ))}
           </ul>
         ) : (
           <CatalogEmptyState
-            title="No blocks match."
+            title="No sections match."
             description="Try a different search term."
           />
         )}

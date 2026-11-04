@@ -55,6 +55,11 @@ const nextConfig: NextConfig = {
         destination: "/privacy",
         permanent: true,
       },
+      {
+        source: "/blocks/:path*",
+        destination: "/sections/:path*",
+        permanent: true,
+      },
     ]
   },
 }

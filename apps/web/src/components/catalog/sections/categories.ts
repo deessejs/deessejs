@@ -1,17 +1,17 @@
 /**
- * Block categories for /blocks/[category].
+ * Section categories for /sections/[category].
  *
  * Single source of truth for the eight buckets that group the
- * blocks in `blocks-list.ts`. The taxonomy mirrors the marketing
+ * sections in `sections-list.ts`. The taxonomy mirrors the marketing
  * composition: each category is a recognisable section of a
  * landing page or product surface.
  *
- * The `blockNames` string is rendered inline in the placeholder
+ * The `sectionNames` string is rendered inline in the placeholder
  * card so each category page reads as "the X, Y, Z of this
  * category are coming" instead of a generic "coming soon."
  */
 
-export type BlockCategoryId =
+export type SectionCategoryId =
   | "hero"
   | "cta"
   | "feature"
@@ -21,19 +21,19 @@ export type BlockCategoryId =
   | "faq"
   | "footer"
 
-export type BlockCategory = {
-  id: BlockCategoryId
+export type SectionCategory = {
+  id: SectionCategoryId
   /** URL slug. */
-  slug: BlockCategoryId
+  slug: SectionCategoryId
   /** Human label. Used in eyebrow and H1. */
   name: string
   /** One-line description shown in the lead paragraph. */
   description: string
-  /** Inline list of blocks, rendered in the placeholder card. */
-  blockNames: string
+  /** Inline list of sections, rendered in the placeholder card. */
+  sectionNames: string
 }
 
-export const BLOCK_CATEGORY_ORDER: ReadonlyArray<BlockCategoryId> = [
+export const SECTION_CATEGORY_ORDER: ReadonlyArray<SectionCategoryId> = [
   "hero",
   "cta",
   "feature",
@@ -44,14 +44,14 @@ export const BLOCK_CATEGORY_ORDER: ReadonlyArray<BlockCategoryId> = [
   "footer",
 ]
 
-export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
+export const SECTION_CATEGORIES: ReadonlyArray<SectionCategory> = [
   {
     id: "hero",
     slug: "hero",
     name: "Hero",
     description:
       "The first scroll. Headline, lead, primary CTA. Variants for split layouts, embedded mockups, and announcement banners.",
-    blockNames:
+    sectionNames:
       "hero-centered, hero-split-image, hero-with-mockup, hero-with-cta-banner",
   },
   {
@@ -60,7 +60,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "CTA",
     description:
       "Call-to-action sections. Banner strips, full-bleed closers, and repeating CTAs that slot between features and pricing.",
-    blockNames: "cta-banner, cta-final, cta-repeating",
+    sectionNames: "cta-banner, cta-final, cta-repeating",
   },
   {
     id: "feature",
@@ -68,7 +68,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Feature",
     description:
       "Feature grids: bento layouts, vertical lists, side-by-side comparisons. Where the value props become tangible.",
-    blockNames: "feature-bento, feature-list, feature-comparison",
+    sectionNames: "feature-bento, feature-list, feature-comparison",
   },
   {
     id: "pricing",
@@ -76,7 +76,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Pricing",
     description:
       "Pricing surfaces. Layered cards, comparison tables, FAQ combo. The section that turns visitors into buyers.",
-    blockNames: "pricing-three-layer, pricing-comparison-table, pricing-faq",
+    sectionNames: "pricing-three-layer, pricing-comparison-table, pricing-faq",
   },
   {
     id: "testimonial",
@@ -84,7 +84,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Testimonial",
     description:
       "Social proof. Pairs of quotes, walls of love, customer logos with excerpts.",
-    blockNames: "testimonial-pair, testimonial-wall",
+    sectionNames: "testimonial-pair, testimonial-wall",
   },
   {
     id: "stats",
@@ -92,7 +92,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Stats",
     description:
       "Numbers. Tier-1 third-party metrics (npm, GitHub), in-house KPIs, and tier breakdowns.",
-    blockNames: "stats-four-cells, stats-tier",
+    sectionNames: "stats-four-cells, stats-tier",
   },
   {
     id: "faq",
@@ -100,7 +100,7 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "FAQ",
     description:
       "Objection handling. Accordions for the long list, split layouts when the answer deserves more than a sentence.",
-    blockNames: "faq-accordion, faq-split",
+    sectionNames: "faq-accordion, faq-split",
   },
   {
     id: "footer",
@@ -108,10 +108,10 @@ export const BLOCK_CATEGORIES: ReadonlyArray<BlockCategory> = [
     name: "Footer",
     description:
       "Page bottom. Column-rich footers with link groups, legal, status. Minimal variants for single-page layouts.",
-    blockNames: "footer-column-rich, footer-minimal",
+    sectionNames: "footer-column-rich, footer-minimal",
   },
 ]
 
-export function getBlockCategory(id: string): BlockCategory | undefined {
-  return BLOCK_CATEGORIES.find((category) => category.slug === id)
+export function getSectionCategory(id: string): SectionCategory | undefined {
+  return SECTION_CATEGORIES.find((category) => category.slug === id)
 }

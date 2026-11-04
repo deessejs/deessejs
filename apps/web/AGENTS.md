@@ -13,7 +13,7 @@ Use `src/lib/auth-client.ts` for browser authentication and `src/lib/orpc.ts` fo
 | Path | Owns |
 |---|---|
 | `src/app/(marketing)/` | Home, pricing, stack, ecosystem, customers, CLI pages. |
-| `src/app/(product)/` | Templates catalogue, blocks and components showcase, use cases. |
+| `src/app/(product)/` | Templates catalogue, Sections and components showcase, use cases. |
 | `src/app/(content)/` | Blog, changelog and knowledge base, fed by content collections. |
 | `src/app/(legal)/` | Privacy, terms and cookies. |
 | `src/app/r/registry.json/route.ts` | The catalogue index, in the shadcn registry shape. |
