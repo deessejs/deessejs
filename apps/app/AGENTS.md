@@ -66,7 +66,7 @@ The tests live in `tests/`: `proxy.test.ts` covers the guard, `settings-paths.te
 ## Conventions
 
 - Server components by default. `"use client"` only where interaction demands it.
-- Forms use `react-hook-form` and Zod. The schemas sit next to the form, in `components/auth/schemas.ts` and the settings panels.
+- Forms use `@tanstack/react-form` and Zod. Keep validation schemas next to the form or in `components/auth/schemas.ts` when they are shared. The admin and organization template creation dialogs intentionally retain React Hook Form because their dynamic fields and watched category state are self-contained and do not currently benefit from shared TanStack form logic. `apps/web` continues to use React Hook Form.
 - The design system comes from `@workspace/ui`. Reference semantic tokens, never raw colors.
 - Redirect targets that come from a query parameter or an OAuth callback go through `safeRedirect` from `@workspace/utils`.
 

@@ -3,8 +3,7 @@
 import { useRef, useState } from "react"
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 import { toast } from "sonner"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
@@ -28,7 +27,7 @@ const organizationAvatarQueryOptions = (slug: string) =>
     retry: false,
   })
 
-const organizationProfileSchema = z.object({
+export const organizationProfileSchema = z.object({
   name: z
     .string()
     .min(1)
@@ -57,8 +56,6 @@ const organizationProfileSchema = z.object({
       { message: "Enter a valid HTTPS image URL." }
     ),
 })
-
-type OrganizationProfileValues = z.infer<typeof organizationProfileSchema>
 
 function isSafeLogoPreview(value: string): boolean {
   try {
@@ -249,40 +246,30 @@ export function OrganizationProfile({
 }) {
   const router = useRouter()
   const canManage = hasManagingRole(organization.role)
-  const [submitting, setSubmitting] = useState(false)
   const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
-  const form = useForm<OrganizationProfileValues>({
-    resolver: zodResolver(organizationProfileSchema),
+  const form = useForm({
     defaultValues: { name: organization.name, logo: organization.logo ?? "" },
-  })
-  const logoField = form.register("logo")
-
-  async function handleSubmit(values: OrganizationProfileValues) {
-    const savedValues = { ...values, logo: values.logo.trim() }
-    setSubmitting(true)
-    try {
-      const { error } = await authClient.organization.update({
-        organizationId: organization.id,
-        data: { name: savedValues.name, logo: savedValues.logo || null },
-      })
-
-      if (error) {
-        toast.error(error.message ?? "Could not update organization")
-        return
+    validators: { onSubmit: organizationProfileSchema },
+    onSubmit: async ({ value }) => {
+      const savedValues = { ...value, logo: value.logo.trim() }
+      try {
+        const { error } = await authClient.organization.update({
+          organizationId: organization.id,
+          data: { name: savedValues.name, logo: savedValues.logo || null },
+        })
+        if (error) {
+          toast.error(error.message ?? "Could not update organization")
+          return
+        }
+        form.reset(savedValues)
+        setLogoPreview(savedValues.logo)
+        toast.success("Organization profile saved")
+        router.refresh()
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not update organization")
       }
-
-      form.reset(savedValues)
-      setLogoPreview(savedValues.logo)
-      toast.success("Organization profile saved")
-      router.refresh()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update organization"
-      )
-    } finally {
-      setSubmitting(false)
-    }
-  }
+    },
+  })
 
   const workspacePath = `/${organization.slug}`
   return (
@@ -296,64 +283,48 @@ export function OrganizationProfile({
 
       {canManage ? (
         <form
-          onSubmit={form.handleSubmit(handleSubmit)}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+          noValidate
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2">
             <label htmlFor="organization-name" className="text-sm font-medium">
               Display name
             </label>
-            <Input
-              id="organization-name"
-              {...form.register("name")}
-              required
-              aria-describedby="organization-name-help"
-            />
+            <form.Field name="name">
+              {(field) => <>
+                <Input id="organization-name" name={field.name} value={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.value)} required aria-describedby="organization-name-help" />
+                {field.state.meta.errors.length > 0 && <p className="text-sm text-destructive" role="alert">{field.state.meta.errors.join(", ")}</p>}
+              </>}
+            </form.Field>
             <p
               id="organization-name-help"
               className="text-sm text-muted-foreground"
             >
               Renaming the organization does not change its workspace address.
             </p>
-            {form.formState.errors.name && (
-              <p className="text-sm text-destructive" role="alert">
-                {form.formState.errors.name.message}
-              </p>
-            )}
           </div>
           <div className="flex flex-col gap-2">
             <label htmlFor="organization-logo" className="text-sm font-medium">
               Logo URL
             </label>
-            <Input
-              id="organization-logo"
-              type="text"
-              inputMode="url"
-              placeholder="https://example.com/logo.png"
-              {...logoField}
-              onChange={(event) => {
-                void logoField.onChange(event)
-                setLogoPreview(event.target.value)
-              }}
-            />
+            <form.Field name="logo">
+              {(field) => <>
+                <Input id="organization-logo" name={field.name} type="text" inputMode="url" placeholder="https://example.com/logo.png" value={field.state.value} onBlur={field.handleBlur} onChange={(event) => { field.handleChange(event.target.value); setLogoPreview(event.target.value) }} />
+                {field.state.meta.errors.length > 0 && <p className="text-sm text-destructive" role="alert">{field.state.meta.errors.join(", ")}</p>}
+              </>}
+            </form.Field>
             <p className="text-sm text-muted-foreground">
               Use an HTTPS image URL. Leave empty to use the organization
               initials.
             </p>
-            {form.formState.errors.logo && (
-              <p className="text-sm text-destructive" role="alert">
-                {form.formState.errors.logo.message}
-              </p>
-            )}
           </div>
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={submitting || !form.formState.isDirty}
-            >
-              {submitting ? "Saving..." : "Save changes"}
-            </Button>
-          </div>
+          <form.Subscribe selector={(state) => [state.isDirty, state.isSubmitting] as const}>
+            {([isDirty, isSubmitting]) => <div className="flex justify-end"><Button type="submit" disabled={!isDirty || isSubmitting} aria-busy={isSubmitting}>{isSubmitting ? "Saving..." : "Save changes"}</Button></div>}
+          </form.Subscribe>
         </form>
       ) : (
         <p className="text-sm text-muted-foreground">
