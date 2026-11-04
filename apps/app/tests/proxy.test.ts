@@ -130,17 +130,22 @@ describe("proxy: account routes are protected", () => {
     expect(response.headers.get("location")).toBeNull()
   })
 
-  it("protects the account root and excludes paths outside its segment", async () => {
+  it("protects the account root", async () => {
     stubSession({ signedIn: false })
-    const accountResponse = await proxy(request("/account"))
+    const response = await proxy(request("/account"))
 
-    expect(accountResponse.status).toBe(307)
-    expect(locationOf(accountResponse).searchParams.get("redirect")).toBe("/account")
+    expect(response.status).toBe(307)
+    expect(locationOf(response).searchParams.get("redirect")).toBe("/account")
+  })
 
-    const accountingFetch = stubSession()
-    const accountingResponse = await proxy(request("/accounting"))
-    expect(accountingResponse.status).toBe(200)
-    expect(accountingFetch).not.toHaveBeenCalled()
+  it("treats /accounting as a workspace route, not an account prefix", async () => {
+    const fetchMock = stubSession({ signedIn: false })
+    const response = await proxy(request("/accounting"))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/login")
+    expect(locationOf(response).searchParams.get("redirect")).toBe("/accounting")
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 
   it("retains the existing file-path exclusion under account", async () => {
