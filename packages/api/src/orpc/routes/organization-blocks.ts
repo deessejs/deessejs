@@ -19,6 +19,8 @@ const resolve = async (userId: string, slug: string) => {
   if (!org) throw new ORPCError("FORBIDDEN")
   return org
 }
+const cleanDirectory = (value: string) => value.split("/").filter(Boolean).join("/")
+const descriptorPath = (value: string) => [cleanDirectory(value), "deesse-block.json"].filter(Boolean).join("/")
 const manageableOrg = async (userId: string, slug: string) => {
   const org = await resolve(userId, slug)
   if (!hasManagingRole(org.role)) throw new ORPCError("FORBIDDEN")
@@ -38,7 +40,7 @@ export const create = base.input(z.object({ ...orgInput.shape, slug: z.string().
   const source = createGitHubTemplateSourceAdapter()
   const revision = await source.resolveRevision(repositoryUrl, "HEAD")
   const snapshot = await source.resolve({ repository: repositoryUrl, ref: revision })
-  const path = [input.subdirectory.replace(/^\/+|\/+$/g, ""), "deesse-block.json"].filter(Boolean).join("/")
+  const path = descriptorPath(input.subdirectory)
   const bytes = await snapshot.readFile(path)
   let raw: unknown
   try { raw = JSON.parse(new TextDecoder().decode(bytes)) } catch { throw new ORPCError("BAD_REQUEST", { message: "deesse-block.json must contain valid JSON." }) }
@@ -56,7 +58,7 @@ export const submit = base.input(z.object({ ...orgInput.shape, blockId: z.string
   const source = createGitHubTemplateSourceAdapter()
   const revision = await source.resolveRevision(previous.repositoryUrl, input.ref)
   const snapshot = await source.resolve({ repository: previous.repositoryUrl, ref: revision })
-  const path = [previous.subdirectory.replace(/^\/+|\/+$/g, ""), "deesse-block.json"].filter(Boolean).join("/")
+  const path = descriptorPath(previous.subdirectory)
   const result = parseBlockDescriptor(JSON.parse(new TextDecoder().decode(await snapshot.readFile(path))))
   if (!result.success) throw new ORPCError("BAD_REQUEST", { message: result.diagnostics.map((d) => d.message).join(" ") })
   const [row] = await db.insert(blockPublications).values({ organizationId: org.id, organizationSlug: org.slug, submittedBy: context.user.id, slug: previous.slug, name: previous.name, description: previous.description, category: previous.category, repositoryUrl: previous.repositoryUrl, subdirectory: previous.subdirectory, sourceCommit: snapshot.revision, descriptor: JSON.stringify(result.data), reviewStatus: "pending", publicationState: "private" }).returning({ id: blockPublications.id, sourceCommit: blockPublications.sourceCommit })

@@ -11,13 +11,17 @@ import {
   adminTemplateImageRouter,
 } from "./template-images.js"
 import { organizationBlocksRouter } from "./organization-blocks.js"
+import { adminBlockPublicationsRouter } from "./admin-block-publications.js"
+import { blocksRouter } from "./blocks.js"
 
 export const appRouter = {
+  blocks: blocksRouter,
   templates: templatesRouter,
   admin: {
     templates: {
       ...adminTemplatesRouter,
       publications: adminTemplatePublicationsRouter,
+      blockPublications: adminBlockPublicationsRouter,
       image: adminTemplateImageRouter,
     },
   },
