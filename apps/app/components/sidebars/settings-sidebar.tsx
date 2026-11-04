@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BadgeCheckIcon,
   HomeIcon,
+  LayoutDashboardIcon,
   LinkIcon,
   SmartphoneIcon,
   UserIcon,
@@ -27,13 +28,17 @@ import {
 import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import { APP_CONFIG } from "@/lib/app-config"
-import { SETTINGS_PATHS } from "@/lib/settings-paths"
+import {
+  ACCOUNT_OVERVIEW_PATH,
+  SETTINGS_PATHS,
+} from "@/lib/settings-paths"
 
 const MAIN_NAV = [
   { label: "Dashboard", href: APP_CONFIG.links.home, icon: HomeIcon },
 ]
 
 const SETTINGS_NAV = [
+  { label: "Overview", href: ACCOUNT_OVERVIEW_PATH, icon: LayoutDashboardIcon },
   { label: "Profile", href: SETTINGS_PATHS.profile, icon: UserIcon },
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },
