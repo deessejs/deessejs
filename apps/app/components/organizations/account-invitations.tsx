@@ -1,23 +1,22 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 
-import { authClient } from "@/lib/auth-client"
-import { orpcBrowser } from "@/lib/orpc-browser"
 import { workspaceHomePath } from "@/lib/workspace-paths"
-import { useRouter } from "next/navigation"
 
 const invitationsQuery = queryOptions({
   queryKey: ["account-invitations"],
-  queryFn: () => orpcBrowser.organization.accountInvitations(),
+  queryFn: () => client.rpc.organization.accountInvitations(),
 })
 
 export function AccountInvitations() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const session = authClient.useSession()
+  const session = client.auth.useSession()
   const query = useQuery(invitationsQuery)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [processed, setProcessed] = useState<string | null>(null)
@@ -34,8 +33,8 @@ export function AccountInvitations() {
     try {
       const result =
         action === "accept"
-          ? await authClient.organization.acceptInvitation({ invitationId })
-          : await authClient.organization.rejectInvitation({ invitationId })
+          ? await client.auth.organization.acceptInvitation({ invitationId })
+          : await client.auth.organization.rejectInvitation({ invitationId })
       if (result.error) {
         setFailure(
           result.error.message ??
