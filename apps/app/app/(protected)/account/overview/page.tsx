@@ -6,11 +6,11 @@ import {
   OrganizationMembershipsCard,
   SettingsPage,
 } from "@/components/settings"
-import { authClient } from "@/lib/auth-client"
+import { client } from "@/lib/client"
 
 export default function AccountOverviewPage() {
-  const session = authClient.useSession()
-  const organizations = authClient.useListOrganizations()
+  const session = client.auth.useSession()
+  const organizations = client.auth.useListOrganizations()
 
   if (session.isPending || organizations.isPending) {
     return <PageSkeleton label="Loading account overview" variant="form" />

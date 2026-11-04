@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -26,7 +27,6 @@ import {
   PlusIcon,
 } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
 import {
   ORGANIZATIONS_PATH,
   organizationSlugFromPathname,
@@ -73,11 +73,11 @@ export function OrganizationSwitcher({
   const pathname = usePathname()
   const router = useRouter()
   const { setOpenMobile } = useSidebar()
-  const { data: session } = authClient.useSession()
+  const { data: session } = client.auth.useSession()
   const slug = activeOrganization
     ? null
     : organizationSlugFromPathname(pathname)
-  const organizations = authClient.useListOrganizations()
+  const organizations = client.auth.useListOrganizations()
   const [failure, setFailure] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -94,7 +94,7 @@ export function OrganizationSwitcher({
   async function switchTo(organization: { id: string; slug: string }) {
     setFailure(null)
     try {
-      const { error: refusal } = await authClient.organization.setActive({
+      const { error: refusal } = await client.auth.organization.setActive({
         organizationId: organization.id,
       })
       if (refusal) {

@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -41,8 +42,6 @@ import {
   LogOutIcon,
 } from "lucide-react"
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
-import { authClient } from "@/lib/auth-client"
-import { orpcBrowser } from "@/lib/orpc-browser"
 import { getInitials } from "@/lib/initials"
 import { SETTINGS_PATHS } from "@/lib/settings-paths"
 import { APP_URL, DOCS_URL, WEB_URL } from "@/lib/app-config"
@@ -53,7 +52,7 @@ const CHANGELOG_URL = new URL("/changelog", WEB_URL).toString()
 const profileAvatarQueryOptions = () =>
   queryOptions({
     queryKey: ["profile", "avatar"],
-    queryFn: () => orpcBrowser.profile.avatar.get(),
+    queryFn: () => client.rpc.profile.avatar.get(),
     retry: false,
   })
 
@@ -77,7 +76,7 @@ function getAvatarUrl(email: string, image?: string | null): string {
  * always names the account.
  *
  * The sign-out flow is the component's own: the dialog, the
- * `authClient.signOut` call and the redirect to the login page.
+ * `client.auth.signOut` call and the redirect to the login page.
  */
 export function NavUser() {
   const router = useRouter()
@@ -86,7 +85,7 @@ export function NavUser() {
   // React's rules. The audit §3.5 bug was calling useSession() inside an
   // async callback (useCallback body), which IS a violation. Here at
   // top-level, useSession() is correct.
-  const { data: session } = authClient.useSession()
+  const { data: session } = client.auth.useSession()
   const avatar = useQuery({
     ...profileAvatarQueryOptions(),
     enabled: Boolean(session?.user),
@@ -99,7 +98,7 @@ export function NavUser() {
   async function handleLogout() {
     setLoggingOut(true)
     setLogoutDialogOpen(false)
-    await authClient.signOut({
+    await client.auth.signOut({
       fetchOptions: {
         onSuccess: () => {
           queryClient.clear()
