@@ -6,6 +6,7 @@ import {
   BadgeCheckIcon,
   HomeIcon,
   LayoutDashboardIcon,
+  MailIcon,
   LinkIcon,
   LifeBuoyIcon,
   SmartphoneIcon,
@@ -30,8 +31,8 @@ import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import { APP_CONFIG } from "@/lib/app-config"
 import {
-  ACCOUNT_OVERVIEW_PATH,
   ACCOUNT_PATHS,
+  ACCOUNT_OVERVIEW_PATH,
   SETTINGS_PATHS,
 } from "@/lib/settings-paths"
 
@@ -41,6 +42,7 @@ const MAIN_NAV = [
 
 const SETTINGS_NAV = [
   { label: "Overview", href: ACCOUNT_OVERVIEW_PATH, icon: LayoutDashboardIcon },
+  { label: "Invitations", href: ACCOUNT_PATHS.invitations, icon: MailIcon },
   { label: "Profile", href: SETTINGS_PATHS.profile, icon: UserIcon },
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },

@@ -17,13 +17,14 @@
 /** The prefix all authenticated account routes live under. */
 export const ACCOUNT_PREFIX = "/account"
 
-/** The account overview page. */
-export const ACCOUNT_OVERVIEW_PATH = `${ACCOUNT_PREFIX}/overview`
-
-/** Account routes that do not belong to the settings area. */
+/** Account pages that sit outside the settings section. */
 export const ACCOUNT_PATHS = {
+  invitations: `${ACCOUNT_PREFIX}/invites`,
   support: `${ACCOUNT_PREFIX}/support`,
 } as const
+
+/** The account overview page. */
+export const ACCOUNT_OVERVIEW_PATH = `${ACCOUNT_PREFIX}/overview`
 
 /** The prefix the account settings live under. */
 export const SETTINGS_PREFIX = `${ACCOUNT_PREFIX}/settings`

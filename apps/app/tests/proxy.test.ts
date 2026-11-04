@@ -130,7 +130,7 @@ describe("proxy: account routes are protected", () => {
 
   it("sends an unverified visitor from an account route to verify-email", async () => {
     stubSession({ emailVerified: false })
-    const response = await proxy(request("/account/invites"))
+    const response = await proxy(request(ACCOUNT_PATHS.invitations))
 
     expect(response.status).toBe(307)
     expect(locationOf(response).pathname).toBe("/verify-email")

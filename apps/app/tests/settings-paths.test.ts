@@ -22,8 +22,15 @@ describe("SETTINGS_PATHS", () => {
 })
 
 describe("ACCOUNT_PATHS", () => {
-  it("keeps support under the account area and outside settings", () => {
-    expect(ACCOUNT_PATHS.support.startsWith(`${ACCOUNT_PREFIX}/`)).toBe(true)
-    expect(ACCOUNT_PATHS.support.startsWith(`${SETTINGS_PREFIX}/`)).toBe(false)
+  it("keeps account-level pages under the account prefix", () => {
+    for (const path of Object.values(ACCOUNT_PATHS)) {
+      expect(path.startsWith(`${ACCOUNT_PREFIX}/`)).toBe(true)
+    }
+  })
+
+  it("keeps account-level pages outside the settings section", () => {
+    for (const path of Object.values(ACCOUNT_PATHS)) {
+      expect(path.startsWith(`${SETTINGS_PREFIX}/`)).toBe(false)
+    }
   })
 })
