@@ -33,16 +33,18 @@ import { printJson } from "../../output/index.js"
 export const logoutCommand = new Command("logout")
   .description("Sign out this machine and remove the stored token")
   .option("--json", "JSON output for scripting")
-  .action(async (opts: { json?: boolean }) => {
+  .option("--verbose", "show human-readable output")
+  .action(async (opts: { json?: boolean; verbose?: boolean }) => {
+    const json = !opts.verbose || !!opts.json
     const stored = readAuth()
     if (!stored) {
-      if (opts.json) {
+      if (json) {
         printJson({ ok: true, reason: "no_session" })
       }
       return
     }
 
-    const spinner = opts.json ? null : ora("Signing out...").start()
+    const spinner = json ? null : ora("Signing out...").start()
     try {
       const res = await bearerFetch("sign-out", stored.access_token, {
         method: "POST",
@@ -56,7 +58,7 @@ export const logoutCommand = new Command("logout")
       // now in a "no session" state either way.
       if (res.status !== 200 && res.status !== 204) {
         spinner?.stop()
-        if (!opts.json) {
+        if (!json) {
           console.log(
             pc.yellow(
               `Server returned HTTP ${res.status} on sign-out; clearing the local token file anyway.`
@@ -67,7 +69,7 @@ export const logoutCommand = new Command("logout")
         spinner?.stop()
       }
       clearAuth()
-      if (opts.json) {
+      if (json) {
         printJson({ ok: true })
       } else {
         console.log(pc.green("✓ signed out"))

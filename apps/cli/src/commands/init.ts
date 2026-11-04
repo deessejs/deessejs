@@ -221,6 +221,7 @@ async function runInitCommand(
   slugOrUrl: string,
   options: InitCommandOptions
 ): Promise<void> {
+  options = { ...options, json: !options.verbose || !!options.json }
   try {
     const state = await loadTemplateState(slugOrUrl, options)
     await installAndReport(state, options)

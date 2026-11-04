@@ -30,8 +30,10 @@ export const infoCommand = new Command("info")
     "Git ref to inspect (default: the repository's default branch)"
   )
   .option("--json", "JSON output for scripting")
-  .action(async (slugOrUrl: string, opts: { ref?: string; json?: boolean }) => {
-    const spinner = opts.json
+  .option("--verbose", "show human-readable output")
+  .action(async (slugOrUrl: string, opts: { ref?: string; json?: boolean; verbose?: boolean }) => {
+    const json = !opts.verbose || !!opts.json
+    const spinner = json
       ? null
       : ora("Fetching template details...").start()
 
@@ -54,7 +56,7 @@ export const infoCommand = new Command("info")
         opts.ref && !resolved.template.community ? ` --ref ${opts.ref}` : ""
       const installCommand = `deessejs init ${installSource}${refOption}`
 
-      if (opts.json) {
+      if (json) {
         printJson({
           descriptor: info.descriptor,
           source: info.source,
@@ -67,7 +69,7 @@ export const infoCommand = new Command("info")
     } catch (err) {
       spinner?.fail("Failed to fetch template details")
       if (err instanceof CliError) {
-        if (opts.json) {
+        if (json) {
           printJson({
             ok: false,
             code: err.code,

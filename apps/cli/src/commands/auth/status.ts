@@ -66,10 +66,12 @@ const validateSession = async (
 export const statusCommand = new Command("status")
   .description("Show the current CLI auth session")
   .option("--json", "JSON output for scripting")
-  .action(async (opts: { json?: boolean }) => {
+  .option("--verbose", "show human-readable output")
+  .action(async (opts: { json?: boolean; verbose?: boolean }) => {
+    const json = !opts.verbose || !!opts.json
     const stored = readAuth()
     if (!stored) {
-      if (opts.json) {
+      if (json) {
         printJson({ ok: false, reason: "no_session" })
       } else {
         console.error(
@@ -81,12 +83,12 @@ export const statusCommand = new Command("status")
       return
     }
 
-    const spinner = opts.json ? null : ora("Checking session...").start()
+    const spinner = json ? null : ora("Checking session...").start()
     try {
       const user = await validateSession(stored.access_token)
       if (!user) {
         spinner?.stop()
-        if (opts.json) {
+        if (json) {
           printJson({
             ok: false,
             reason: "session_invalid",
@@ -107,7 +109,7 @@ export const statusCommand = new Command("status")
         return
       }
       spinner?.stop()
-      if (opts.json) {
+      if (json) {
         printJson({ ok: true, user, fetchedAt: stored.fetchedAt })
       } else {
         console.log()
