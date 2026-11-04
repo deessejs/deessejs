@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -16,7 +17,6 @@ import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { CreateOrganizationTemplateDialog } from "./create-organization-template-dialog"
 import { RequestTemplatePublicationDialog } from "./request-template-publication-dialog"
-import { orpcBrowser } from "@/lib/orpc-browser"
 import { TemplateImageUpload } from "@/components/admin/templates/template-image-upload"
 
 type OrganizationTemplate = Awaited<
@@ -53,7 +53,7 @@ export function OrganizationTemplatesPage({
   async function withdrawPublication(templateId: string) {
     setActionError(null)
     try {
-      await orpcBrowser.organization.templates.withdraw({
+      await client.rpc.organization.templates.withdraw({
         organizationSlug,
         templateId,
       })

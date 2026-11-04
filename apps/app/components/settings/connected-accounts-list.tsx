@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import {
   useLinkedAccounts,
   useUnlinkAccount,
@@ -219,7 +219,7 @@ function UnlinkAccountDialog({
 }
 
 export function ConnectedAccountsList() {
-  const { data: session, isPending: sessionPending } = authClient.useSession()
+  const { data: session, isPending: sessionPending } = client.auth.useSession()
   const userId = session?.user.id
   const accountsQuery = useLinkedAccounts(userId)
   const unlinkAccount = useUnlinkAccount(userId)
@@ -238,7 +238,7 @@ export function ConnectedAccountsList() {
   async function startAccountLink(provider: string) {
     setLinking(provider)
     try {
-      await authClient.linkSocial({ provider })
+      await client.auth.linkSocial({ provider })
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to link account"

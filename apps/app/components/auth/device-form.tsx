@@ -16,7 +16,7 @@ import { ShieldCheckIcon, ShieldXIcon } from "lucide-react"
  *   - claimed, pending → approve / deny buttons
  *   - denied → ExpiredPanel with reason="denied"
  *
- * All async state (the read of authClient.device, the approve
+ * All async state (the read of client.auth.device, the approve
  * mutation, the deny mutation) lives in `useDeviceClaim` in
  * `@/hooks/use-device-flow`. The form is a pure renderer; no
  * `useState` / `useEffect` for the state machine.

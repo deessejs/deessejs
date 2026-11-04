@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
 import Link from "next/link"
@@ -26,12 +27,10 @@ import {
 
 import { GitHubProjectConfigReview } from "@/components/organizations/projects/github-project-config-review"
 import { organizationProjectsQueryKey } from "@/lib/github-projects-query"
-import { orpcBrowser } from "@/lib/orpc-browser"
-import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 import { workspaceProjectsPath } from "@/lib/workspace-paths"
 
 type GitHubRepositoryPage = Awaited<
-  ReturnType<ORPCBrowserClient["githubApp"]["repositories"]["list"]>
+  ReturnType<typeof client.rpc["githubApp"]["repositories"]["list"]>
 >
 
 type GitHubRepository = GitHubRepositoryPage["repositories"][number]
@@ -45,7 +44,7 @@ function githubRepositoriesQueryOptions(
   return queryOptions({
     queryKey: ["github-app", "repositories", organizationSlug, page],
     queryFn: () =>
-      orpcBrowser.githubApp.repositories.list({
+      client.rpc.githubApp.repositories.list({
         slug: organizationSlug,
         page,
       }),
@@ -72,7 +71,7 @@ function githubRepositoryConfigQueryOptions(
       if (repositoryId === null || page === null) {
         throw new Error("Select a repository first.")
       }
-      return orpcBrowser.githubApp.repositories.inspectConfiguration({
+      return client.rpc.githubApp.repositories.inspectConfiguration({
         slug: organizationSlug,
         repositoryId,
         page,
@@ -115,7 +114,7 @@ export function GitHubRepositoryBrowser({
           "Review a valid project configuration before importing."
         )
       }
-      return orpcBrowser.githubApp.repositories.import({
+      return client.rpc.githubApp.repositories.import({
         slug: organizationSlug,
         repositoryId: selection.repository.id,
         page: selection.page,

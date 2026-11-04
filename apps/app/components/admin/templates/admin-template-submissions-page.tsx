@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
@@ -19,7 +20,6 @@ import {
 import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { CheckIcon, ExternalLinkIcon, XIcon } from "lucide-react"
-import { orpcBrowser } from "@/lib/orpc-browser"
 
 type Submission = Awaited<
   ReturnType<
@@ -68,11 +68,11 @@ export function AdminTemplateSubmissionsPage({
     setBusy(true)
     try {
       if (decision === "approve") {
-        await orpcBrowser.admin.templates.publications.approve({
+        await client.rpc.admin.templates.publications.approve({
           publicationId: selected.id,
         })
       } else {
-        await orpcBrowser.admin.templates.publications.reject({
+        await client.rpc.admin.templates.publications.reject({
           publicationId: selected.id,
           reason: reason.trim(),
         })
