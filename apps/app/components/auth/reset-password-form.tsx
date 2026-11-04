@@ -1,10 +1,10 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import Link from "next/link"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { PasswordField } from "./field"
 import { resetPasswordSchema } from "@/components/auth/schemas"
@@ -25,7 +25,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 			onSubmit: resetPasswordSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await authClient.resetPassword(
+			const { error } = await client.auth.resetPassword(
 				{ newPassword: value.password },
 				{
 					query: { token },

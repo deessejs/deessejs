@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { safeRedirect } from "@workspace/utils/safe-redirect"
@@ -17,7 +17,7 @@ export function EmailForm() {
 		if (!email.trim()) return
 
 		setSubmitting(true)
-		const { error } = await authClient.sendVerificationEmail({
+		const { error } = await client.auth.sendVerificationEmail({
 			email: email.trim(),
 			// Validate even though the literal is hardcoded — defense-in-depth in
 			// case this value becomes user-controlled in a future change.

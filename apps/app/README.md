@@ -28,13 +28,15 @@ The authenticated product supports organization workspaces, organization creatio
 ## Architecture
 
 - `app/api/[[...route]]/route.ts` exposes the shared Hono API from `@workspace/api`.
-- `lib/orpc.ts` creates the typed client for API procedures.
-- `lib/auth-client.ts` configures the browser Better Auth client and its plugins.
+- `lib/client.ts` exposes the browser clients under `client.auth` and `client.rpc`.
+- `lib/auth-client.ts` configures the Better Auth browser client and its plugins.
+- `lib/orpc.ts` creates the typed server client for API procedures and forwards the request cookie.
+- `lib/orpc-browser.ts` creates the typed browser client for API procedures.
 - `lib/fetch-auth-interceptor.ts` handles auth requests on Vercel preview deployments.
 - `lib/settings-paths.ts` owns the account settings route constants.
 - `lib/admin-auth.ts` owns the role check used by the administration area.
 
-Use `lib/auth-client.ts` for browser authentication and `lib/orpc.ts` for API operations. The target boundary is that app code does not import the auth singleton or database package. `lib/admin-auth.ts` and the device page still contain legacy direct session reads, and the sessions table imports branded token helpers from `@workspace/auth/types`; these are migration targets, not patterns to extend. New server-side auth reads should go through an app-owned HTTP client that forwards request headers to the exposed auth endpoint. Business operations use the typed API client; database access and server-side domain rules stay behind the server packages.
+Browser components use `client.auth` for Better Auth operations and `client.rpc` for oRPC procedures. These namespaces are an ergonomic facade over two independent clients and transports. Server components use `lib/orpc.ts`, which forwards the request cookie. The target boundary is that app code does not import the auth singleton or database package. `lib/admin-auth.ts` and the device page still contain legacy direct session reads, and the sessions table imports branded token helpers from `@workspace/auth/types`; these are migration targets, not patterns to extend. New server-side auth reads should go through an app-owned HTTP client that forwards request headers to the exposed auth endpoint. Database access and server-side domain rules stay behind the server packages.
 
 ## Commands
 

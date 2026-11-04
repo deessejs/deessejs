@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState, type FormEvent } from "react"
 import { queryOptions, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -7,11 +8,8 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 
-import { authClient } from "@/lib/auth-client"
-import { orpcBrowser } from "@/lib/orpc-browser"
-
 type PendingInvitation = Awaited<
-  ReturnType<typeof orpcBrowser.organization.pendingInvitations>
+  ReturnType<typeof client.rpc.organization.pendingInvitations>
 >[number]
 
 function memberManagementQueryOptions(
@@ -23,11 +21,11 @@ function memberManagementQueryOptions(
     queryKey: ["organization-members", organizationId, slug, canManage],
     queryFn: async () => {
       const [memberResult, invitationResult] = await Promise.all([
-        authClient.organization.listMembers({
+        client.auth.organization.listMembers({
           query: { organizationId, limit: 100, offset: 0 },
         }),
         canManage
-          ? orpcBrowser.organization.pendingInvitations({ slug })
+          ? client.rpc.organization.pendingInvitations({ slug })
           : Promise.resolve([]),
       ])
       if (memberResult.error) {
@@ -69,7 +67,7 @@ export function MemberManagement({
     setSubmitting(true)
     setFailure(null)
     try {
-      const { error } = await authClient.organization.inviteMember({
+      const { error } = await client.auth.organization.inviteMember({
         email: address,
         role: "member",
         organizationId,
@@ -94,7 +92,7 @@ export function MemberManagement({
     setBusyId(invitationId)
     setFailure(null)
     try {
-      const { error } = await authClient.organization.cancelInvitation({
+      const { error } = await client.auth.organization.cancelInvitation({
         invitationId,
       })
       if (error) {
@@ -116,7 +114,7 @@ export function MemberManagement({
     setBusyId(invitation.id)
     setFailure(null)
     try {
-      const { error } = await authClient.organization.inviteMember({
+      const { error } = await client.auth.organization.inviteMember({
         email: invitation.email,
         role: "member",
         organizationId,

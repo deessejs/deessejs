@@ -1,10 +1,10 @@
 "use client"
 
+import { client } from "@/lib/client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Separator } from "@workspace/ui/components/separator"
 import { OAuthButtons } from "./oauth-buttons"
@@ -38,7 +38,7 @@ export function SignupForm({
 			onSubmit: signupSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await authClient.signUp.email(
+			const { error } = await client.auth.signUp.email(
 				{
 					email: value.email,
 					password: value.password,
