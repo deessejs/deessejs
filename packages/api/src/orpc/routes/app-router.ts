@@ -10,6 +10,7 @@ import {
   organizationTemplateImageRouter,
   adminTemplateImageRouter,
 } from "./template-images.js"
+import { organizationBlocksRouter } from "./organization-blocks.js"
 
 export const appRouter = {
   templates: templatesRouter,
@@ -24,6 +25,7 @@ export const appRouter = {
     ...organizationRouter,
     avatar: organizationAvatarRouter,
     templates: organizationTemplatesRouter,
+    blocks: organizationBlocksRouter,
     templateImages: organizationTemplateImageRouter,
   },
   profile: { avatar: profileAvatarRouter },
