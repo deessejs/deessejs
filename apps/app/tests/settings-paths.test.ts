@@ -9,8 +9,7 @@ import {
 
 describe("SETTINGS_PATHS", () => {
   it("puts every leaf under the prefix", () => {
-    // A leaf that forgot the `/settings` segment would be a broken
-    // link, and the proxy would not protect it either.
+    // A leaf that forgot the `/settings` segment would be a broken link.
     for (const path of Object.values(SETTINGS_PATHS)) {
       expect(path.startsWith(`${SETTINGS_PREFIX}/`)).toBe(true)
     }

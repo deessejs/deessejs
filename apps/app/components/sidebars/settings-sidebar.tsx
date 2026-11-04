@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   MailIcon,
   LinkIcon,
+  LifeBuoyIcon,
   SmartphoneIcon,
   UserIcon,
 } from "lucide-react"
@@ -46,6 +47,7 @@ const SETTINGS_NAV = [
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },
   { label: "Account", href: SETTINGS_PATHS.account, icon: BadgeCheckIcon },
+  { label: "Support", href: ACCOUNT_PATHS.support, icon: LifeBuoyIcon },
 ]
 
 export function SettingsSidebar() {

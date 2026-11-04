@@ -1,24 +1,26 @@
 // Where the account pages live.
 //
-// The account settings sit under `/account/settings/*` so the top-level
-// `/settings` prefix stays free for the organization settings that
-// will live under `/[organization_slug]/settings/*`.
+// Account settings sit under `/account/settings/*` so the top-level
+// `/settings` prefix stays free for organization settings under
+// `/[organization_slug]/settings/*`. Other account routes, such as
+// overview and support, live directly under `/account/*`.
 //
-// There is no second settings prefix or redirect for an older one. The
-// app has no users yet, so there is no settings bookmark or inbound
-// link to preserve, and keeping a compatibility path for a route nobody
-// has ever visited is only a second thing to keep correct.
+// The settings routes have no alternate prefix or redirect. The app
+// has no users yet, so there is no settings bookmark or inbound link
+// to preserve, and keeping a compatibility path nobody has visited is
+// only a second thing to keep correct.
 //
-// This module is the single source of truth for these paths. The proxy
-// protects them, the navigation rail links to them, and the pages
-// link to each other. No other file may hardcode one.
+// These constants are the single source of truth for account and
+// settings paths. The proxy protects the account prefix, the navigation
+// rail links to the routes, and pages link to each other.
 
-/** The account route prefix. */
+/** The prefix all authenticated account routes live under. */
 export const ACCOUNT_PREFIX = "/account"
 
-/** Account overview and pages that sit outside the settings section. */
+/** Account pages that sit outside the settings section. */
 export const ACCOUNT_PATHS = {
   invitations: `${ACCOUNT_PREFIX}/invites`,
+  support: `${ACCOUNT_PREFIX}/support`,
 } as const
 
 /** The account overview page. */
