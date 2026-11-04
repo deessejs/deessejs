@@ -12,6 +12,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
 import { authClient } from "@/lib/auth-client"
+import { getInitials } from "@/lib/initials"
 import { orpcBrowser } from "@/lib/orpc-browser"
 
 const profileAvatarQueryOptions = () =>
@@ -21,16 +22,6 @@ const profileAvatarQueryOptions = () =>
     retry: false,
   })
 const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
-
-function getInitials(name: string, email: string): string {
-  const source = name.trim() || email.trim()
-  const parts = source.split(/\s+/).filter(Boolean)
-  const first = parts.at(0)
-  if (!first) return "?"
-  if (parts.length === 1) return first.slice(0, 2).toUpperCase()
-  const last = parts.at(-1) ?? first
-  return (first.charAt(0) + last.charAt(0)).toUpperCase()
-}
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
 

@@ -43,6 +43,7 @@ import {
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { authClient } from "@/lib/auth-client"
 import { orpcBrowser } from "@/lib/orpc-browser"
+import { getInitials } from "@/lib/initials"
 import { SETTINGS_PATHS } from "@/lib/settings-paths"
 import { APP_URL, DOCS_URL, WEB_URL } from "@/lib/app-config"
 
@@ -55,15 +56,6 @@ const profileAvatarQueryOptions = () =>
     queryFn: () => orpcBrowser.profile.avatar.get(),
     retry: false,
   })
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  const first = parts.at(0)
-  if (!first) return "?"
-  if (parts.length === 1) return first.slice(0, 2).toUpperCase()
-  const last = parts.at(-1) ?? first
-  return (first.charAt(0) + last.charAt(0)).toUpperCase()
-}
 
 function getAvatarUrl(email: string, image?: string | null): string {
   if (image) return image
