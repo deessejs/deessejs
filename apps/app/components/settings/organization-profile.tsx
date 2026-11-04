@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useRef, useState } from "react"
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
@@ -16,14 +17,11 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { CopyIcon } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
-import { orpcBrowser } from "@/lib/orpc-browser"
-
 const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
 const organizationAvatarQueryOptions = (slug: string) =>
   queryOptions({
     queryKey: ["organization", "avatar", slug],
-    queryFn: () => orpcBrowser.organization.avatar.get({ slug }),
+    queryFn: () => client.rpc.organization.avatar.get({ slug }),
     retry: false,
   })
 
@@ -111,7 +109,7 @@ function OrganizationAvatar({
     }
     setAvatarBusy(true)
     try {
-      const upload = await orpcBrowser.organization.avatar.createUpload({
+      const upload = await client.rpc.organization.avatar.createUpload({
         slug,
         contentType,
         byteSize: file.size,
@@ -122,7 +120,7 @@ function OrganizationAvatar({
         body: file,
       })
       if (!response.ok) throw new Error("Could not upload this image.")
-      await orpcBrowser.organization.avatar.complete({
+      await client.rpc.organization.avatar.complete({
         slug,
         uploadId: upload.uploadId,
       })
@@ -140,7 +138,7 @@ function OrganizationAvatar({
   async function handleAvatarRemove() {
     setAvatarBusy(true)
     try {
-      await orpcBrowser.organization.avatar.remove({ slug })
+      await client.rpc.organization.avatar.remove({ slug })
       await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
       toast.success("Uploaded organization avatar removed")
     } catch (error) {
@@ -253,7 +251,7 @@ export function OrganizationProfile({
     onSubmit: async ({ value }) => {
       const savedValues = { ...value, logo: value.logo.trim() }
       try {
-        const { error } = await authClient.organization.update({
+        const { error } = await client.auth.organization.update({
           organizationId: organization.id,
           data: { name: savedValues.name, logo: savedValues.logo || null },
         })
