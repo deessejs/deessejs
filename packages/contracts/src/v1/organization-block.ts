@@ -12,7 +12,7 @@ export const OrganizationBlockV1 = z.object({
   subdirectory: z.string(),
   sourceCommit: z.string().regex(/^[0-9a-f]{40}$/),
   descriptor: z.unknown(),
-  reviewStatus: z.enum(["pending", "approved", "rejected"]),
+  reviewStatus: z.enum(["draft", "pending", "approved", "rejected"]),
   publicationState: z.enum(["private", "current", "superseded"]),
   submittedAt: z.string().datetime(),
   reviewReason: z.string().nullable(),
@@ -29,5 +29,9 @@ export const OrganizationBlockCreateInputV1 = z.object({
   description: z.string().trim().max(10000).default(""),
 })
 
-export const OrganizationBlocksListResponseV1 = z.object({ blocks: z.array(OrganizationBlockV1) })
-export const CommunityBlocksListResponseV1 = z.object({ blocks: z.array(OrganizationBlockV1) })
+export const OrganizationBlocksListResponseV1 = z.object({
+  blocks: z.array(OrganizationBlockV1),
+})
+export const CommunityBlocksListResponseV1 = z.object({
+  blocks: z.array(OrganizationBlockV1),
+})
