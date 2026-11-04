@@ -19,7 +19,7 @@ on the consumer's `components.json` — the shadcn CLI rewrites
 Currently shipped:
 
 - Components: `button`, `input`, `badge`.
-- Blocks: none. The `/blocks` catalogue is documented but no items are wired into the registry yet.
+- Registry blocks: none. The visual marketing Sections catalogue lives at `/sections`; no registry block items are wired yet.
 
 ## Consumer setup
 
@@ -64,7 +64,7 @@ aliases if they have renamed `@/`.
 
 ## Roadmap
 
-- Move `/blocks` from V1 placeholder snippets to real
+- Move `/sections` from V1 placeholder snippets to real
   `registry:block` items as the marketing pages stabilise.
 - Wire the remaining 12 component slugs from
   `apps/web/src/components/catalog/data/` into

@@ -1,8 +1,8 @@
 /**
- * Block catalogue for /blocks/[category]/[block].
+ * Section catalogue for /sections/[category]/[section].
  *
- * V1 hand-maintained list of 22 marketing blocks distributed over
- * the eight categories in `block-categories.ts`. Each block
+ * V1 hand-maintained list of 22 marketing sections distributed over
+ * the eight categories in `section-categories.ts`. Each section
  * declares its `category` (validated by the leaf route) and a
  * `layout` discriminator used in the V1 dummy leaf placeholder.
  *
@@ -13,27 +13,27 @@
  * shape so V2 only has to swap the data source.
  */
 
-import type { BlockCategoryId } from "./categories"
+import type { SectionCategoryId } from "./categories"
 
-export type BlockLayout = "split" | "stacked" | "bento" | "centered"
+export type SectionLayout = "split" | "stacked" | "bento" | "centered"
 
-export type CatalogueBlock = {
+export type CatalogueSection = {
   /** URL slug. Unique within the catalogue. */
   slug: string
   /** Display name. */
   name: string
   /** Short one-line description, used in cards. */
   description: string
-  /** Category the block belongs to. Validated against the route param. */
-  category: BlockCategoryId
+  /** Category the section belongs to. Validated against the route param. */
+  category: SectionCategoryId
   /** V1 dummy visual discriminator (rendered in the leaf placeholder). */
-  layout: BlockLayout
-  /** Price tier. V1 ships all blocks as "free" — full pricing strategy
-   *  comes when the blocks registry moves out of dummy. */
+  layout: SectionLayout
+  /** Price tier. V1 ships all sections as "free" — full pricing strategy
+   *  comes when the sections registry moves out of dummy. */
   tier: "free" | "pro"
 }
 
-export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
+export const SECTION_CATALOGUE: ReadonlyArray<CatalogueSection> = [
   // Hero
   {
     slug: "hero-centered",
@@ -235,24 +235,24 @@ export const BLOCK_CATALOGUE: ReadonlyArray<CatalogueBlock> = [
 ]
 
 /**
- * Look up a block by slug. Returns undefined if the slug is not
+ * Look up a section by slug. Returns undefined if the slug is not
  * in the catalogue. The caller is responsible for verifying the
  * category match.
  */
-export function getBlock(slug: string): CatalogueBlock | undefined {
-  return BLOCK_CATALOGUE.find((block) => block.slug === slug)
+export function getSection(slug: string): CatalogueSection | undefined {
+  return SECTION_CATALOGUE.find((section) => section.slug === slug)
 }
 
 /**
- * Generate every `(category, block)` pair that should be
+ * Generate every `(category, section)` pair that should be
  * pre-rendered by the leaf route.
  */
-export function getAllBlockParams(): Array<{
+export function getAllSectionParams(): Array<{
   category: string
-  block: string
+  section: string
 }> {
-  return BLOCK_CATALOGUE.map((block) => ({
-    category: block.category,
-    block: block.slug,
+  return SECTION_CATALOGUE.map((section) => ({
+    category: section.category,
+    section: section.slug,
   }))
 }

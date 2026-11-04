@@ -1,8 +1,8 @@
 /**
- * Lucide icon map for the 22 blocks in the catalogue.
+ * Lucide icon map for the 22 sections in the catalogue.
  *
  * V1 hand-maintained mirror. V2 auto-generates from a JSDoc tag
- * in the block source (e.g. `@icon Grid3x3`).
+ * in the section source (e.g. `@icon Grid3x3`).
  *
  * The trailing exhaustiveness check turns a missing slug into a
  * compile error rather than a silent fallback at runtime.
@@ -34,9 +34,9 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import type { CatalogueBlock } from "./catalogue"
+import type { CatalogueSection } from "./catalogue"
 
-export const BLOCK_ICONS = {
+export const SECTION_ICONS = {
   "hero-centered": Sparkles,
   "hero-split-image": Columns2,
   "hero-with-mockup": MonitorPlay,
@@ -58,10 +58,10 @@ export const BLOCK_ICONS = {
   "faq-split": CircleHelp,
   "footer-column-rich": AppWindow,
   "footer-minimal": PanelBottom,
-} as const satisfies Record<CatalogueBlock["slug"], LucideIcon>
+} as const satisfies Record<CatalogueSection["slug"], LucideIcon>
 
-const ICON_BY_SLUG = new Map(Object.entries(BLOCK_ICONS))
+const ICON_BY_SLUG = new Map(Object.entries(SECTION_ICONS))
 
-export function getBlockIcon(slug: CatalogueBlock["slug"]): LucideIcon {
+export function getSectionIcon(slug: CatalogueSection["slug"]): LucideIcon {
   return ICON_BY_SLUG.get(slug) ?? Wrench
 }

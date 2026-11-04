@@ -1,12 +1,12 @@
-import type { CatalogueBlock } from "./catalogue"
+import type { CatalogueSection } from "./catalogue"
 
 type Props = {
-  block: CatalogueBlock
+  section: CatalogueSection
 }
 
 /**
- * V1 live preview of a single block. Renders a labelled mock
- * surface sized by the block's `layout` discriminator:
+ * V1 live preview of a single section. Renders a labelled mock
+ * surface sized by the section's `layout` discriminator:
  *
  * - `split`     → wide rectangle with a divider line
  * - `stacked`   → tall rectangle with stacked internal sections
@@ -16,8 +16,8 @@ type Props = {
  * V2 will replace this with an actual rendered section by
  * composing the underlying primitives + layout.
  */
-export function BlockPreview({ block }: Props) {
-  const { layout, name } = block
+export function SectionPreview({ section }: Props) {
+  const { layout, name } = section
 
   return (
     <div className="flex min-h-64 items-center justify-center p-8">
@@ -30,7 +30,7 @@ function PreviewMock({
   layout,
   name,
 }: {
-  layout: CatalogueBlock["layout"]
+  layout: CatalogueSection["layout"]
   name: string
 }) {
   return (

@@ -5,7 +5,7 @@
  * walking an item array and tallying items per category. The
  * `getCategoryId` callback reads the category identifier off each
  * item so this helper works for both `CatalogueComponent` (whose
- * `category` field is the literal `CategoryId`) and `CatalogueBlock`
+ * `category` field is the literal `CategoryId`) and `CatalogueSection`
  * (same shape, different id type).
  *
  * Server-only: the input array is fully resolved at build time
@@ -13,13 +13,13 @@
  * pure data-shaping function with no React or runtime deps. It
  * can be called from a Server Component (used by both
  * `(product)/components/page.tsx` and
- * `(product)/blocks/page.tsx`) or from a Client Component
+ * `(product)/sections/page.tsx`) or from a Client Component
  * (used by the category browser, where the counts need to be
  * recomputed reactively when `pinned` changes).
  *
- * Pre-refactor note: the `/blocks` index was rendering `counts = 1`
- * per category in `BlocksBrowser` (`useMemo`), which made the
- * sidebar lie ("1" for `hero` even though 4 blocks live there).
+ * Pre-refactor note: the `/sections` index was rendering `counts = 1`
+ * per category in `SectionsBrowser` (`useMemo`), which made the
+ * sidebar lie ("1" for `hero` even though 4 sections live there).
  * Centralising the calculation here lets both surfaces share the
  * same arithmetic and fixes the blocks regression in passing.
  */

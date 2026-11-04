@@ -4,44 +4,44 @@ import { calculateCatalogCounts } from "@/components/catalog/catalog-counts"
 import { CatalogBrowserShell } from "@/components/catalog/catalog-browser-shell"
 import { CatalogCategoryGrid } from "@/components/catalog/catalog-category-grid"
 import { CatalogSidebar } from "@/components/catalog/catalog-sidebar"
-import { BlockCardPreview } from "@/components/catalog/blocks/card-preview"
-import { BLOCK_CATEGORIES } from "@/components/catalog/blocks/categories"
-import { BLOCK_CATALOGUE } from "@/components/catalog/blocks/catalogue"
+import { SectionCardPreview } from "@/components/catalog/sections/card-preview"
+import { SECTION_CATEGORIES } from "@/components/catalog/sections/categories"
+import { SECTION_CATALOGUE } from "@/components/catalog/sections/catalogue"
 
 export const metadata: Metadata = {
-  title: "Blocks",
+  title: "Sections",
   description:
     "Production-ready marketing sections. Hero, CTA, pricing, FAQ, and more. Drop them into any DeesseJS template.",
 }
 
 /**
- * Blocks catalogue index at `/blocks`.
+ * Sections catalogue index at `/sections`.
  *
  * Two-column layout: nav sidebar on the left, category grid on
  * the right. Each grid card is one category (Hero, CTA, Feature,
  * Pricing, Testimonial, Stats, FAQ, Footer) with a layout-shaped
  * preview.
  *
- * Wrapper + final CTA from `(product)/blocks/layout.tsx`.
+ * Wrapper + final CTA from `(product)/sections/layout.tsx`.
  *
- * Inlined from the previously-separate `BlocksBrowser` and
- * `BlocksCategoryGrid` orchestrators. UI is identical.
+ * Inlined from the previously-separate `SectionsBrowser` and
+ * `SectionsCategoryGrid` orchestrators. UI is identical.
  */
-export default function BlocksPage() {
-  // Map each category to a representative block.
-  const categoryToBlock = new Map(
-    BLOCK_CATEGORIES.flatMap((category) => {
-      const firstBlock = BLOCK_CATALOGUE.find(
-        (block) => block.category === category.id
+export default function SectionsPage() {
+  // Map each category to a representative section.
+  const categoryToSection = new Map(
+    SECTION_CATEGORIES.flatMap((category) => {
+      const firstSection = SECTION_CATALOGUE.find(
+        (section) => section.category === category.id
       )
-      return firstBlock ? [[category.id, firstBlock] as const] : []
+      return firstSection ? [[category.id, firstSection] as const] : []
     })
   )
 
   // Per-category counts.
   const counts = calculateCatalogCounts(
-    BLOCK_CATALOGUE,
-    (block) => block.category
+    SECTION_CATALOGUE,
+    (section) => section.category
   )
 
   return (
@@ -50,7 +50,7 @@ export default function BlocksPage() {
       <header className="relative overflow-hidden border-b border-border">
         <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
           <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
-            Blocks
+            Sections
           </p>
           <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
             Marketing sections, ready to drop in.
@@ -64,32 +64,32 @@ export default function BlocksPage() {
 
       {/* Two-column browser: sidebar + category grid. */}
       <CatalogBrowserShell
-        ariaLabel="Blocks catalogue"
+        ariaLabel="Sections catalogue"
         sidebar={
           <CatalogSidebar
             heading="Categories"
-            basePath="/blocks"
-            entries={BLOCK_CATEGORIES}
+            basePath="/sections"
+            entries={SECTION_CATEGORIES}
             counts={counts}
           />
         }
       >
         <CatalogCategoryGrid
           columns={4}
-          entries={BLOCK_CATEGORIES.flatMap((category) => {
-            const block = categoryToBlock.get(category.id)
-            if (!block) return []
+          entries={SECTION_CATEGORIES.flatMap((category) => {
+            const section = categoryToSection.get(category.id)
+            if (!section) return []
             return [
               {
                 id: category.id,
-                href: `/blocks/${category.slug}`,
+                href: `/sections/${category.slug}`,
                 ariaLabel: `Browse the ${category.name} category`,
-                preview: <BlockCardPreview block={block} />,
+                preview: <SectionCardPreview section={section} />,
                 title: category.name,
                 description: category.description,
                 footer: (
                   <span className="font-mono text-label-13 text-muted-foreground">
-                    {category.blockNames.split(",")[0]?.trim()}
+                    {category.sectionNames.split(",")[0]?.trim()}
                   </span>
                 ),
               },

@@ -1,31 +1,31 @@
-import type { CatalogueBlock } from "./catalogue"
+import type { CatalogueSection } from "./catalogue"
 
 type Props = {
-  block: CatalogueBlock
+  section: CatalogueSection
 }
 
 /**
- * Mini preview of a single block, rendered inside the 16:9 slot
- * at the top of each block card on `/blocks` and `/blocks/[category]`.
+ * Mini preview of a single section, rendered inside the 16:9 slot
+ * at the top of each section card on `/sections` and `/sections/[category]`.
  *
  * Mirrors the layout discriminator (`split` | `stacked` | `bento` |
  * `centered`) with a mocked mini-arrangement sized to fit a 16:9
- * surface. Calque of the pattern in `block-preview.tsx:25-93`,
+ * surface. Calque of the pattern in `section-preview.tsx:25-93`,
  * scaled down for the card slot.
  *
  * V1 dummy: each layout gets a single representative mock. V2
  * will render the actual section composed from primitives.
  */
-export function BlockCardPreview({ block }: Props) {
+export function SectionCardPreview({ section }: Props) {
   return (
     <div className="flex aspect-video w-full shrink-0 items-center justify-center bg-muted/40 p-4">
-      {renderMock(block)}
+      {renderMock(section)}
     </div>
   )
 }
 
-function renderMock(block: CatalogueBlock) {
-  const { layout } = block
+function renderMock(section: CatalogueSection) {
+  const { layout } = section
   return (
     <div className="flex w-full max-w-full flex-col gap-1 text-label-13 text-muted-foreground">
       <span className="font-mono tracking-wider uppercase">
