@@ -7,6 +7,7 @@ import {
   HomeIcon,
   LayoutDashboardIcon,
   LinkIcon,
+  LifeBuoyIcon,
   SmartphoneIcon,
   UserIcon,
 } from "lucide-react"
@@ -30,6 +31,7 @@ import { OrganizationSwitcher } from "@/components/sidebars/organization-switche
 import { APP_CONFIG } from "@/lib/app-config"
 import {
   ACCOUNT_OVERVIEW_PATH,
+  ACCOUNT_PATHS,
   SETTINGS_PATHS,
 } from "@/lib/settings-paths"
 
@@ -43,6 +45,7 @@ const SETTINGS_NAV = [
   { label: "Sessions", href: SETTINGS_PATHS.sessions, icon: SmartphoneIcon },
   { label: "Connections", href: SETTINGS_PATHS.connections, icon: LinkIcon },
   { label: "Account", href: SETTINGS_PATHS.account, icon: BadgeCheckIcon },
+  { label: "Support", href: ACCOUNT_PATHS.support, icon: LifeBuoyIcon },
 ]
 
 export function SettingsSidebar() {
