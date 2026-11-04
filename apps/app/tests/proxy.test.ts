@@ -103,6 +103,55 @@ describe("proxy: the account settings are protected", () => {
   })
 })
 
+describe("proxy: account routes are protected", () => {
+  it("bounces a signed-out visitor from an account route to login", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request("/account/overview"))
+
+    expect(response.status).toBe(307)
+    const target = locationOf(response)
+    expect(target.pathname).toBe("/login")
+    expect(target.searchParams.get("redirect")).toBe("/account/overview")
+  })
+
+  it("sends an unverified visitor from an account route to verify-email", async () => {
+    stubSession({ emailVerified: false })
+    const response = await proxy(request("/account/invites"))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/verify-email")
+  })
+
+  it("lets a verified visitor access an account route", async () => {
+    stubSession()
+    const response = await proxy(request("/account/support"))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+  })
+
+  it("protects the account root and excludes paths outside its segment", async () => {
+    stubSession({ signedIn: false })
+    const accountResponse = await proxy(request("/account"))
+
+    expect(accountResponse.status).toBe(307)
+    expect(locationOf(accountResponse).searchParams.get("redirect")).toBe("/account")
+
+    const accountingFetch = stubSession()
+    const accountingResponse = await proxy(request("/accounting"))
+    expect(accountingResponse.status).toBe(200)
+    expect(accountingFetch).not.toHaveBeenCalled()
+  })
+
+  it("retains the existing file-path exclusion under account", async () => {
+    const fetchMock = stubSession()
+    const response = await proxy(request("/account/avatar.png"))
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
 describe("proxy: the workspace is protected", () => {
   it("bounces a signed-out visitor away from a workspace path", async () => {
     // A first segment the application does not own is an organization
