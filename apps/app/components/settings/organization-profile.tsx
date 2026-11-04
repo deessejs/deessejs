@@ -27,7 +27,7 @@ const organizationAvatarQueryOptions = (slug: string) =>
     retry: false,
   })
 
-const organizationProfileSchema = z.object({
+export const organizationProfileSchema = z.object({
   name: z
     .string()
     .min(1)
