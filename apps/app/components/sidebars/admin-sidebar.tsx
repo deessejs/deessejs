@@ -25,6 +25,7 @@ import { NavUser } from "@/components/sidebars/nav-user"
 
 const TEMPLATES_HREF = "/admin/templates"
 const SUBMISSIONS_HREF = "/admin/templates/submissions"
+const BLOCKS_HREF = "/admin/blocks"
 const BLOCK_SUBMISSIONS_HREF = "/admin/blocks/submissions"
 
 export function AdminSidebar() {
@@ -63,18 +64,34 @@ export function AdminSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith("/admin/blocks")}
+                isActive={pathname === BLOCKS_HREF}
                 tooltip="Blocks"
               >
                 <Link
-                  href={BLOCK_SUBMISSIONS_HREF}
-                  aria-current={
-                    pathname.startsWith("/admin/blocks") ? "page" : undefined
-                  }
+                  href={BLOCKS_HREF}
+                  aria-current={pathname === BLOCKS_HREF ? "page" : undefined}
                   onClick={() => setOpenMobile(false)}
                 >
                   <BlocksIcon className="size-4" aria-hidden />
                   <span>Blocks</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === BLOCK_SUBMISSIONS_HREF}
+                tooltip="Block submissions"
+              >
+                <Link
+                  href={BLOCK_SUBMISSIONS_HREF}
+                  aria-current={
+                    pathname === BLOCK_SUBMISSIONS_HREF ? "page" : undefined
+                  }
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <ClipboardCheckIcon className="size-4" aria-hidden />
+                  <span>Block submissions</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

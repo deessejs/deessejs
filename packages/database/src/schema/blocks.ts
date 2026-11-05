@@ -22,16 +22,21 @@ export const blockPublicationState = pgEnum("block_publication_state", [
   "current",
   "superseded",
 ])
+export const blockOwnerType = pgEnum("block_owner_type", [
+  "organization",
+  "platform",
+])
 
 /** A submitted block revision. Descriptor JSON is captured from its pinned source commit. */
 export const blockPublications = pgTable(
   "block_publications",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "restrict" }),
-    organizationSlug: text("organization_slug").notNull(),
+    ownerType: blockOwnerType("owner_type").notNull().default("organization"),
+    organizationId: text("organization_id").references(() => organization.id, {
+      onDelete: "restrict",
+    }),
+    organizationSlug: text("organization_slug"),
     submittedBy: text("submitted_by")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
@@ -63,6 +68,10 @@ export const blockPublications = pgTable(
       "block_publications_commit_sha_check",
       sql`${table.sourceCommit} ~ '^[0-9a-f]{40}$'`
     ),
+    check(
+      "block_publications_owner_check",
+      sql`(${table.ownerType} = 'organization' AND ${table.organizationId} IS NOT NULL AND ${table.organizationSlug} IS NOT NULL) OR (${table.ownerType} = 'platform' AND ${table.organizationId} IS NULL AND ${table.organizationSlug} IS NULL)`
+    ),
     index("block_publications_org_slug_submitted_idx").on(
       table.organizationId,
       table.slug,
@@ -73,6 +82,13 @@ export const blockPublications = pgTable(
       .where(sql`${table.reviewStatus} = 'pending'`),
     uniqueIndex("block_publications_one_current_slug_uidx")
       .on(table.organizationSlug, table.slug)
-      .where(sql`${table.publicationState} = 'current'`),
+      .where(
+        sql`${table.publicationState} = 'current' AND ${table.ownerType} = 'organization'`
+      ),
+    uniqueIndex("block_publications_platform_current_slug_uidx")
+      .on(table.slug)
+      .where(
+        sql`${table.publicationState} = 'current' AND ${table.ownerType} = 'platform'`
+      ),
   ]
 )

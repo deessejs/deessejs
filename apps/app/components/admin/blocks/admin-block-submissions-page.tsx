@@ -10,7 +10,7 @@ export function AdminBlockSubmissionsPage({
 }: {
   submissions: Array<{
     id: string
-    organizationSlug: string
+    organizationSlug: string | null
     slug: string
     name: string
     category: string
@@ -54,7 +54,8 @@ export function AdminBlockSubmissionsPage({
           >
             <h2 className="text-xl font-semibold">{item.name}</h2>
             <p>
-              {item.organizationSlug}/{item.slug} · {item.category}
+              {item.organizationSlug ?? "Official"}/{item.slug} ·{" "}
+              {item.category}
             </p>
             <a
               href={`${item.repositoryUrl}/tree/${item.sourceCommit}`}

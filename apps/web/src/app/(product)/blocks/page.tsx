@@ -37,7 +37,7 @@ export default async function BlocksPage() {
               </p>
               <h2 className="mt-2 text-xl font-semibold">
                 <Link
-                  href={`/blocks/${encodeURIComponent(block.category)}/${encodeURIComponent(block.organizationSlug + "--" + block.slug)}`}
+                  href={`/blocks/${encodeURIComponent(block.category)}/${encodeURIComponent((block.ownerType === "platform" ? "official" : block.organizationSlug) + "--" + block.slug)}`}
                 >
                   {block.name}
                 </Link>
