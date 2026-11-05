@@ -5,14 +5,14 @@ import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
 
 /**
- * Page-level wrapper for every page in `/blocks` and its category
+ * Page-level wrapper for every page in `/sections` and its category
  * / leaf routes. Renders the children directly (the shared-border
  * card + diagonal stripes are now supplied by `<GlobalLayout>` at
  * the root layout) and closes with the shared 2-col Final CTA.
  *
  * Mirror of `(product)/components/layout.tsx`.
  */
-export default function BlocksLayout({
+export default function SectionsLayout({
   children,
 }: {
   children: React.ReactNode
@@ -23,10 +23,10 @@ export default function BlocksLayout({
 
       {/* Final CTA — same 2-col shared-border grid as the homepage
           hero. Copy on the left, two actions on the right. No
-          install command: blocks aren't published through the
+          install command: sections aren't published through the
           shadcn registry yet (ITEMS.blocks is empty), so we
           don't promise a copy-paste install. Once the first
-          block lands, swap this copy for the shadcn install
+          section lands, swap this copy for the shadcn install
           flow used by /components. */}
       <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
         <div className="flex flex-col gap-4 p-6 lg:p-10">
@@ -35,7 +35,7 @@ export default function BlocksLayout({
             Need a section we don&apos;t ship yet?
           </h2>
           <p className="max-w-xl text-copy-16 leading-7 text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
-            Blocks are still being carved out of the marketing pages. Until they
+            Sections are still being carved out of the marketing pages. Until they
             land in the registry, talk to our delivery team if you need a hand
             porting a layout into your project. Same templates, same contracts,
             same guarantees.

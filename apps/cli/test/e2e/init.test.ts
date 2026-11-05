@@ -290,7 +290,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const catalogInfoResult = await runCommand(
           cliExecutable,
-          ["info", "init-regression-fixture"],
+          ["info", "init-regression-fixture", "--verbose"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(
@@ -308,6 +308,7 @@ describe.skipIf(process.platform !== "linux")(
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(catalogJsonInfoResult.exitCode).toBe(0)
+        expect(catalogJsonInfoResult.stdout).toContain('"descriptor"')
         expect(catalogInfoResult.stdout).toContain(
           "Install: deessejs init init-regression-fixture"
         )
@@ -360,6 +361,7 @@ describe.skipIf(process.platform !== "linux")(
             "https://github.com/deessejs/init-regression-fixture",
             "--ref",
             "main",
+            "--verbose",
           ],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
@@ -442,6 +444,7 @@ describe.skipIf(process.platform !== "linux")(
             "init-regression-fixture",
             "--dir",
             installedProjectDirectory,
+            "--verbose",
           ],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
@@ -519,6 +522,30 @@ describe.skipIf(process.platform !== "linux")(
         expect(noInstallVerboseOutput).not.toContain("PACKAGE_MANAGER_")
         expect(noInstallVerboseOutput).not.toContain("\\n")
 
+        const noInstallJsonDirectory = join(
+          consumerDirectory,
+          "no-install-json-project"
+        )
+        const noInstallJsonResult = await runCommand(
+          cliExecutable,
+          [
+            "init",
+            "init-regression-fixture",
+            "--dir",
+            noInstallJsonDirectory,
+            "--no-install",
+          ],
+          { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
+        )
+        expect(noInstallJsonResult.exitCode).toBe(0)
+        expect(JSON.parse(noInstallJsonResult.stdout)).toMatchObject({
+          ok: true,
+          slug: "init-regression-fixture",
+          installed: false,
+        })
+        expect(noInstallJsonResult.stdout.trim()).toMatch(/^\{[\s\S]*\}$/)
+        expect(noInstallJsonResult.stderr).toBe("")
+
         const verboseProjectDirectory = join(
           consumerDirectory,
           "verbose-output-project"
@@ -538,6 +565,7 @@ describe.skipIf(process.platform !== "linux")(
         )
         const verboseOutput = `${verboseResult.stdout}\n${verboseResult.stderr}`
         expect(verboseResult.exitCode).toBe(0)
+        expect(verboseResult.stdout).toContain("Initializing")
         expect(verboseOutput).toContain("PACKAGE_MANAGER_STDOUT_SENTINEL")
         expect(verboseOutput).toContain("PACKAGE_MANAGER_STDERR_SENTINEL")
 
@@ -671,7 +699,7 @@ describe.skipIf(process.platform !== "linux")(
           requests.filter((request) =>
             request.startsWith("GET https://app.deessejs.com/api/v1/version")
           )
-        ).toHaveLength(11)
+        ).toHaveLength(12)
         expect(requests).toContain(
           "POST https://app.deessejs.com/api/v1/rpc/templates/list"
         )
@@ -692,21 +720,21 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(13)
+        ).toBe(14)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
           ).length
-        ).toBe(15)
+        ).toBe(16)
         expect(
           requests.filter((request) =>
             request.includes(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
             )
           ).length
-        ).toBe(15)
+        ).toBe(16)
         expect(
           requests.filter((request) =>
             request.startsWith(

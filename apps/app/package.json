@@ -17,6 +17,7 @@
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@tanstack/react-form": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@workspace/analytics": "workspace:*",
     "@workspace/api": "workspace:*",

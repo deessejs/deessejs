@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
@@ -13,7 +14,6 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Label } from "@workspace/ui/components/label"
 import { Checkbox } from "@workspace/ui/components/checkbox"
-import { orpcBrowser } from "@/lib/orpc-browser"
 
 const ERROR_MESSAGES: Record<string, string> = {
   TEMPLATE_SUBMISSION_CONFLICT:
@@ -60,7 +60,7 @@ export function RequestTemplatePublicationDialog({
     setFailure(null)
     setSubmitting(true)
     try {
-      await orpcBrowser.organization.templates.submit({
+      await client.rpc.organization.templates.submit({
         organizationSlug,
         templateId: template.id,
         distributionRightsConfirmed: true,

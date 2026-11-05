@@ -1,27 +1,27 @@
 /**
  * Snippets for the Code tab on every
- * `/blocks/[category]/[block]` page. Each entry is a small JSX
- * example that renders the block as a single composition with
+ * `/sections/[category]/[section]` page. Each entry is a small JSX
+ * example that renders the section as a single composition with
  * placeholder inner content. V2 will swap these for real source
  * from the registered sections of the marketing pages (or a
- * dedicated `packages/blocks/` package once one lands).
+ * dedicated `packages/sections/` package once one lands).
  *
- * No blocks are shipped through the registry today (`ITEMS.blocks`
+ * No sections are shipped through the registry today (`ITEMS.blocks`
  * is empty), so every entry uses the same uniform placeholder to
  * avoid showing consumers hand-written code that can't be installed.
- * The placeholder stays exhaustive over `CatalogueBlock["slug"]`
- * so adding a new block without a snippet surfaces as a compile
+ * The placeholder stays exhaustive over `CatalogueSection["slug"]`
+ * so adding a new section without a snippet surfaces as a compile
  * error, not a runtime fallback.
  */
 
-import type { CatalogueBlock } from "./catalogue"
+import type { CatalogueSection } from "./catalogue"
 
 const PREVIEW_PLACEHOLDER = `// Source coming in V3.
 //
-// This block is documented on /blocks but its implementation
+// This section is documented on /sections but its implementation
 // has not landed in the registry yet. The code samples below
 // preview the layout shape; the registry install will go live
-// once the block is ready.
+// once the section is ready.
 `
 
 const SNIPPETS = {
@@ -46,10 +46,10 @@ const SNIPPETS = {
   "faq-split": PREVIEW_PLACEHOLDER,
   "footer-column-rich": PREVIEW_PLACEHOLDER,
   "footer-minimal": PREVIEW_PLACEHOLDER,
-} satisfies Record<CatalogueBlock["slug"], string>
+} satisfies Record<CatalogueSection["slug"], string>
 
 const SNIPPET_BY_SLUG = new Map(Object.entries(SNIPPETS))
 
-export function getBlockSnippet(slug: CatalogueBlock["slug"]): string {
+export function getSectionSnippet(slug: CatalogueSection["slug"]): string {
   return SNIPPET_BY_SLUG.get(slug) ?? PREVIEW_PLACEHOLDER
 }

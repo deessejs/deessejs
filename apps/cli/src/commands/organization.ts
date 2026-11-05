@@ -24,7 +24,9 @@ import type {
   OrganizationTemplateCategoryV1Type,
 } from "@workspace/contracts/v1"
 
-type JsonOption = { json?: boolean }
+type JsonOption = { json?: boolean; verbose?: boolean }
+const isJsonOutput = (options: JsonOption): boolean =>
+  !options.verbose || !!options.json
 
 type OrganizationSummary = Organization & { role: string }
 
@@ -175,23 +177,24 @@ export const completeBeforePrint = (
 export const organizationListCommand = new Command("list")
   .description("List your organizations")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(async (options: JsonOption) => {
     let token: string
     try {
       token = signedInToken()
     } catch (error) {
-      reportError(error, options.json ?? false)
+      reportError(error, isJsonOutput(options))
     }
 
-    const spinner = options.json
+    const spinner = isJsonOutput(options)
       ? null
       : ora("Fetching organizations...").start()
     const organizations = await reportAction(
       () => listOrganizations(token),
-      options.json ?? false,
+      isJsonOutput(options),
       spinner
     )
-    if (options.json) {
+    if (isJsonOutput(options)) {
       printJson({ organizations })
     } else {
       printOrganizationsTable(organizations)
@@ -202,15 +205,16 @@ export const organizationInfoCommand = new Command("info")
   .description("Show details for one of your organizations")
   .argument("<slug>", "organization slug")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(async (slug: string, options: JsonOption) => {
     let token: string
     try {
       token = signedInToken()
     } catch (error) {
-      reportError(error, options.json ?? false)
+      reportError(error, isJsonOutput(options))
     }
 
-    const spinner = options.json
+    const spinner = isJsonOutput(options)
       ? null
       : ora("Fetching organization...").start()
     const organization = await reportAction<OrganizationSummary>(
@@ -223,11 +227,11 @@ export const organizationInfoCommand = new Command("info")
         const role = await getOrganizationRole(memberOrganization.id, token)
         return { ...memberOrganization, role } satisfies OrganizationSummary
       },
-      options.json ?? false,
+      isJsonOutput(options),
       spinner
     )
 
-    if (options.json) {
+    if (isJsonOutput(options)) {
       printJson({ organization })
     } else {
       printOrganizationInfo(organization)
@@ -238,15 +242,16 @@ export const organizationCreateCommand = new Command("create")
   .description("Create an organization")
   .argument("<name>", "organization display name")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(async (name: string, options: JsonOption) => {
     let client: ORPCClient
     try {
       client = createAuthenticatedORPCClient(signedInToken())
     } catch (error) {
-      reportError(error, options.json ?? false)
+      reportError(error, isJsonOutput(options))
     }
 
-    const spinner = options.json
+    const spinner = isJsonOutput(options)
       ? null
       : ora("Creating organization...").start()
     const organization = await reportAction<Organization>(
@@ -255,10 +260,10 @@ export const organizationCreateCommand = new Command("create")
           name,
           slug: organizationSlugFromName(name),
         }),
-      options.json ?? false,
+      isJsonOutput(options),
       spinner
     )
-    if (options.json) {
+    if (isJsonOutput(options)) {
       printJson({ organization })
     } else {
       console.log(`Created ${organization.name} (${organization.slug}).`)
@@ -277,6 +282,7 @@ organizationTemplateCommand
   .description("List templates owned by an organization")
   .argument("<organization-slug>", "organization slug")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(async (organizationSlug: string, options: JsonOption) => {
     await runOrganizationTemplateAction(
       options,
@@ -286,7 +292,7 @@ organizationTemplateCommand
           organizationSlug,
         })
         completeBeforePrint(complete, () => {
-          if (options.json) printJson({ templates })
+          if (isJsonOutput(options)) printJson({ templates })
           else printOrganizationTemplatesTable(templates)
         })
       }
@@ -299,6 +305,7 @@ organizationTemplateCommand
   .argument("<organization-slug>", "organization slug")
   .argument("<template-slug>", "template slug")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(
     async (organizationSlug: string, slug: string, options: JsonOption) => {
       await runOrganizationTemplateAction(
@@ -315,7 +322,7 @@ organizationTemplateCommand
               `Template "${slug}" not found in organization "${organizationSlug}".`
             )
           completeBeforePrint(complete, () => {
-            if (options.json) printJson({ template })
+            if (isJsonOutput(options)) printJson({ template })
             else printOrganizationTemplateInfo(template)
           })
         }
@@ -340,6 +347,7 @@ organizationTemplateCommand
   )
   .option("--license <license>", "license fallback")
   .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
   .action(
     async (
       organizationSlug: string,
@@ -389,7 +397,7 @@ organizationTemplateCommand
             throw error
           }
           completeBeforePrint(complete, () => {
-            if (options.json)
+            if (isJsonOutput(options))
               printJson({
                 template,
                 ownership: "organization",
@@ -414,12 +422,12 @@ async function runOrganizationTemplateAction(
   try {
     client = createAuthenticatedORPCClient(signedInToken())
   } catch (error) {
-    reportError(error, options.json ?? false)
+    reportError(error, isJsonOutput(options))
   }
-  const spinner = options.json ? null : ora(message).start()
+  const spinner = isJsonOutput(options) ? null : ora(message).start()
   await reportAction(
     () => action(client, () => spinner?.succeed()),
-    options.json ?? false,
+    isJsonOutput(options),
     null
   )
 }
