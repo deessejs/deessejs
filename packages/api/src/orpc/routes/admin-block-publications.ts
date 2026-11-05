@@ -42,6 +42,11 @@ export const approve = adminProcedure
         throw new ORPCError("CONFLICT", {
           message: "Submission is no longer pending.",
         })
+      if (pending.ownerType !== "organization" || !pending.organizationSlug) {
+        throw new ORPCError("CONFLICT", {
+          message: "Only organization submissions can be reviewed here.",
+        })
+      }
       await tx
         .update(blockPublications)
         .set({ publicationState: "superseded" })

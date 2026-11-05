@@ -85,6 +85,13 @@
       "when": 1793836800001,
       "tag": "0012_safe_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793840474796,
+      "tag": "0013_wandering_mercury",
+      "breakpoints": true
     }
   ]
 }

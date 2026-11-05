@@ -5,6 +5,7 @@ import { base } from "../base.js"
 
 const projection = {
   id: blockPublications.id,
+  ownerType: blockPublications.ownerType,
   organizationSlug: blockPublications.organizationSlug,
   slug: blockPublications.slug,
   name: blockPublications.name,
@@ -38,12 +39,19 @@ export const resolve = base
     z.object({ organizationSlug: z.string().min(1), slug: z.string().min(1) })
   )
   .handler(async ({ input }) => {
+    const ownerFilter =
+      input.organizationSlug === "official"
+        ? eq(blockPublications.ownerType, "platform")
+        : and(
+            eq(blockPublications.ownerType, "organization"),
+            eq(blockPublications.organizationSlug, input.organizationSlug)
+          )
     const [row] = await db
       .select(projection)
       .from(blockPublications)
       .where(
         and(
-          eq(blockPublications.organizationSlug, input.organizationSlug),
+          ownerFilter,
           eq(blockPublications.slug, input.slug),
           eq(blockPublications.reviewStatus, "approved"),
           eq(blockPublications.publicationState, "current")

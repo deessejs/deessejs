@@ -26,7 +26,8 @@ export default async function BlockDetailPage({
   return (
     <main className="mx-auto max-w-4xl px-6 py-16">
       <p className="text-sm text-muted-foreground uppercase">
-        {block.category} · Community block
+        {block.category} ·{" "}
+        {block.ownerType === "platform" ? "Official block" : "Community block"}
       </p>
       <h1 className="mt-2 text-4xl font-bold">{block.name}</h1>
       <p className="mt-4 text-lg text-muted-foreground">{block.description}</p>

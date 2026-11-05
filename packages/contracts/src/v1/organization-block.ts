@@ -3,7 +3,8 @@ import { z } from "zod"
 /** Organization owned block registry record. Technical facts remain in the source descriptor. */
 export const OrganizationBlockV1 = z.object({
   id: z.string().uuid(),
-  organizationSlug: z.string(),
+  ownerType: z.enum(["organization", "platform"]),
+  organizationSlug: z.string().nullable(),
   slug: z.string(),
   name: z.string(),
   description: z.string(),
