@@ -52,10 +52,10 @@ export function AdminOfficialBlocksPage({
             Manage platform-owned capability blocks in the public catalog.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}>
-          <PlusIcon aria-hidden />
-          Add official block
-        </Button>
+        <AddBlockButton
+          onClick={() => setOpen(true)}
+          label="Add official block"
+        />
       </header>
 
       <Card>
@@ -87,10 +87,10 @@ export function AdminOfficialBlocksPage({
             Add a public GitHub repository containing a valid deesse-block.json
             descriptor.
           </p>
-          <Button onClick={() => setOpen(true)}>
-            <PlusIcon aria-hidden />
-            Add the first official block
-          </Button>
+          <AddBlockButton
+            onClick={() => setOpen(true)}
+            label="Add the first official block"
+          />
         </section>
       ) : (
         <div className="flex flex-col gap-3">
@@ -176,5 +176,20 @@ export function AdminOfficialBlocksPage({
         onCreated={() => router.refresh()}
       />
     </div>
+  )
+}
+
+function AddBlockButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <Button onClick={onClick}>
+      <PlusIcon aria-hidden />
+      {label}
+    </Button>
   )
 }
