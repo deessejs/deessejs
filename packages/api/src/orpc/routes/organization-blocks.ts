@@ -5,7 +5,12 @@ import {
   parseBlockDescriptor,
   createGitHubTemplateSourceAdapter,
 } from "@workspace/registry"
-import { db, blockPublications } from "@workspace/database"
+import {
+  db,
+  blockPublications,
+  member,
+  organization,
+} from "@workspace/database"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import { parseGitHubRepositoryUrl } from "../../core/templates/admin.js"
 import { findOrganizationForMember } from "../../core/organization/membership.js"
@@ -91,28 +96,41 @@ export const create = base
       throw new ORPCError("BAD_REQUEST", {
         message: result.diagnostics.map((d) => d.message).join(" "),
       })
-    const [row] = await db
-      .insert(blockPublications)
-      .values({
-        organizationId: org.id,
-        organizationSlug: org.slug,
-        submittedBy: context.user.id,
-        slug: input.slug,
-        name: input.name,
-        description: input.description,
-        category: input.category,
-        repositoryUrl,
-        subdirectory: input.subdirectory,
-        sourceCommit: snapshot.revision,
-        descriptor: JSON.stringify(result.data),
-        reviewStatus: "draft",
-        publicationState: "private",
-      })
-      .returning({
-        id: blockPublications.id,
-        sourceCommit: blockPublications.sourceCommit,
-      })
-    return row
+    return db.transaction(async (tx) => {
+      const [actor] = await tx
+        .select({ role: member.role })
+        .from(member)
+        .innerJoin(organization, eq(member.organizationId, organization.id))
+        .where(
+          and(eq(member.userId, context.user.id), eq(organization.id, org.id))
+        )
+        .limit(1)
+      if (!actor || !hasManagingRole(actor.role))
+        throw new ORPCError("FORBIDDEN")
+
+      const [row] = await tx
+        .insert(blockPublications)
+        .values({
+          organizationId: org.id,
+          organizationSlug: org.slug,
+          submittedBy: context.user.id,
+          slug: input.slug,
+          name: input.name,
+          description: input.description,
+          category: input.category,
+          repositoryUrl,
+          subdirectory: input.subdirectory,
+          sourceCommit: snapshot.revision,
+          descriptor: JSON.stringify(result.data),
+          reviewStatus: "draft",
+          publicationState: "private",
+        })
+        .returning({
+          id: blockPublications.id,
+          sourceCommit: blockPublications.sourceCommit,
+        })
+      return row
+    })
   })
 
 export const submit = base
@@ -153,28 +171,41 @@ export const submit = base
       throw new ORPCError("BAD_REQUEST", {
         message: result.diagnostics.map((d) => d.message).join(" "),
       })
-    const [row] = await db
-      .insert(blockPublications)
-      .values({
-        organizationId: org.id,
-        organizationSlug: org.slug,
-        submittedBy: context.user.id,
-        slug: previous.slug,
-        name: previous.name,
-        description: previous.description,
-        category: previous.category,
-        repositoryUrl: previous.repositoryUrl,
-        subdirectory: previous.subdirectory,
-        sourceCommit: snapshot.revision,
-        descriptor: JSON.stringify(result.data),
-        reviewStatus: "pending",
-        publicationState: "private",
-      })
-      .returning({
-        id: blockPublications.id,
-        sourceCommit: blockPublications.sourceCommit,
-      })
-    return row
+    return db.transaction(async (tx) => {
+      const [actor] = await tx
+        .select({ role: member.role })
+        .from(member)
+        .innerJoin(organization, eq(member.organizationId, organization.id))
+        .where(
+          and(eq(member.userId, context.user.id), eq(organization.id, org.id))
+        )
+        .limit(1)
+      if (!actor || !hasManagingRole(actor.role))
+        throw new ORPCError("FORBIDDEN")
+
+      const [row] = await tx
+        .insert(blockPublications)
+        .values({
+          organizationId: org.id,
+          organizationSlug: org.slug,
+          submittedBy: context.user.id,
+          slug: previous.slug,
+          name: previous.name,
+          description: previous.description,
+          category: previous.category,
+          repositoryUrl: previous.repositoryUrl,
+          subdirectory: previous.subdirectory,
+          sourceCommit: snapshot.revision,
+          descriptor: JSON.stringify(result.data),
+          reviewStatus: "pending",
+          publicationState: "private",
+        })
+        .returning({
+          id: blockPublications.id,
+          sourceCommit: blockPublications.sourceCommit,
+        })
+      return row
+    })
   })
 
 export const organizationBlocksRouter = { list, create, submit }
