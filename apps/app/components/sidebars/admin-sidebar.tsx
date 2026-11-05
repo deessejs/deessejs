@@ -15,12 +15,17 @@ import {
   SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
-import { ClipboardCheckIcon, LayoutTemplateIcon } from "lucide-react"
+import {
+  BlocksIcon,
+  ClipboardCheckIcon,
+  LayoutTemplateIcon,
+} from "lucide-react"
 
 import { NavUser } from "@/components/sidebars/nav-user"
 
 const TEMPLATES_HREF = "/admin/templates"
 const SUBMISSIONS_HREF = "/admin/templates/submissions"
+const BLOCK_SUBMISSIONS_HREF = "/admin/blocks/submissions"
 
 export function AdminSidebar() {
   const pathname = usePathname()
@@ -52,6 +57,24 @@ export function AdminSidebar() {
                 >
                   <LayoutTemplateIcon className="size-4" aria-hidden />
                   <span>Templates</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/admin/blocks")}
+                tooltip="Blocks"
+              >
+                <Link
+                  href={BLOCK_SUBMISSIONS_HREF}
+                  aria-current={
+                    pathname.startsWith("/admin/blocks") ? "page" : undefined
+                  }
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <BlocksIcon className="size-4" aria-hidden />
+                  <span>Blocks</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
