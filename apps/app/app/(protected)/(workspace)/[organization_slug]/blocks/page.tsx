@@ -26,6 +26,7 @@ export default async function OrganizationBlocksRoute({
   return (
     <OrganizationBlocksPage
       organizationSlug={organization_slug}
+      organizationName={organization.name}
       blocks={blocks}
       canManage={hasManagingRole(organization.role)}
       error={error}
