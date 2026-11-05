@@ -15,6 +15,7 @@ const ProjectAliasesV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   IMPORT_ROOT_SCHEMA
 )
+const PackageTargetsV1Schema = z.record(ROLE_IDENTIFIER_SCHEMA, z.strictObject({ root: z.string().min(1) }))
 
 /**
  * User-owned context for a DeesseJS project.
@@ -27,6 +28,7 @@ export const ProjectConfigV1Schema = z.strictObject({
   formatVersion: z.literal(1),
   paths: ProjectPathsV1Schema.optional(),
   aliases: ProjectAliasesV1Schema.optional(),
+  packageTargets: PackageTargetsV1Schema.optional(),
 })
 
 export type ProjectConfigV1 = z.infer<typeof ProjectConfigV1Schema>
@@ -231,9 +233,17 @@ export function parseProjectConfig(
   const paths = result.data.paths ?? {}
   const aliases = result.data.aliases ?? {}
   const normalized = normalizeProjectPaths(paths)
+  const packageTargets: Record<string, { root: string }> = {}
+  const targetDiagnostics: ProjectConfigDiagnostic[] = []
+  for (const [id, target] of Object.entries(result.data.packageTargets ?? {})) {
+    const root = normalizeProjectPath(target.root)
+    if (root === null) targetDiagnostics.push({ code: "project_config.invalid_path", message: `Package target "${id}" must have a safe relative root.`, path: ["packageTargets", id, "root"] })
+    else packageTargets[id] = { root }
+  }
   const diagnostics = [
     ...normalized.diagnostics,
     ...diagnosticsForAliases(aliases, paths),
+    ...targetDiagnostics,
   ].sort(compareDiagnostics)
 
   if (diagnostics.length > 0) {
@@ -244,5 +254,6 @@ export function parseProjectConfig(
   if (result.data.paths !== undefined) {
     data.paths = normalized.normalizedPaths
   }
+  if (result.data.packageTargets !== undefined) data.packageTargets = packageTargets
   return { success: true, data }
 }

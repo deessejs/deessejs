@@ -86,3 +86,12 @@ export const resolveTemplateBySlug = async (
     throw normaliseError(e)
   }
 }
+
+export const resolveOfficialBlock = async (slug: string) => {
+  try {
+    const result = await orpc.blocks.resolve({ organizationSlug: "official", slug })
+    return result.block
+  } catch (e) {
+    throw normaliseError(e)
+  }
+}
