@@ -1,11 +1,15 @@
 import { subset } from "semver"
 import { readFile, lstat, readdir } from "node:fs/promises"
-import { join, resolve, relative } from "node:path"
+import { join, resolve, relative, isAbsolute, sep } from "node:path"
 import type { PackageManagerInfo } from "./detect-pm.js"
 import { PackageManifestSchema, type AddWrite, type BlockState, type PackageManifest } from "./add-types.js"
 import type { BlockDescriptorV1 } from "@workspace/registry/v1"
 
 const exists = async (path: string) => { try { await lstat(path); return true } catch { return false } }
+const isPathInside = (parent: string, candidate: string): boolean => {
+  const path = relative(parent, candidate)
+  return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path))
+}
 export const semverRangeSatisfies = (current: string, requested: string): boolean => {
   if (current === requested) return true
   if (current.startsWith("workspace:") || requested.startsWith("workspace:") || current.startsWith("catalog:") || requested.startsWith("catalog:")) return false
@@ -107,7 +111,7 @@ async function planFiles(cwd: string, packages: Array<{ id: string; path: string
     const output = packages.find((item) => item.id === file.to.package)
     if (!output) throw new Error(`Unknown block output ${file.to.package}.`)
     const path = resolve(cwd, output.path, file.to.path)
-    if (!path.startsWith(cwd + "/")) throw new Error(`Unsafe block path ${output.path}/${file.to.path}.`)
+    if (!isPathInside(cwd, path)) throw new Error(`Unsafe block path ${output.path}/${file.to.path}.`)
     if (await exists(path)) throw new Error(`File conflict at ${relative(cwd, path)}. Existing files are preserved.`)
     writes.push({ path, contents: new TextEncoder().encode(file.contents) })
   }

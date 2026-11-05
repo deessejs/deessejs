@@ -1,6 +1,11 @@
 import { mkdir, readFile, rename, rm, writeFile, realpath } from "node:fs/promises"
-import { dirname, relative } from "node:path"
+import { dirname, relative, isAbsolute, sep } from "node:path"
 import type { AddWrite } from "./add-types.js"
+
+function isPathInside(parent: string, candidate: string): boolean {
+  const path = relative(parent, candidate)
+  return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path))
+}
 
 export async function applyAddPlan(cwd: string, writes: AddWrite[]): Promise<void> {
   const staged: Array<{ write: AddWrite; temporary: string; backup?: string }> = []
@@ -34,10 +39,10 @@ async function validatePrecondition(cwd: string, write: AddWrite): Promise<void>
 async function validateParentPath(cwd: string, parent: string): Promise<void> {
   const canonicalRoot = await realpath(cwd)
   let current = parent
-  while (current !== cwd && current.startsWith(cwd + "/")) {
+  while (current !== cwd && isPathInside(cwd, current)) {
     try {
       const canonical = await realpath(current)
-      if (canonical !== canonicalRoot && !canonical.startsWith(canonicalRoot + "/")) throw new Error(`Unsafe symlinked output directory: ${relative(cwd, current)}.`)
+      if (canonical !== canonicalRoot && !isPathInside(canonicalRoot, canonical)) throw new Error(`Unsafe symlinked output directory: ${relative(cwd, current)}.`)
       return
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Unsafe symlinked")) throw error
