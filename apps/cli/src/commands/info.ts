@@ -31,56 +31,59 @@ export const infoCommand = new Command("info")
   )
   .option("--json", "JSON output for scripting")
   .option("--verbose", "show human-readable output")
-  .action(async (slugOrUrl: string, opts: { ref?: string; json?: boolean; verbose?: boolean }) => {
-    const json = !opts.verbose || !!opts.json
-    const spinner = json
-      ? null
-      : ora("Fetching template details...").start()
+  .action(
+    async (
+      slugOrUrl: string,
+      opts: { ref?: string; json?: boolean; verbose?: boolean }
+    ) => {
+      const json = !opts.verbose || !!opts.json
+      const spinner = json ? null : ora("Fetching template details...").start()
 
-    try {
-      const resolved = await resolveTemplateSource(slugOrUrl, {
-        skipVersionCheck: true,
-        fastCatalogLookup: true,
-      })
-      const repository = `${resolved.template.owner}/${resolved.template.repo}`
-      const info = await resolveTemplateDescriptorInfo(
-        repository,
-        getTemplateRef(resolved.template, opts.ref)
-      )
-      spinner?.succeed("Template details loaded")
-
-      const installSource = resolved.directRepository
-        ? `https://github.com/${resolved.directRepository.fullName}`
-        : resolved.template.slug
-      const refOption =
-        opts.ref && !resolved.template.community ? ` --ref ${opts.ref}` : ""
-      const installCommand = `deessejs init ${installSource}${refOption}`
-
-      if (json) {
-        printJson({
-          descriptor: info.descriptor,
-          source: info.source,
+      try {
+        const resolved = await resolveTemplateSource(slugOrUrl, {
+          skipVersionCheck: true,
+          fastCatalogLookup: true,
         })
-      } else {
-        printTemplateInfo(info.descriptor, info.source)
-        console.log()
-        console.log(`Install: ${installCommand}`)
-      }
-    } catch (err) {
-      spinner?.fail("Failed to fetch template details")
-      if (err instanceof CliError) {
+        const repository = `${resolved.template.owner}/${resolved.template.repo}`
+        const info = await resolveTemplateDescriptorInfo(
+          repository,
+          getTemplateRef(resolved.template, opts.ref)
+        )
+        spinner?.succeed("Template details loaded")
+
+        const installSource = resolved.directRepository
+          ? `https://github.com/${resolved.directRepository.fullName}`
+          : resolved.template.slug
+        const refOption =
+          opts.ref && !resolved.template.community ? ` --ref ${opts.ref}` : ""
+        const installCommand = `deessejs templates init ${installSource}${refOption}`
+
         if (json) {
           printJson({
-            ok: false,
-            code: err.code,
-            message: err.message,
-            hint: err.hint,
+            descriptor: info.descriptor,
+            source: info.source,
           })
         } else {
-          printError(err)
+          printTemplateInfo(info.descriptor, info.source)
+          console.log()
+          console.log(`Install: ${installCommand}`)
         }
-        process.exit(err.exitCode())
+      } catch (err) {
+        spinner?.fail("Failed to fetch template details")
+        if (err instanceof CliError) {
+          if (json) {
+            printJson({
+              ok: false,
+              code: err.code,
+              message: err.message,
+              hint: err.hint,
+            })
+          } else {
+            printError(err)
+          }
+          process.exit(err.exitCode())
+        }
+        throw internal(err instanceof Error ? err.message : String(err))
       }
-      throw internal(err instanceof Error ? err.message : String(err))
     }
-  })
+  )

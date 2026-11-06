@@ -310,7 +310,7 @@ describe.skipIf(process.platform !== "linux")(
         expect(catalogJsonInfoResult.exitCode).toBe(0)
         expect(catalogJsonInfoResult.stdout).toContain('"descriptor"')
         expect(catalogInfoResult.stdout).toContain(
-          "Install: deessejs init init-regression-fixture"
+          "Install: deessejs templates init init-regression-fixture"
         )
 
         const unknownCatalogInfoResult = await runCommand(
