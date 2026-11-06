@@ -12,7 +12,10 @@ import {
 import { member, organization } from "@workspace/database/schema"
 import { serverEnv } from "@workspace/env/server"
 
-import { getGitHubUserAccessToken } from "../../core/github-app/user-connection.js"
+import {
+  getGitHubUserAccessToken,
+  GitHubUserAccessTokenError,
+} from "../../core/github-app/user-connection.js"
 import {
   GitHubRepositoryRequestError,
   listGitHubInstallationRepositories,
@@ -23,6 +26,7 @@ import {
 } from "../../core/github-app/project-config.js"
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
+import { logger } from "../../constants/logger.js"
 
 const deniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
@@ -40,6 +44,10 @@ const repositoryErrors = {
   GITHUB_ACCOUNT_REQUIRED: {
     status: 409,
     message: "Connect or reconnect your GitHub account to list repositories.",
+  },
+  GITHUB_ACCOUNT_UNAVAILABLE: {
+    status: 502,
+    message: "Your GitHub connection could not be checked. Try again.",
   },
   GITHUB_INSTALLATION_ACCESS_DENIED: {
     status: 403,
@@ -77,6 +85,39 @@ const repositoryErrors = {
     status: 409,
     message: "This repository does not have a default branch to import.",
   },
+}
+
+type AccessTokenErrorFactories = {
+  accountRequired: () => unknown
+  accountUnavailable: () => unknown
+}
+
+async function getAccessTokenOrThrow(
+  userId: string,
+  requestId: string,
+  errors: AccessTokenErrorFactories
+): Promise<string> {
+  try {
+    return await getGitHubUserAccessToken(userId)
+  } catch (error) {
+    if (
+      error instanceof GitHubUserAccessTokenError &&
+      error.code === "ACCOUNT_REQUIRED"
+    ) {
+      throw errors.accountRequired()
+    }
+
+    const failureCategory =
+      error instanceof GitHubUserAccessTokenError
+        ? error.code
+        : "DATABASE_LOOKUP_FAILED"
+    logger.error(
+      "github_user_access_token_failed",
+      new Error("GitHub user access token resolution failed"),
+      { requestId, userId, failureCategory }
+    )
+    throw errors.accountUnavailable()
+  }
 }
 
 async function findOrganizationForMember(userId: string, slug: string) {
@@ -188,12 +229,14 @@ const listRepositories = base
       .limit(1)
     if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
 
-    let accessToken: string
-    try {
-      accessToken = await getGitHubUserAccessToken(context.user.id)
-    } catch {
-      throw errors.GITHUB_ACCOUNT_REQUIRED()
-    }
+    const accessToken = await getAccessTokenOrThrow(
+      context.user.id,
+      context.requestId,
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        accountUnavailable: () => errors.GITHUB_ACCOUNT_UNAVAILABLE(),
+      }
+    )
 
     try {
       return await listGitHubInstallationRepositories({
@@ -299,12 +342,14 @@ const inspectConfiguration = base
       .limit(1)
     if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
 
-    let accessToken: string
-    try {
-      accessToken = await getGitHubUserAccessToken(context.user.id)
-    } catch {
-      throw errors.GITHUB_ACCOUNT_REQUIRED()
-    }
+    const accessToken = await getAccessTokenOrThrow(
+      context.user.id,
+      context.requestId,
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        accountUnavailable: () => errors.GITHUB_ACCOUNT_UNAVAILABLE(),
+      }
+    )
 
     const repositoryPage = await getRepositoryPageForInspection(
       {
@@ -526,12 +571,14 @@ const importProject = base
       .limit(1)
     if (!installation) throw errors.GITHUB_INSTALLATION_NOT_CONNECTED()
 
-    let accessToken: string
-    try {
-      accessToken = await getGitHubUserAccessToken(context.user.id)
-    } catch {
-      throw errors.GITHUB_ACCOUNT_REQUIRED()
-    }
+    const accessToken = await getAccessTokenOrThrow(
+      context.user.id,
+      context.requestId,
+      {
+        accountRequired: () => errors.GITHUB_ACCOUNT_REQUIRED(),
+        accountUnavailable: () => errors.GITHUB_ACCOUNT_UNAVAILABLE(),
+      }
+    )
 
     const repositoryPage = await getRepositoryPageForInspection(
       {
