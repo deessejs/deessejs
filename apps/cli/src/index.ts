@@ -21,7 +21,13 @@ const program = new Command()
 program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry and blocks")
-  .version(readPackageVersion())
+  .version(readPackageVersion(), "-V, --version")
+  .option("-v", "output the version number")
+
+program.on("option:v", () => {
+  process.stdout.write(`${readPackageVersion()}\n`)
+  process.exit(0)
+})
 
 program.addCommand(listCommand)
 program.addCommand(infoCommand)
