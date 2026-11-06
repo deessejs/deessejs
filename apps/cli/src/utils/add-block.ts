@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { join, relative } from "node:path"
+import { fromAsyncThrowable } from "@deessejs/fp"
 import { detectPackageManager } from "./detect-pm.js"
 import { resolveAddSource } from "./add-source.js"
 import { resolveAddTarget } from "./add-target.js"
@@ -14,20 +15,23 @@ import { getInstallCommand } from "./detect-pm.js"
 import { spawn } from "./spawn.js"
 
 async function readState(path: string): Promise<BlockState> {
-  try {
-    return BlockStateSchema.parse(JSON.parse(await readFile(path, "utf8")))
-  } catch (error) {
-    if (
-      error instanceof SyntaxError ||
-      !(error instanceof Error) ||
-      !("code" in error) ||
-      error.code !== "ENOENT"
-    )
+  const result = await fromAsyncThrowable({
+    onSuccess: async () =>
+      BlockStateSchema.parse(JSON.parse(await readFile(path, "utf8"))),
+    onError: (cause) => cause,
+  })
+
+  return result.match({
+    ok: (state) => state,
+    err: (cause) => {
+      if (cause instanceof Error && "code" in cause && cause.code === "ENOENT")
+        return { version: 1, installations: [] }
+
       throw new Error(
         "Cannot read valid .deesse/blocks.json installation state."
       )
-    return { version: 1, installations: [] }
-  }
+    },
+  })
 }
 
 function confirmPlan(): Promise<boolean> {
