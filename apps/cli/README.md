@@ -19,26 +19,26 @@ Other release channels:
 
 ## Commands
 
-| Command                                | Role                                                            |
-| -------------------------------------- | --------------------------------------------------------------- |
-| `deessejs init <slug-or-github-url>`   | Create a project from a catalog template or a GitHub repository |
-| `deessejs list`                        | List available templates                                        |
-| `deessejs info <slug-or-github-url>`   | Show validated descriptor details for a template                |
-| `deessejs block info <source>`         | Show a validated block descriptor summary                       |
-| `deessejs block check [source]`        | Validate a block descriptor and its referenced assets           |
-| `deessejs add <source> --target <id>`  | Preview and add a published, GitHub, or local block             |
-| `deessejs organization list`           | List organizations the signed-in user belongs to                |
-| `deessejs organization info <slug>`    | Show one of the signed-in user's organizations                  |
-| `deessejs organization create <name>`  | Create an organization                                          |
-| `deessejs update` / `deessejs upgrade` | Check for and install a CLI update                              |
+| Command                                        | Role                                                            |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| `deessejs templates init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
+| `deessejs templates list`                      | List available templates                                        |
+| `deessejs templates info <slug-or-github-url>` | Show validated descriptor details for a template                |
+| `deessejs block info <source>`                 | Show a validated block descriptor summary                       |
+| `deessejs block check [source]`                | Validate a block descriptor and its referenced assets           |
+| `deessejs add <source> --target <id>`          | Preview and add a published, GitHub, or local block             |
+| `deessejs organization list`                   | List organizations the signed-in user belongs to                |
+| `deessejs organization info <slug>`            | Show one of the signed-in user's organizations                  |
+| `deessejs organization create <name>`          | Create an organization                                          |
+| `deessejs update` / `deessejs upgrade`         | Check for and install a CLI update                              |
 
 ## Examples
 
 ```bash
-deessejs list
-deessejs list --category saas --json
-deessejs info saas-starter --json
-deessejs info https://github.com/owner/repository --ref main
+deessejs templates list
+deessejs templates list --category saas --json
+deessejs templates info saas-starter --json
+deessejs templates info https://github.com/owner/repository --ref main
 deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
 deessejs block check ./blocks/upstash-redis
@@ -46,10 +46,10 @@ deessejs block check https://github.com/deessejs/blocks/upstash-redis --json
 deessejs add upstash-redis --target web --dry-run
 deessejs add ./blocks/upstash-redis --target web
 deessejs add https://github.com/acme/blocks/tree/main/cache --target web --ref main
-deessejs init saas-starter
-deessejs init saas-starter --ref develop --no-install
-deessejs init https://github.com/owner/repository
-deessejs init saas-starter --verbose
+deessejs templates init saas-starter
+deessejs templates init saas-starter --ref develop --no-install
+deessejs templates init https://github.com/owner/repository
+deessejs templates init saas-starter --verbose
 deessejs auth login
 deessejs organization list
 deessejs organization info acme
