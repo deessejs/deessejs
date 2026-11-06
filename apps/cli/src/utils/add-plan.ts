@@ -4,11 +4,15 @@ import { join, resolve, relative, isAbsolute, sep } from "node:path"
 import type { PackageManagerInfo } from "./detect-pm.js"
 import {
   PackageManifestSchema,
-  type AddBlockFile,
   type AddWrite,
+  type BlockOutputPackage,
+  type BlockOutputPath,
+  type BlockOutputReference,
   type BlockState,
   type CreateAddPlanArgs,
   type CreateAddPlanResult,
+  type EnvironmentDeclaration,
+  type PlannedBlockFile,
   type PackageManifest,
 } from "./add-types.js"
 const exists = async (path: string) => {
@@ -208,7 +212,7 @@ export async function createAddPlan(
 
 function validateUpstashProfile(
   name: string,
-  packages: Array<{ path: string }>,
+  packages: BlockOutputPath[],
   manifests: PackageManifest[]
 ): void {
   if (name !== "upstash-redis") return
@@ -250,8 +254,8 @@ function collectDependencies(
 
 async function planFiles(
   cwd: string,
-  packages: Array<{ id: string; path: string }>,
-  files: AddBlockFile[]
+  packages: BlockOutputPackage[],
+  files: PlannedBlockFile[]
 ): Promise<AddWrite[]> {
   const writes: AddWrite[] = []
   for (const file of files) {
@@ -270,8 +274,8 @@ async function planFiles(
 }
 
 function parseOutputManifests(
-  packages: Array<{ id: string }>,
-  files: AddBlockFile[]
+  packages: BlockOutputReference[],
+  files: PlannedBlockFile[]
 ): PackageManifest[] {
   return packages.map((output) => {
     const source = files.find(
@@ -285,7 +289,7 @@ function parseOutputManifests(
 
 async function planEnvironment(
   cwd: string,
-  entries: Array<{ name: string }>,
+  entries: EnvironmentDeclaration[],
   writes: AddWrite[]
 ): Promise<void> {
   if (!entries.length) return

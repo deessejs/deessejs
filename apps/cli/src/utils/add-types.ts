@@ -25,6 +25,14 @@ export type AddBlockFile = {
   contents: string
   to: { package: string; path: string }
 }
+export type BlockOutputPackage = {
+  id: string
+  path: string
+}
+export type BlockOutputReference = Pick<BlockOutputPackage, "id">
+export type BlockOutputPath = Pick<BlockOutputPackage, "path">
+export type PlannedBlockFile = Pick<AddBlockFile, "contents" | "to">
+export type EnvironmentDeclaration = { name: string }
 export type BlockState = {
   version: 1
   installations: Array<{

@@ -3,6 +3,10 @@
   "plugins": ["typescript", "eslint"],
   "jsPlugins": [
     {
+      "name": "project",
+      "specifier": "./scripts/oxlint/project-type-rules.mjs"
+    },
+    {
       "name": "eslint-js",
       "specifier": "oxlint-plugin-eslint"
     },
@@ -363,6 +367,16 @@
     ]
   },
   "overrides": [
+    {
+      "files": [
+        "apps/cli/src/utils/add-*.ts",
+        "apps/cli/test/unit/add-*.test.ts"
+      ],
+      "rules": {
+        "project/max-type-members": ["error", 6],
+        "project/named-parameter-types": "error"
+      }
+    },
     {
       "files": ["apps/cli/src/utils/project-config.ts"],
       "rules": {
