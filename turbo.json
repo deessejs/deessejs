@@ -2,7 +2,17 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalEnv": ["CI", "NODE_ENV"],
-  "globalPassThroughEnv": ["TURBO_TOKEN", "TURBO_TEAM", "GITHUB_ACTIONS", "VERCEL_URL", "VERCEL_ENV", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_RELATED_PROJECTS"],
+  "globalPassThroughEnv": [
+    "TURBO_TOKEN",
+    "TURBO_TEAM",
+    "GITHUB_ACTIONS",
+    "UV_THREADPOOL_SIZE",
+    "VERCEL_URL",
+    "VERCEL_ENV",
+    "VERCEL_BRANCH_URL",
+    "VERCEL_PROJECT_PRODUCTION_URL",
+    "VERCEL_RELATED_PROJECTS"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -16,6 +26,7 @@
         "RESEND_API_KEY",
         "RESEND_FROM_EMAIL",
         "RESEND_FROM_NAME",
+        "RESEND_PLAYBOOK_TOPIC_ID",
         "MAIL_TRANSPORT",
         "NEXT_PUBLIC_APP_NAME",
         "NEXT_PUBLIC_APP_DESCRIPTION",
