@@ -175,8 +175,9 @@ export function GitHubAppIntegration({
       <CardHeader>
         <CardTitle>GitHub</CardTitle>
         <CardDescription>
-          Connect a GitHub App installation to this DeesseJS organization.
-          Repository import will be available in a later step.
+          Connect a GitHub App installation to this DeesseJS organization. To
+          import a repository, open the Projects page for this organization. Only
+          organization owners and admins can import projects.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-start gap-4">
