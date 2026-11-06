@@ -18,16 +18,60 @@ import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
 
 const program = new Command()
+const runNamespacedCommand = (command: Command): Promise<void> =>
+  command.parseAsync(normalizeTemplateCommandArgs(process.argv)).then(() => {})
 
 program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry and blocks")
-  .addHelpText(
-    "after",
-    "\nTemplate commands: deessejs templates list|info|init.\n"
-  )
   .version(readPackageVersion())
 
+const templatesCommand = new Command("templates").description(
+  "Browse and create projects from templates"
+)
+templatesCommand.addCommand(
+  new Command("list")
+    .description("List available templates")
+    .option("--category <name>", "filter to a single category")
+    .option("--json", "JSON output for scripting")
+    .option("--verbose", "show human-readable output")
+    .action(() => runNamespacedCommand(listCommand))
+)
+templatesCommand.addCommand(
+  new Command("info")
+    .description("Show details for one template")
+    .argument(
+      "<slug-or-github-url>",
+      "template slug or HTTPS URL to a GitHub repository"
+    )
+    .option("--ref <branch>", "Git ref to inspect")
+    .option("--json", "JSON output for scripting")
+    .option("--verbose", "show human-readable output")
+    .action(() => runNamespacedCommand(infoCommand))
+)
+templatesCommand.addCommand(
+  new Command("init")
+    .description("Create a project from a template and install dependencies")
+    .argument(
+      "<slug-or-github-url>",
+      "template slug or HTTPS URL to a GitHub repository"
+    )
+    .option(
+      "--pm <name>",
+      "override detected package manager (pnpm|npm|yarn|bun)"
+    )
+    .option("--dir <path>", "target directory")
+    .option("--ref <branch>", "git ref to use")
+    .option("--no-install", "skip the install step")
+    .option("--force", "allow an existing empty target directory")
+    .option(
+      "--verbose",
+      "show initialization details and package manager output"
+    )
+    .option("--json", "JSON output for scripting")
+    .action(() => runNamespacedCommand(initCommand))
+)
+program.addCommand(templatesCommand)
 program.addCommand(blockCommand)
 program.addCommand(addCommand)
 program.addCommand(organizationCommand)
@@ -44,19 +88,7 @@ authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)
 program.addCommand(authCommand)
 
-const normalizedArgs = normalizeTemplateCommandArgs(process.argv)
-const namespacedCommand =
-  process.argv[2] === "templates" ? process.argv[3] : undefined
-const commandParser =
-  namespacedCommand === "list"
-    ? listCommand
-    : namespacedCommand === "info"
-      ? infoCommand
-      : namespacedCommand === "init"
-        ? initCommand
-        : program
-
-commandParser.parseAsync(normalizedArgs).catch((err: unknown) => {
+program.parseAsync(process.argv).catch((err: unknown) => {
   if (err instanceof CliError) {
     printError(err)
     process.exit(err.exitCode())
