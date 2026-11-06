@@ -21,7 +21,10 @@ async function readState(path: string): Promise<BlockState> {
 function confirmPlan(): Promise<boolean> {
   if (!process.stdin.isTTY) throw new Error("Confirmation requires a TTY. Use --dry-run to preview without writes.")
   process.stdout.write("Apply this plan? [y/N] ")
-  return new Promise((resolve) => process.stdin.once("data", (value) => resolve(["y", "yes"].includes(String(value).trim().toLowerCase()))))
+  return new Promise((resolve) => process.stdin.once("data", (value) => {
+    process.stdin.pause()
+    resolve(["y", "yes"].includes(String(value).trim().toLowerCase()))
+  }))
 }
 
 export async function runAddBlock(input: string, options: AddOptions): Promise<void> {
