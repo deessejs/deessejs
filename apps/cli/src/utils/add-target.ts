@@ -1,5 +1,6 @@
 import { readFile, lstat, realpath } from "node:fs/promises"
 import { resolve, join, relative, isAbsolute, sep } from "node:path"
+import { fromAsyncThrowable } from "@deessejs/fp"
 import { parseProjectConfig } from "@workspace/registry/v1"
 import { PackageManifestSchema } from "./add-types.js"
 
@@ -15,18 +16,20 @@ export async function resolveAddTarget(cwd: string, id: string) {
   const root = resolve(cwd, target.root)
   if (!isPathInside(cwd, root))
     throw new Error("Package target escapes the project root.")
-  const canonicalRoot = await realpath(root).catch(() => {
-    throw new Error(`Target ${id} directory does not exist.`)
+  const canonicalResult = await fromAsyncThrowable(() => realpath(root))
+  const canonicalRoot = canonicalResult.match({
+    ok: (path) => path,
+    err: () => {
+      throw new Error(`Target ${id} directory does not exist.`)
+    },
   })
   const canonicalProject = await realpath(cwd)
   if (!isPathInside(canonicalProject, canonicalRoot))
     throw new Error(`Target ${id} resolves outside the project root.`)
   const path = join(root, "package.json")
-  try {
-    await lstat(path)
-  } catch {
+  const manifestResult = await fromAsyncThrowable(() => lstat(path))
+  if (manifestResult.isErr())
     throw new Error(`Target ${id} has no package.json.`)
-  }
   const manifest = PackageManifestSchema.parse(
     JSON.parse(await readFile(path, "utf8"))
   )

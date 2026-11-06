@@ -1,4 +1,5 @@
 import { subset } from "semver"
+import { fromAsyncThrowable, fromThrowable } from "@deessejs/fp"
 import { readFile, lstat, readdir } from "node:fs/promises"
 import { join, resolve, relative, isAbsolute, sep } from "node:path"
 import type { PackageManagerInfo } from "./detect-pm.js"
@@ -16,12 +17,8 @@ import {
   type PackageManifest,
 } from "./add-types.js"
 const exists = async (path: string) => {
-  try {
-    await lstat(path)
-    return true
-  } catch {
-    return false
-  }
+  const result = await fromAsyncThrowable(() => lstat(path))
+  return result.isOk()
 }
 const isPathInside = (parent: string, candidate: string): boolean => {
   const path = relative(parent, candidate)
@@ -42,11 +39,13 @@ export const semverRangeSatisfies = (
     requested.startsWith("catalog:")
   )
     return false
-  try {
-    return subset(current, requested, { includePrerelease: true }) === true
-  } catch {
-    return false
-  }
+  return fromThrowable({
+    onSuccess: () => subset(current, requested, { includePrerelease: true }),
+    onError: () => null,
+  }).match({
+    ok: (satisfies) => satisfies === true,
+    err: () => false,
+  })
 }
 
 function addDependencies(
@@ -76,7 +75,13 @@ async function validatePrerequisites(
   manifests: PackageManifest[]
 ): Promise<void> {
   const workspaceFile = join(cwd, "pnpm-workspace.yaml")
-  const workspace = await readFile(workspaceFile, "utf8").catch(() => "")
+  const workspaceResult = await fromAsyncThrowable(() =>
+    readFile(workspaceFile, "utf8")
+  )
+  const workspace = workspaceResult.match({
+    ok: (contents) => contents,
+    err: () => "",
+  })
   const catalogSection =
     /^catalog:\s*\n((?:[ \t].*\n)*)/m.exec(workspace)?.[1] ?? ""
   const missing: string[] = []
@@ -114,22 +119,29 @@ async function hasWorkspacePackage(
   name: string
 ): Promise<boolean> {
   for (const root of ["packages", "apps"]) {
-    const directories = await readdir(join(cwd, root), {
-      withFileTypes: true,
-    }).catch(() => [])
+    const directoriesResult = await fromAsyncThrowable(() =>
+      readdir(join(cwd, root), { withFileTypes: true })
+    )
+    const directories = directoriesResult.match({
+      ok: (entries) => entries,
+      err: () => [],
+    })
     for (const directory of directories) {
       if (!directory.isDirectory()) continue
-      const manifest = await readFile(
-        join(cwd, root, directory.name, "package.json"),
-        "utf8"
-      ).catch(() => "")
+      const manifestResult = await fromAsyncThrowable(() =>
+        readFile(join(cwd, root, directory.name, "package.json"), "utf8")
+      )
+      const manifest = manifestResult.match({
+        ok: (contents) => contents,
+        err: () => "",
+      })
       if (!manifest) continue
-      try {
-        if (PackageManifestSchema.parse(JSON.parse(manifest)).name === name)
-          return true
-      } catch {
-        /* Ignore unrelated invalid workspace manifests. */
-      }
+      const parsed = fromThrowable({
+        onSuccess: () => PackageManifestSchema.parse(JSON.parse(manifest)),
+        onError: () => null,
+      })
+      if (parsed.match({ ok: (item) => item.name === name, err: () => false }))
+        return true
     }
   }
   return false
@@ -294,7 +306,11 @@ async function planEnvironment(
 ): Promise<void> {
   if (!entries.length) return
   const path = join(cwd, ".env.example")
-  const before = await readFile(path, "utf8").catch(() => "")
+  const beforeResult = await fromAsyncThrowable(() => readFile(path, "utf8"))
+  const before = beforeResult.match({
+    ok: (contents) => contents,
+    err: () => "",
+  })
   let after = before
   for (const entry of entries) {
     if (!new RegExp(`^\\s*(?:export\\s+)?${entry.name}=`, "m").test(after))

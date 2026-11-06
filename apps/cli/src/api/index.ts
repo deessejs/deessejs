@@ -1,4 +1,5 @@
 import { toORPCError } from "@orpc/client"
+import { fromAsyncThrowable } from "@deessejs/fp"
 import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
 
 import { networkError } from "../errors/index.js"
@@ -88,13 +89,20 @@ export const resolveTemplateBySlug = async (
 }
 
 export const resolveOfficialBlock = async (slug: string) => {
-  try {
-    const result = await orpc.blocks.resolve({
-      organizationSlug: "official",
-      slug,
-    })
-    return result.block
-  } catch (e) {
-    throw normaliseError(e)
-  }
+  const result = await fromAsyncThrowable({
+    onSuccess: async () =>
+      orpc.blocks
+        .resolve({
+          organizationSlug: "official",
+          slug,
+        })
+        .then((response) => response.block),
+    onError: normaliseError,
+  })
+  return result.match({
+    ok: (block) => block,
+    err: (error) => {
+      throw error
+    },
+  })
 }
