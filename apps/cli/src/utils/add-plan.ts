@@ -4,12 +4,13 @@ import { join, resolve, relative, isAbsolute, sep } from "node:path"
 import type { PackageManagerInfo } from "./detect-pm.js"
 import {
   PackageManifestSchema,
+  type AddBlockFile,
   type AddWrite,
   type BlockState,
+  type CreateAddPlanArgs,
+  type CreateAddPlanResult,
   type PackageManifest,
 } from "./add-types.js"
-import type { BlockDescriptorV1 } from "@workspace/registry/v1"
-
 const exists = async (path: string) => {
   try {
     await lstat(path)
@@ -130,23 +131,9 @@ async function hasWorkspacePackage(
   return false
 }
 
-export async function createAddPlan(args: {
-  cwd: string
-  targetId: string
-  targetPath: string
-  targetManifest: PackageManifest
-  descriptor: BlockDescriptorV1
-  files: Array<{
-    from: string
-    contents: string
-    to: { package: string; path: string }
-  }>
-  identity: string
-  revision: string
-  state: BlockState
-  statePath: string
-  packageManager: PackageManagerInfo
-}): Promise<{ writes: AddWrite[]; manualSteps: string[] }> {
+export async function createAddPlan(
+  args: CreateAddPlanArgs
+): Promise<CreateAddPlanResult> {
   const { cwd, descriptor, files } = args
   if (
     isAlreadyInstalled(
@@ -264,7 +251,7 @@ function collectDependencies(
 async function planFiles(
   cwd: string,
   packages: Array<{ id: string; path: string }>,
-  files: Array<{ contents: string; to: { package: string; path: string } }>
+  files: AddBlockFile[]
 ): Promise<AddWrite[]> {
   const writes: AddWrite[] = []
   for (const file of files) {
@@ -284,7 +271,7 @@ async function planFiles(
 
 function parseOutputManifests(
   packages: Array<{ id: string }>,
-  files: Array<{ contents: string; to: { package: string; path: string } }>
+  files: AddBlockFile[]
 ): PackageManifest[] {
   return packages.map((output) => {
     const source = files.find(

@@ -1,4 +1,6 @@
 import { z } from "zod"
+import type { BlockDescriptorV1 } from "@workspace/registry/v1"
+import type { PackageManagerInfo } from "./detect-pm.js"
 
 export type AddOptions = {
   target: string
@@ -18,6 +20,11 @@ export type AddWrite = {
   contents: Uint8Array
   previous?: Uint8Array
 }
+export type AddBlockFile = {
+  from: string
+  contents: string
+  to: { package: string; path: string }
+}
 export type BlockState = {
   version: 1
   installations: Array<{
@@ -26,6 +33,33 @@ export type BlockState = {
     revision: string
     target: string
   }>
+}
+export type AddPlanWorkspaceContext = {
+  cwd: string
+  statePath: string
+  packageManager: PackageManagerInfo
+}
+export type AddPlanTargetContext = {
+  targetId: string
+  targetPath: string
+  targetManifest: PackageManifest
+}
+export type AddPlanBlockContext = {
+  descriptor: BlockDescriptorV1
+  files: AddBlockFile[]
+}
+export type AddPlanIdentityContext = {
+  identity: string
+  revision: string
+  state: BlockState
+}
+export type CreateAddPlanArgs = AddPlanWorkspaceContext &
+  AddPlanTargetContext &
+  AddPlanBlockContext &
+  AddPlanIdentityContext
+export type CreateAddPlanResult = {
+  writes: AddWrite[]
+  manualSteps: string[]
 }
 export const PackageManifestSchema = z
   .object({
