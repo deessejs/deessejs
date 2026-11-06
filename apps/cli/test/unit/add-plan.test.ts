@@ -12,7 +12,9 @@ describe("block dependency range compatibility", () => {
 
   it("handles unions, prereleases, wildcards, and invalid syntax using semver", () => {
     expect(semverRangeSatisfies("1.2.x || 1.3.x", ">=1.0.0 <2.0.0")).toBe(true)
-    expect(semverRangeSatisfies("1.2.3-beta.1", ">=1.2.3-beta.0 <1.2.3")).toBe(true)
+    expect(semverRangeSatisfies("1.2.3-beta.1", ">=1.2.3-beta.0 <1.2.3")).toBe(
+      true
+    )
     expect(semverRangeSatisfies("*", "^1.0.0")).toBe(false)
     expect(semverRangeSatisfies("not-a-range", "^1.0.0")).toBe(false)
   })

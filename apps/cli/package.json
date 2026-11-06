@@ -60,14 +60,14 @@
     "semver": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "@hono/node-server": "catalog:",
-    "@workspace/database": "workspace:*",
-    "drizzle-orm": "catalog:",
+    "@types/node": "catalog:",
     "@workspace/api": "workspace:*",
     "@workspace/contracts": "workspace:*",
+    "@workspace/database": "workspace:*",
     "@workspace/registry": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
+    "drizzle-orm": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "tar": "catalog:",

@@ -560,10 +560,19 @@ export async function resolveBlockDescriptorInfo(
   }
 }
 
-export async function resolveBlockAssets(input: string, options: { ref?: string } = {}) {
+export async function resolveBlockAssets(
+  input: string,
+  options: { ref?: string } = {}
+) {
   const loaded = await loadBlockDescriptor(input, options)
-  if (!("descriptor" in loaded)) throw blockInvalid(input, formatDescriptorDiagnostics(loaded.diagnostics))
-  const files = await Promise.all(loaded.descriptor.install.files.map(async (file) => ({ ...file, contents: await loaded.reader.read(file.from) })))
+  if (!("descriptor" in loaded))
+    throw blockInvalid(input, formatDescriptorDiagnostics(loaded.diagnostics))
+  const files = await Promise.all(
+    loaded.descriptor.install.files.map(async (file) => ({
+      ...file,
+      contents: await loaded.reader.read(file.from),
+    }))
+  )
   return { ...loaded, files }
 }
 

@@ -5,17 +5,20 @@ export const PROJECT_CONFIG_SCHEMA_URL =
 
 const ROLE_IDENTIFIER_PATTERN = /^[a-z][a-z0-9-]{0,63}$/
 const ROLE_IDENTIFIER_SCHEMA = z.string().regex(ROLE_IDENTIFIER_PATTERN)
-const IMPORT_ROOT_SCHEMA = z.string().min(1).regex(/^\P{Cc}+$/u)
+const IMPORT_ROOT_SCHEMA = z
+  .string()
+  .min(1)
+  .regex(/^\P{Cc}+$/u)
 
-const ProjectPathsV1Schema = z.record(
-  ROLE_IDENTIFIER_SCHEMA,
-  z.string().min(1)
-)
+const ProjectPathsV1Schema = z.record(ROLE_IDENTIFIER_SCHEMA, z.string().min(1))
 const ProjectAliasesV1Schema = z.record(
   ROLE_IDENTIFIER_SCHEMA,
   IMPORT_ROOT_SCHEMA
 )
-const PackageTargetsV1Schema = z.record(ROLE_IDENTIFIER_SCHEMA, z.strictObject({ root: z.string().min(1) }))
+const PackageTargetsV1Schema = z.record(
+  ROLE_IDENTIFIER_SCHEMA,
+  z.strictObject({ root: z.string().min(1) })
+)
 
 /**
  * User-owned context for a DeesseJS project.
@@ -59,10 +62,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isUnsupportedFormatVersion(input: unknown): boolean {
   if (!isRecord(input)) return false
-  return (
-    typeof input.formatVersion === "number" &&
-    input.formatVersion !== 1
-  )
+  return typeof input.formatVersion === "number" && input.formatVersion !== 1
 }
 
 function hasGlobSyntax(value: string): boolean {
@@ -204,8 +204,7 @@ function diagnosticsForAliases(
     if (!Object.hasOwn(paths, role)) {
       diagnostics.push({
         code: "project_config.alias_without_path",
-        message:
-          'Alias role "' + role + '" must also be declared in paths.',
+        message: 'Alias role "' + role + '" must also be declared in paths.',
         path: ["aliases", role],
       })
     }
@@ -218,9 +217,7 @@ function diagnosticsForAliases(
  * Validate a parsed JSON value and normalize configured project paths.
  * This function does not access the filesystem, network or process environment.
  */
-export function parseProjectConfig(
-  input: unknown
-): ParseProjectConfigResult {
+export function parseProjectConfig(input: unknown): ParseProjectConfigResult {
   const result = ProjectConfigV1Schema.safeParse(input)
 
   if (!result.success) {
@@ -237,7 +234,12 @@ export function parseProjectConfig(
   const targetDiagnostics: ProjectConfigDiagnostic[] = []
   for (const [id, target] of Object.entries(result.data.packageTargets ?? {})) {
     const root = normalizeProjectPath(target.root)
-    if (root === null) targetDiagnostics.push({ code: "project_config.invalid_path", message: `Package target "${id}" must have a safe relative root.`, path: ["packageTargets", id, "root"] })
+    if (root === null)
+      targetDiagnostics.push({
+        code: "project_config.invalid_path",
+        message: `Package target "${id}" must have a safe relative root.`,
+        path: ["packageTargets", id, "root"],
+      })
     else packageTargets[id] = { root }
   }
   const diagnostics = [
@@ -254,6 +256,7 @@ export function parseProjectConfig(
   if (result.data.paths !== undefined) {
     data.paths = normalized.normalizedPaths
   }
-  if (result.data.packageTargets !== undefined) data.packageTargets = packageTargets
+  if (result.data.packageTargets !== undefined)
+    data.packageTargets = packageTargets
   return { success: true, data }
 }

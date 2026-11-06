@@ -26,7 +26,7 @@ Other release channels:
 | `deessejs info <slug-or-github-url>`   | Show validated descriptor details for a template                |
 | `deessejs block info <source>`         | Show a validated block descriptor summary                       |
 | `deessejs block check [source]`        | Validate a block descriptor and its referenced assets           |
-| `deessejs add <source> --target <id>`   | Preview and add a published, GitHub, or local block               |
+| `deessejs add <source> --target <id>`  | Preview and add a published, GitHub, or local block             |
 | `deessejs organization list`           | List organizations the signed-in user belongs to                |
 | `deessejs organization info <slug>`    | Show one of the signed-in user's organizations                  |
 | `deessejs organization create <name>`  | Create an organization                                          |
