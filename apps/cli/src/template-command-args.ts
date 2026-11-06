@@ -14,7 +14,6 @@ export function normalizeTemplateCommandArgs(args: string[]): string[] {
 
   return [
     ...args.slice(0, commandIndex),
-    templateCommand,
     ...args.slice(commandIndex + 2),
   ]
 }

@@ -14,7 +14,7 @@ describe("template command namespace", () => {
           "value",
           "--json",
         ])
-      ).toEqual(["node", "deessejs", command, "value", "--json"])
+      ).toEqual(["node", "deessejs", "value", "--json"])
     }
   )
 
