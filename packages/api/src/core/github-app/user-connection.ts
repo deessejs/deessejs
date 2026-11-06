@@ -8,6 +8,10 @@ import { and, eq } from "drizzle-orm"
 import { db, githubUserConnection } from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { z } from "zod"
+import {
+  MAX_GITHUB_TOKEN_RESPONSE_BYTES,
+  requestGitHubAppJson,
+} from "./request.js"
 
 const githubTokenResponse = z.object({
   access_token: z.string().min(1),
@@ -71,8 +75,8 @@ export function decryptGitHubToken(encrypted: string): string {
   ]).toString("utf8")
 }
 
-async function readTokenResponse(response: Response) {
-  const parsed = githubTokenResponse.safeParse(await response.json())
+function readTokenResponse(response: Response, payload: unknown) {
+  const parsed = githubTokenResponse.safeParse(payload)
   if (!response.ok || !parsed.success || !parsed.data.access_token) {
     throw new Error("GitHub OAuth token request failed")
   }
@@ -94,20 +98,24 @@ export async function exchangeGitHubAuthorizationCode(input: {
     code_verifier: input.codeVerifier,
     redirect_uri: input.redirectUri,
   })
-  const response = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
+  const { response, data } = await requestGitHubAppJson(
+    "https://github.com/login/oauth/access_token",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+      cache: "no-store",
     },
-    body,
-    cache: "no-store",
-  })
-  return readTokenResponse(response)
+    { maxResponseBytes: MAX_GITHUB_TOKEN_RESPONSE_BYTES }
+  )
+  return readTokenResponse(response, data)
 }
 
 export async function fetchGitHubUser(accessToken: string) {
-  const response = await fetch("https://api.github.com/user", {
+  const { data } = await requestGitHubAppJson("https://api.github.com/user", {
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${accessToken}`,
@@ -115,8 +123,7 @@ export async function fetchGitHubUser(accessToken: string) {
     },
     cache: "no-store",
   })
-  if (!response.ok) throw new Error("GitHub user profile could not be fetched")
-  const parsed = githubUserProfile.safeParse(await response.json())
+  const parsed = githubUserProfile.safeParse(data)
   if (!parsed.success)
     throw new Error("GitHub returned an invalid user profile")
   return parsed.data
@@ -207,16 +214,23 @@ export async function getGitHubUserAccessToken(
     grant_type: "refresh_token",
     refresh_token: decryptGitHubToken(refreshTokenEncrypted),
   })
-  const response = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
+  const { response, data } = await requestGitHubAppJson(
+    "https://github.com/login/oauth/access_token",
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+      cache: "no-store",
     },
-    body,
-    cache: "no-store",
-  })
-  const refreshed = await readTokenResponse(response)
+    {
+      allowErrorResponse: true,
+      maxResponseBytes: MAX_GITHUB_TOKEN_RESPONSE_BYTES,
+    }
+  )
+  const refreshed = readTokenResponse(response, data)
   const accessTokenExpiresAt = new Date(
     Date.now() +
       (refreshed.expires_in ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS) * 1000
