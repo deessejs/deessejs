@@ -40,11 +40,20 @@ export async function runAddBlock(input: string, options: AddOptions): Promise<v
   for (const write of plan.writes) console.log(`  ${write.previous ? "update" : "create"} ${relative(cwd, write.path)}`)
   for (const step of plan.manualSteps) console.log(`  manual step: ${step}`)
   if (source.descriptor.name === "upstash-redis") console.log("  manual step: Create an Upstash Redis database and set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in your local environment. This command never handles credential values or provisions an account.")
-  if (options.dryRun || !(await confirmPlan())) return
+  if (options.dryRun) {
+    console.log("Dry run complete. No files were changed.")
+    return
+  }
+  if (!(await confirmPlan())) {
+    console.log("Cancelled. No files were changed.")
+    return
+  }
   await applyAddPlan(cwd, plan.writes)
+  console.log(`Added ${source.descriptor.name} to target ${options.target}.`)
   if (options.install) {
     const [command, ...args] = getInstallCommand(packageManager).split(" ")
     if (!command) throw new Error("Package manager install command is empty.")
     await spawn(command, args, { cwd, stdio: "inherit" })
+    console.log("Dependencies installed.")
   }
 }
