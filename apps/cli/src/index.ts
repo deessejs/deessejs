@@ -12,6 +12,7 @@ import { listCommand } from "./commands/list.js"
 import { infoCommand } from "./commands/info.js"
 import { organizationCommand } from "./commands/organization.js"
 import { updateCommand } from "./commands/update.js"
+import { addCommand } from "./commands/add.js"
 import { printError } from "./output/index.js"
 import { CliError } from "./errors/index.js"
 
@@ -26,6 +27,7 @@ program.addCommand(listCommand)
 program.addCommand(infoCommand)
 program.addCommand(initCommand)
 program.addCommand(blockCommand)
+program.addCommand(addCommand)
 program.addCommand(organizationCommand)
 program.addCommand(updateCommand)
 

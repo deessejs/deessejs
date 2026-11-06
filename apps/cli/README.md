@@ -26,6 +26,7 @@ Other release channels:
 | `deessejs info <slug-or-github-url>`   | Show validated descriptor details for a template                |
 | `deessejs block info <source>`         | Show a validated block descriptor summary                       |
 | `deessejs block check [source]`        | Validate a block descriptor and its referenced assets           |
+| `deessejs add <source> --target <id>`  | Preview and add a published, GitHub, or local block             |
 | `deessejs organization list`           | List organizations the signed-in user belongs to                |
 | `deessejs organization info <slug>`    | Show one of the signed-in user's organizations                  |
 | `deessejs organization create <name>`  | Create an organization                                          |
@@ -42,6 +43,9 @@ deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
 deessejs block check ./blocks/upstash-redis
 deessejs block check https://github.com/deessejs/blocks/upstash-redis --json
+deessejs add upstash-redis --target web --dry-run
+deessejs add ./blocks/upstash-redis --target web
+deessejs add https://github.com/acme/blocks/tree/main/cache --target web --ref main
 deessejs init saas-starter
 deessejs init saas-starter --ref develop --no-install
 deessejs init https://github.com/owner/repository
@@ -82,6 +86,10 @@ The command emits one JSON result by default. Pass `--verbose` for human-readabl
 By default, `init` hides package manager logs and shows a concise progress summary. Pass `--verbose` to print the resolved template source, ref, destination, commit, and selected file count, as well as the full package manager output when installation runs. Verbose details go to stderr so `--json` keeps stdout machine-readable. The details are also shown with `--no-install`.
 
 ## Global flags
+
+`add` accepts an official published block slug (for example `upstash-redis`), a supported HTTPS GitHub repository/directory URL, or a local block directory. Remote Git refs resolve to immutable commits. Every invocation requires `--target <id>` from `deesse.json` `packageTargets`; the configured root must contain an existing package manifest. The command previews planned files, dependencies, `.env.example` declarations, and installation state, then asks for confirmation. Non-interactive use must pass `--dry-run`; applying without an interactive confirmation is unsupported. `--install` runs the detected package manager after application. Existing files and compatible dependency declarations are preserved; incompatible dependency ranges block the plan. Re-adding the same source revision to the same target is a no-op. A newer revision requires a future explicit update command.
+
+For `upstash-redis`, the selected consumer target (for example `web` at `apps/web`) is distinct from the block output package at `packages/cache`. The planner checks declared workspace packages and pnpm catalog entries before writes, links the output package to the selected consumer, and adds missing `UPSTASH_REDIS_REST_URL=` and `UPSTASH_REDIS_REST_TOKEN=` declarations to `.env.example`. Configure real credentials yourself. The CLI never reads or modifies `.env`, stores secret values, or provisions an Upstash account.
 
 - `--api-url <url>`: override the templates endpoint (default: `https://deessejs.com/api/templates`)
 - `--json`: JSON output for scripting

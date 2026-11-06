@@ -1,4 +1,9 @@
 {
   "$schema": "https://app.deessejs.com/schema/project/v1.json",
-  "formatVersion": 1
+  "formatVersion": 1,
+  "packageTargets": {
+    "web": {
+      "root": "apps/web"
+    }
+  }
 }
