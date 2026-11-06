@@ -18,7 +18,7 @@ describe("template command namespace", () => {
     }
   )
 
-  it("keeps root command spellings unchanged", () => {
+  it("does not translate root command spellings into the namespace", () => {
     expect(
       normalizeTemplateCommandArgs(["node", "deessejs", "list", "--json"])
     ).toEqual(["node", "deessejs", "list", "--json"])

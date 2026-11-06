@@ -1,6 +1,6 @@
 const TEMPLATE_COMMANDS = new Set(["list", "info", "init"])
 
-/** Maps the preferred templates namespace onto the existing command handlers. */
+/** Maps the templates namespace onto the existing command handlers. */
 export function normalizeTemplateCommandArgs(args: string[]): string[] {
   const commandIndex = 2
   if (args[commandIndex] !== "templates") return args

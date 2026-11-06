@@ -24,8 +24,6 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 `info` accepts a catalog slug or a GitHub repository URL. Both forms show only descriptor data and read the root `deesse-template.json` through the GitHub Contents API without downloading the repository archive.
 
-The root `list`, `info`, and `init` commands remain available as compatibility aliases.
-
 `init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`, `--verbose`.
 `info` options: `--ref`, `--json`.
 `block info` and `block check` options: `--ref`, `--json`.

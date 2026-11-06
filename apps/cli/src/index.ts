@@ -24,13 +24,10 @@ program
   .description("CLI for the DeesseJS template registry and blocks")
   .addHelpText(
     "after",
-    "\nTemplate commands: deessejs templates list|info|init. The root list, info, and init forms remain supported.\n"
+    "\nTemplate commands: deessejs templates list|info|init.\n"
   )
   .version(readPackageVersion())
 
-program.addCommand(listCommand)
-program.addCommand(infoCommand)
-program.addCommand(initCommand)
 program.addCommand(blockCommand)
 program.addCommand(addCommand)
 program.addCommand(organizationCommand)
@@ -47,22 +44,32 @@ authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)
 program.addCommand(authCommand)
 
-program
-  .parseAsync(normalizeTemplateCommandArgs(process.argv))
-  .catch((err: unknown) => {
-    if (err instanceof CliError) {
-      printError(err)
-      process.exit(err.exitCode())
-    }
-    // Last-resort error handler. Per-command handlers catch CliError and exit
-    // cleanly with the right code. Anything that lands here is an uncaught bug.
+const normalizedArgs = normalizeTemplateCommandArgs(process.argv)
+const namespacedCommand =
+  process.argv[2] === "templates" ? process.argv[3] : undefined
+const commandParser =
+  namespacedCommand === "list"
+    ? listCommand
+    : namespacedCommand === "info"
+      ? infoCommand
+      : namespacedCommand === "init"
+        ? initCommand
+        : program
+
+commandParser.parseAsync(normalizedArgs).catch((err: unknown) => {
+  if (err instanceof CliError) {
+    printError(err)
+    process.exit(err.exitCode())
+  }
+  // Last-resort error handler. Per-command handlers catch CliError and exit
+  // cleanly with the right code. Anything that lands here is an uncaught bug.
+  process.stderr.write(
+    `${pc.red("Internal error")}: ${err instanceof Error ? err.message : String(err)}\n`
+  )
+  if (process.env.DEESSEJS_DEBUG) {
     process.stderr.write(
-      `${pc.red("Internal error")}: ${err instanceof Error ? err.message : String(err)}\n`
+      `\n${err instanceof Error && err.stack ? err.stack : ""}\n`
     )
-    if (process.env.DEESSEJS_DEBUG) {
-      process.stderr.write(
-        `\n${err instanceof Error && err.stack ? err.stack : ""}\n`
-      )
-    }
-    process.exit(1)
-  })
+  }
+  process.exit(1)
+})
