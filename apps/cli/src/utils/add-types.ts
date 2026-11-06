@@ -20,6 +20,11 @@ export type AddWrite = {
   contents: Uint8Array
   previous?: Uint8Array
 }
+export type StagedAddWrite = {
+  write: AddWrite
+  temporary: string
+  backup?: string
+}
 export type AddBlockFile = {
   from: string
   contents: string

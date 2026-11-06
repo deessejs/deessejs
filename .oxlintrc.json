@@ -374,7 +374,11 @@
       ],
       "rules": {
         "project/max-type-members": ["error", 6],
-        "project/named-parameter-types": "error"
+        "project/named-parameter-types": "error",
+        "eslint/max-lines-per-function": [
+          "error",
+          { "max": 20, "skipBlankLines": true, "skipComments": true }
+        ]
       }
     },
     {

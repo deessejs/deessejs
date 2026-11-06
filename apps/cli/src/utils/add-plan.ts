@@ -9,7 +9,6 @@ import {
   type BlockOutputPackage,
   type BlockOutputPath,
   type BlockOutputReference,
-  type BlockState,
   type CreateAddPlanArgs,
   type CreateAddPlanResult,
   type EnvironmentDeclaration,
@@ -74,44 +73,113 @@ async function validatePrerequisites(
   packageManager: PackageManagerInfo,
   manifests: PackageManifest[]
 ): Promise<void> {
-  const workspaceFile = join(cwd, "pnpm-workspace.yaml")
-  const workspaceResult = await fromAsyncThrowable(() =>
-    readFile(workspaceFile, "utf8")
+  const workspace = await readWorkspaceConfig(cwd)
+  const missing = await collectMissingPrerequisites(
+    cwd,
+    packageManager,
+    manifests,
+    workspace
   )
-  const workspace = workspaceResult.match({
-    ok: (contents) => contents,
-    err: () => "",
-  })
-  const catalogSection =
-    /^catalog:\s*\n((?:[ \t].*\n)*)/m.exec(workspace)?.[1] ?? ""
-  const missing: string[] = []
-  if (
-    manifests.some((manifest) => manifest.name === "@workspace/cache") &&
-    !workspace.includes('"packages/*"') &&
-    !workspace.includes("packages/*")
-  )
-    missing.push("pnpm workspace package glob packages/* for packages/cache")
-  for (const manifest of manifests) {
-    for (const [name, range] of Object.entries({
-      ...manifest.dependencies,
-      ...manifest.devDependencies,
-    })) {
-      if (
-        range.startsWith("workspace:") &&
-        (packageManager.pm === "npm" || !(await hasWorkspacePackage(cwd, name)))
-      )
-        missing.push(`workspace package ${name}`)
-      if (
-        range === "catalog:" &&
-        (packageManager.pm !== "pnpm" || !catalogSection.includes(`${name}:`))
-      )
-        missing.push(`pnpm catalog entry ${name}`)
-    }
-  }
   if (missing.length)
     throw new Error(
       `Missing block prerequisites: ${[...new Set(missing)].join(", ")}.`
     )
+}
+
+async function readWorkspaceConfig(cwd: string): Promise<string> {
+  const result = await fromAsyncThrowable(() =>
+    readFile(join(cwd, "pnpm-workspace.yaml"), "utf8")
+  )
+  return result.match({
+    ok: (contents) => contents,
+    err: () => "",
+  })
+}
+
+async function collectMissingPrerequisites(
+  cwd: string,
+  packageManager: PackageManagerInfo,
+  manifests: PackageManifest[],
+  workspace: string
+): Promise<string[]> {
+  const missing = hasCacheWorkspaceGlob(workspace, manifests)
+  for (const manifest of manifests)
+    missing.push(
+      ...(await findManifestPrerequisites(
+        cwd,
+        packageManager,
+        manifest,
+        workspace
+      ))
+    )
+  return missing
+}
+
+function hasCacheWorkspaceGlob(
+  workspace: string,
+  manifests: PackageManifest[]
+): string[] {
+  const needsCache = manifests.some(
+    (manifest) => manifest.name === "@workspace/cache"
+  )
+  const hasPackageGlob =
+    workspace.includes('"packages/*"') || workspace.includes("packages/*")
+  return needsCache && !hasPackageGlob
+    ? ["pnpm workspace package glob packages/* for packages/cache"]
+    : []
+}
+
+async function findManifestPrerequisites(
+  cwd: string,
+  packageManager: PackageManagerInfo,
+  manifest: PackageManifest,
+  workspace: string
+): Promise<string[]> {
+  const declarations = Object.entries(dependencyDeclarations(manifest))
+  const missing: string[] = []
+  for (const [name, range] of declarations)
+    missing.push(
+      ...(await findDependencyPrerequisites(
+        cwd,
+        packageManager,
+        name,
+        range,
+        workspace
+      ))
+    )
+  return missing
+}
+
+function dependencyDeclarations(
+  manifest: PackageManifest
+): Record<string, string> {
+  return { ...manifest.dependencies, ...manifest.devDependencies }
+}
+
+async function findDependencyPrerequisites(
+  cwd: string,
+  packageManager: PackageManagerInfo,
+  name: string,
+  range: string,
+  workspace: string
+): Promise<string[]> {
+  const missing: string[] = []
+  if (
+    range.startsWith("workspace:") &&
+    (packageManager.pm === "npm" || !(await hasWorkspacePackage(cwd, name)))
+  )
+    missing.push(`workspace package ${name}`)
+  if (
+    range === "catalog:" &&
+    (packageManager.pm !== "pnpm" || !hasCatalogEntry(workspace, name))
+  )
+    missing.push(`pnpm catalog entry ${name}`)
+  return missing
+}
+
+function hasCatalogEntry(workspace: string, name: string): boolean {
+  const catalog = /^catalog:\s*\n((?:[ \t].*\n)*)/m.exec(workspace)?.[1] ?? ""
+  return catalog.includes(`${name}:`)
 }
 
 async function hasWorkspacePackage(
@@ -119,48 +187,50 @@ async function hasWorkspacePackage(
   name: string
 ): Promise<boolean> {
   for (const root of ["packages", "apps"]) {
-    const directoriesResult = await fromAsyncThrowable(() =>
-      readdir(join(cwd, root), { withFileTypes: true })
-    )
-    const directories = directoriesResult.match({
-      ok: (entries) => entries,
-      err: () => [],
-    })
-    for (const directory of directories) {
-      if (!directory.isDirectory()) continue
-      const manifestResult = await fromAsyncThrowable(() =>
-        readFile(join(cwd, root, directory.name, "package.json"), "utf8")
-      )
-      const manifest = manifestResult.match({
-        ok: (contents) => contents,
-        err: () => "",
-      })
-      if (!manifest) continue
-      const parsed = fromThrowable({
-        onSuccess: () => PackageManifestSchema.parse(JSON.parse(manifest)),
-        onError: () => null,
-      })
-      if (parsed.match({ ok: (item) => item.name === name, err: () => false }))
-        return true
-    }
+    if (await workspaceRootHasPackage(cwd, root, name)) return true
   }
   return false
+}
+
+async function workspaceRootHasPackage(
+  cwd: string,
+  root: string,
+  name: string
+): Promise<boolean> {
+  const result = await fromAsyncThrowable(() =>
+    readdir(join(cwd, root), { withFileTypes: true })
+  )
+  const directories = result.match({ ok: (entries) => entries, err: () => [] })
+  for (const directory of directories) {
+    if (!directory.isDirectory()) continue
+    if (await workspaceDirectoryHasPackage(cwd, root, directory.name, name))
+      return true
+  }
+  return false
+}
+
+async function workspaceDirectoryHasPackage(
+  cwd: string,
+  root: string,
+  directory: string,
+  name: string
+): Promise<boolean> {
+  const path = join(cwd, root, directory, "package.json")
+  const result = await fromAsyncThrowable(() => readFile(path, "utf8"))
+  const contents = result.match({ ok: (text) => text, err: () => "" })
+  if (!contents) return false
+  return fromThrowable({
+    onSuccess: () =>
+      PackageManifestSchema.parse(JSON.parse(contents)).name === name,
+    onError: () => false,
+  }).match({ ok: Boolean, err: Boolean })
 }
 
 export async function createAddPlan(
   args: CreateAddPlanArgs
 ): Promise<CreateAddPlanResult> {
   const { cwd, descriptor, files } = args
-  if (
-    isAlreadyInstalled(
-      args.state,
-      descriptor.name,
-      args.identity,
-      args.revision,
-      args.targetId
-    )
-  )
-    return { writes: [], manualSteps: [] }
+  if (isAlreadyInstalled(args)) return emptyAddPlan()
   const manifests = parseOutputManifests(descriptor.install.packages, files)
   await validatePrerequisites(cwd, args.packageManager, manifests)
   validateUpstashProfile(
@@ -168,9 +238,33 @@ export async function createAddPlan(
     descriptor.install.packages,
     manifests
   )
+  const writes = await planBlockOutputs(args, manifests)
+  await planEnvironment(cwd, getEnvironmentDeclarations(args), writes)
+  await planInstallationState(args, writes)
+  return { writes, manualSteps: descriptor.install.manualSteps ?? [] }
+}
+
+function emptyAddPlan(): CreateAddPlanResult {
+  return { writes: [], manualSteps: [] }
+}
+
+async function planBlockOutputs(
+  args: CreateAddPlanArgs,
+  manifests: PackageManifest[]
+): Promise<AddWrite[]> {
+  const { cwd, descriptor, files } = args
   const dependencies = collectDependencies(manifests, args.packageManager)
   const nextTarget = addDependencies(args.targetManifest, dependencies)
   const writes = await planFiles(cwd, descriptor.install.packages, files)
+  await planTargetManifest(args, nextTarget, writes)
+  return writes
+}
+
+async function planTargetManifest(
+  args: CreateAddPlanArgs,
+  nextTarget: PackageManifest,
+  writes: AddWrite[]
+): Promise<void> {
   if (JSON.stringify(args.targetManifest) !== JSON.stringify(nextTarget))
     writes.push({
       path: args.targetPath,
@@ -181,45 +275,57 @@ export async function createAddPlan(
         `${JSON.stringify(nextTarget, null, 2)}\n`
       ),
     })
-  const environment = [...(descriptor.install.environment ?? [])]
-  if (descriptor.name === "upstash-redis") {
-    for (const name of ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"]) {
-      if (!environment.some((item) => item.name === name))
-        environment.push({
-          name,
-          required: true,
-          secret: name.endsWith("TOKEN"),
-        })
-    }
-  }
-  await planEnvironment(cwd, environment, writes)
-  const nextState = {
+}
+
+function getEnvironmentDeclarations(
+  args: CreateAddPlanArgs
+): EnvironmentDeclaration[] {
+  const entries = [...(args.descriptor.install.environment ?? [])]
+  if (args.descriptor.name !== "upstash-redis") return entries
+  for (const name of ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"])
+    if (!entries.some((item) => item.name === name))
+      entries.push({ name, required: true, secret: name.endsWith("TOKEN") })
+  return entries
+}
+
+async function planInstallationState(
+  args: CreateAddPlanArgs,
+  writes: AddWrite[]
+): Promise<void> {
+  const nextState = buildNextState(args)
+  const previous = await readPreviousState(args.statePath)
+  writes.push({
+    path: args.statePath,
+    ...(previous ? { previous } : {}),
+    contents: new TextEncoder().encode(
+      `${JSON.stringify(nextState, null, 2)}\n`
+    ),
+  })
+}
+
+function buildNextState(args: CreateAddPlanArgs) {
+  return {
     version: 1 as const,
     installations: [
       ...args.state.installations,
       {
-        name: descriptor.name,
+        name: args.descriptor.name,
         identity: args.identity,
         revision: args.revision,
         target: args.targetId,
       },
     ],
   }
-  const stateExists = await exists(args.statePath)
-  writes.push({
-    path: args.statePath,
-    ...(stateExists
-      ? {
-          previous: new TextEncoder().encode(
-            await readFile(args.statePath, "utf8")
-          ),
-        }
-      : {}),
-    contents: new TextEncoder().encode(
-      `${JSON.stringify(nextState, null, 2)}\n`
-    ),
+}
+
+async function readPreviousState(
+  path: string
+): Promise<Uint8Array | undefined> {
+  const result = await fromAsyncThrowable(() => readFile(path, "utf8"))
+  return result.match({
+    ok: (contents) => new TextEncoder().encode(contents),
+    err: () => undefined,
   })
-  return { writes, manualSteps: descriptor.install.manualSteps ?? [] }
 }
 
 function validateUpstashProfile(
@@ -235,19 +341,15 @@ function validateUpstashProfile(
     )
 }
 
-function isAlreadyInstalled(
-  state: BlockState,
-  name: string,
-  identity: string,
-  revision: string,
-  target: string
-): boolean {
-  const installed = state.installations.find(
+function isAlreadyInstalled(args: CreateAddPlanArgs): boolean {
+  const installed = args.state.installations.find(
     (row) =>
-      row.name === name && row.identity === identity && row.target === target
+      row.name === args.descriptor.name &&
+      row.identity === args.identity &&
+      row.target === args.targetId
   )
   if (!installed) return false
-  if (installed.revision === revision) return true
+  if (installed.revision === args.revision) return true
   throw new Error(
     "A different revision is already installed. `add` does not update blocks."
   )
@@ -305,23 +407,44 @@ async function planEnvironment(
   writes: AddWrite[]
 ): Promise<void> {
   if (!entries.length) return
+  const write = await buildEnvironmentWrite(cwd, entries)
+  if (write) writes.push(write)
+}
+
+async function buildEnvironmentWrite(
+  cwd: string,
+  entries: EnvironmentDeclaration[]
+): Promise<AddWrite | undefined> {
   const path = join(cwd, ".env.example")
+  const before = await readEnvironmentExample(path)
+  const after = appendMissingEnvironmentDeclarations(before, entries)
+  if (before === after) return undefined
+  const previous = (await exists(path))
+    ? new TextEncoder().encode(before)
+    : undefined
+  return {
+    path,
+    ...(previous ? { previous } : {}),
+    contents: new TextEncoder().encode(after),
+  }
+}
+
+async function readEnvironmentExample(path: string): Promise<string> {
   const beforeResult = await fromAsyncThrowable(() => readFile(path, "utf8"))
-  const before = beforeResult.match({
+  return beforeResult.match({
     ok: (contents) => contents,
     err: () => "",
   })
-  let after = before
-  for (const entry of entries) {
-    if (!new RegExp(`^\\s*(?:export\\s+)?${entry.name}=`, "m").test(after))
-      after += `${after && !after.endsWith("\n") ? "\n" : ""}${entry.name}=\n`
-  }
-  if (before !== after)
-    writes.push({
-      path,
-      ...((await exists(path))
-        ? { previous: new TextEncoder().encode(before) }
-        : {}),
-      contents: new TextEncoder().encode(after),
-    })
+}
+
+function appendMissingEnvironmentDeclarations(
+  before: string,
+  entries: EnvironmentDeclaration[]
+): string {
+  return entries.reduce((contents, entry) => {
+    if (new RegExp(`^\\s*(?:export\\s+)?${entry.name}=`, "m").test(contents))
+      return contents
+    const separator = contents && !contents.endsWith("\n") ? "\n" : ""
+    return `${contents}${separator}${entry.name}=\n`
+  }, before)
 }
