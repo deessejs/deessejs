@@ -192,4 +192,5 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 
 ## CodeGraph
 
-- CodeGraph is an optional navigation aid. Use its relevant context, callers, callees, impact and test tools when helpful, but verify findings against source and tests. The graph is not authoritative.
+- For nontrivial repository code investigation or reasoning, use the appropriate CodeGraph exploration, context, callers, callees, impact, or tests tools early. Use their results to guide source and test reads, then verify conclusions against the actual source and tests. Briefly report what you queried and found, or that CodeGraph was unavailable.
+- Skip CodeGraph only when code navigation is unnecessary, such as a docs-only task or a mechanical localized edit to a file the user specified. If the MCP or worktree index is unavailable, initialize the index when possible; otherwise report the blocker and use direct search as a fallback.
