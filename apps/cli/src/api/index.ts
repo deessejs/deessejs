@@ -88,8 +88,16 @@ export const fetchTemplates = async (
       orpc.templates.community.list(),
     ])
     if (options.useLocalCache) {
-      writeDiskCache(officialKey, TemplatesListResponseV1.parse(result), null)
-      writeDiskCache(communityKey, CommunityTemplatesListResponseV1.parse(communityResult), null)
+      try {
+        const parsedOfficial = TemplatesListResponseV1.safeParse(result)
+        const parsedCommunity = CommunityTemplatesListResponseV1.safeParse(communityResult)
+        if (parsedOfficial.success && parsedCommunity.success) {
+          writeDiskCache(officialKey, parsedOfficial.data, null)
+          writeDiskCache(communityKey, parsedCommunity.data, null)
+        }
+      } catch {
+        // Cache persistence is best-effort; successful live data remains usable.
+      }
     }
     return [...result.templates, ...communityResult.templates]
   } catch (e) {
