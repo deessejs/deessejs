@@ -30,8 +30,9 @@ export const infoCommand = new Command("info")
     "Git ref to inspect (default: the repository's default branch)"
   )
   .option("--json", "JSON output for scripting")
+  .option("--refresh", "Bypass and refresh the local catalog cache")
   .option("--verbose", "show human-readable output")
-  .action(async (slugOrUrl: string, opts: { ref?: string; json?: boolean; verbose?: boolean }) => {
+  .action(async (slugOrUrl: string, opts: { ref?: string; json?: boolean; verbose?: boolean; refresh?: boolean }) => {
     const json = !opts.verbose || !!opts.json
     const spinner = json
       ? null
@@ -41,6 +42,7 @@ export const infoCommand = new Command("info")
       const resolved = await resolveTemplateSource(slugOrUrl, {
         skipVersionCheck: true,
         fastCatalogLookup: true,
+        refresh: opts.refresh ?? false,
       })
       const repository = `${resolved.template.owner}/${resolved.template.repo}`
       const info = await resolveTemplateDescriptorInfo(

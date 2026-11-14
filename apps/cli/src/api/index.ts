@@ -1,16 +1,20 @@
 import { toORPCError } from "@orpc/client"
 import { fromAsyncThrowable } from "@deessejs/fp"
 import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
+import { CommunityTemplatesListResponseV1, TemplatesListResponseV1 } from "@workspace/contracts/v1"
 
 import { networkError } from "../errors/index.js"
 import { maybeWarnAboutOutdatedCli } from "../version/check.js"
 import { orpc } from "./client.js"
+import { readDiskCache, responseCacheKey, RESPONSE_CACHE_TTL_MS, writeDiskCache } from "../cache/index.js"
 
 export type Template = TemplateV1 | CommunityTemplateV1
 
 export type FetchOptions = {
   /** Skip the version probe. Used by info and by the version probe itself. */
   skipVersionCheck?: boolean
+  useLocalCache?: boolean
+  refresh?: boolean
 }
 
 /**
@@ -62,6 +66,18 @@ export const normaliseError = (e: unknown): Error => {
 export const fetchTemplates = async (
   options: FetchOptions = {}
 ): Promise<Template[]> => {
+  const officialKey = responseCacheKey("templates-official")
+  const communityKey = responseCacheKey("templates-community")
+  if (options.useLocalCache && !options.refresh) {
+    const official = readDiskCache(officialKey)
+    const community = readDiskCache(communityKey)
+    const valid = (entry: typeof official) => entry && Date.now() - Date.parse(entry.fetchedAt) >= 0 && Date.now() - Date.parse(entry.fetchedAt) < RESPONSE_CACHE_TTL_MS
+    const parsedOfficial = official && TemplatesListResponseV1.safeParse(official.body)
+    const parsedCommunity = community && CommunityTemplatesListResponseV1.safeParse(community.body)
+    if (valid(official) && valid(community) && parsedOfficial?.success && parsedCommunity?.success) {
+      return [...parsedOfficial.data.templates, ...parsedCommunity.data.templates]
+    }
+  }
   if (!options.skipVersionCheck) {
     await maybeWarnAboutOutdatedCli()
   }
@@ -71,6 +87,10 @@ export const fetchTemplates = async (
       orpc.templates.list(),
       orpc.templates.community.list(),
     ])
+    if (options.useLocalCache) {
+      writeDiskCache(officialKey, TemplatesListResponseV1.parse(result), null)
+      writeDiskCache(communityKey, CommunityTemplatesListResponseV1.parse(communityResult), null)
+    }
     return [...result.templates, ...communityResult.templates]
   } catch (e) {
     throw normaliseError(e)

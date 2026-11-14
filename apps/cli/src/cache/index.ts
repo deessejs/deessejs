@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 
 import { cachePath, ensureCacheDir } from "./location.js"
 
@@ -7,6 +7,9 @@ export type CacheEntry<T = unknown> = {
   fetchedAt: string
   body: T
 }
+
+export const RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000
+export const responseCacheKey = (name: string): string => `response-v1-${name}.json`
 
 export const readDiskCache = (name: string): CacheEntry<unknown> | null => {
   const path = cachePath(name)
@@ -59,4 +62,17 @@ export const writeDiskCache = <T>(
   } catch {
     writeFileSync(target, JSON.stringify(entry), "utf8")
   }
+}
+
+/** Remove response cache files only. Authentication state is stored separately. */
+export const clearResponseCache = (): number => {
+  const dir = cachePath("")
+  if (!existsSync(dir)) return 0
+  let removed = 0
+  for (const name of readdirSync(dir)) {
+    if (!name.startsWith("response-") || !name.endsWith(".json")) continue
+    unlinkSync(cachePath(name))
+    removed += 1
+  }
+  return removed
 }
