@@ -32,9 +32,91 @@ const publicTemplateColumns = {
   repositoryDescription: templateRepositorySnapshots.repositoryDescription,
   canonicalUrl: templateRepositorySnapshots.canonicalUrl,
   license: templateRepositorySnapshots.license,
-  readme: templateRepositorySnapshots.readme,
   repositoryUpdatedAt: templateRepositorySnapshots.repositoryUpdatedAt,
   stars: templateRepositorySnapshots.stars,
+}
+
+const publicTemplateDetailColumns = {
+  ...publicTemplateColumns,
+  readme: templateRepositorySnapshots.readme,
+}
+
+const communityListColumns = {
+  organizationSlug: templatePublications.organizationSlug,
+  organizationName: templatePublications.organizationName,
+  slug: templatePublications.slug,
+  name: templatePublications.name,
+  description: templatePublications.description,
+  owner: templatePublications.owner,
+  repo: templatePublications.repo,
+  license: templatePublications.license,
+  category: templatePublications.category,
+  labels: templatePublications.labels,
+  imageName: templatePublications.imageName,
+  imageObjectId: templatePublications.imageObjectId,
+  canonicalUrl: templatePublications.canonicalUrl,
+  repositoryUpdatedAt: templatePublications.repositoryUpdatedAt,
+  stars: templatePublications.stars,
+  sourceCommit: templatePublications.sourceCommit,
+}
+
+const communityDetailColumns = {
+  ...communityListColumns,
+  readme: templatePublications.readme,
+}
+
+const publicCommunity = and(
+  eq(templatePublications.reviewStatus, "approved"),
+  eq(templatePublications.publicationState, "current")
+)
+
+function toCommunityTemplate(row: {
+  organizationSlug: string
+  organizationName: string
+  slug: string
+  name: string
+  description: string
+  owner: string
+  repo: string
+  license: string
+  category: string
+  labels: string[]
+  imageName: string | null
+  imageObjectId: string | null
+  canonicalUrl: string
+  repositoryUpdatedAt: Date | null
+  stars: number | null
+  sourceCommit: string
+  readme?: string | null
+}): CommunityTemplateV1 {
+  return {
+    slug: `@${row.organizationSlug}/${row.slug}`,
+    name: row.name,
+    description: row.description,
+    owner: row.owner,
+    repo: row.repo,
+    license: row.license,
+    category: row.category,
+    labels: row.labels,
+    ...(row.imageObjectId
+      ? {
+          image: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+        }
+      : row.imageName
+        ? { image: `/${row.imageName}` }
+        : {}),
+    cloneUrl: row.canonicalUrl,
+    ...(row.readme != null ? { readme: row.readme } : {}),
+    ...(row.repositoryUpdatedAt
+      ? { updatedAt: row.repositoryUpdatedAt.toISOString() }
+      : {}),
+    ...(row.stars !== null ? { stars: row.stars } : {}),
+    community: true,
+    organizationSlug: row.organizationSlug,
+    organizationName: row.organizationName,
+    templateSlug: row.slug,
+    sourceCommit: row.sourceCommit,
+  }
 }
 
 type PublicTemplateRow = {
@@ -51,7 +133,7 @@ type PublicTemplateRow = {
   repositoryDescription: string | null
   canonicalUrl: string
   license: string | null
-  readme: string | null
+  readme?: string | null
   repositoryUpdatedAt: Date | null
   stars: number | null
 }
@@ -133,7 +215,11 @@ export const list = base
         .where(eq(templates.ownerType, "platform"))
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
-      return { templates: rows.map(toPublicTemplate) }
+      return {
+        templates: rows.map((row) =>
+          toPublicTemplate({ ...row, readme: null })
+        ),
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Database query failed"
@@ -146,6 +232,23 @@ export const list = base
         message: "Failed to load the templates catalog.",
       })
     }
+  })
+
+export const detail = base
+  .input(z.object({ slug: z.string().min(1) }))
+  .handler(async ({ input }): Promise<TemplateV1 | null> => {
+    const [row] = await db
+      .select(publicTemplateDetailColumns)
+      .from(templates)
+      .innerJoin(
+        templateRepositorySnapshots,
+        eq(templates.id, templateRepositorySnapshots.templateId)
+      )
+      .where(
+        and(eq(templates.slug, input.slug), eq(templates.ownerType, "platform"))
+      )
+      .limit(1)
+    return row ? toPublicTemplate(row as PublicTemplateRow) : null
   })
 
 /** Resolve a catalog slug without loading its GitHub snapshot payload. */
@@ -186,14 +289,9 @@ const community = {
     .output(CommunityTemplatesListResponseV1)
     .handler(async (): Promise<{ templates: CommunityTemplateV1[] }> => {
       const rows = await db
-        .select()
+        .select(communityListColumns)
         .from(templatePublications)
-        .where(
-          and(
-            eq(templatePublications.reviewStatus, "approved"),
-            eq(templatePublications.publicationState, "current")
-          )
-        )
+        .where(and(publicCommunity))
         .orderBy(
           asc(templatePublications.organizationName),
           asc(templatePublications.name),
@@ -201,35 +299,30 @@ const community = {
         )
 
       return {
-        templates: rows.map((row) => ({
-          slug: `@${row.organizationSlug}/${row.slug}`,
-          name: row.name,
-          description: row.description,
-          owner: row.owner,
-          repo: row.repo,
-          license: row.license,
-          category: row.category,
-          labels: row.labels,
-          ...(row.imageObjectId
-            ? {
-                image: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
-              }
-            : row.imageName
-              ? { image: `/${row.imageName}` }
-              : {}),
-          cloneUrl: row.canonicalUrl,
-          ...(row.readme !== null ? { readme: row.readme } : {}),
-          ...(row.repositoryUpdatedAt
-            ? { updatedAt: row.repositoryUpdatedAt.toISOString() }
-            : {}),
-          ...(row.stars !== null ? { stars: row.stars } : {}),
-          community: true,
-          organizationSlug: row.organizationSlug,
-          organizationName: row.organizationName,
-          templateSlug: row.slug,
-          sourceCommit: row.sourceCommit,
-        })),
+        templates: rows.map((row) => toCommunityTemplate(row)),
       }
+    }),
+
+  detail: base
+    .input(
+      z.object({
+        organizationSlug: z.string().min(1),
+        templateSlug: z.string().min(1),
+      })
+    )
+    .handler(async ({ input }): Promise<CommunityTemplateV1 | null> => {
+      const [row] = await db
+        .select(communityDetailColumns)
+        .from(templatePublications)
+        .where(
+          and(
+            publicCommunity,
+            eq(templatePublications.organizationSlug, input.organizationSlug),
+            eq(templatePublications.slug, input.templateSlug)
+          )
+        )
+        .limit(1)
+      return row ? toCommunityTemplate(row) : null
     }),
 
   resolve: base
@@ -282,6 +375,7 @@ const community = {
 
 export const templatesRouter = {
   list,
+  detail,
   resolve,
   community,
 }

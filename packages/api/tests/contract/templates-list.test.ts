@@ -10,8 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
 
 vi.mock("@workspace/database", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@workspace/database")>()
+  const actual = await importOriginal<typeof import("@workspace/database")>()
   return { ...actual, db: { select: selectMock } }
 })
 
@@ -43,7 +42,7 @@ const templateRow = {
   stars: 42,
 }
 
-const mockQuery = (rows: typeof templateRow[]) => {
+const mockQuery = (rows: (typeof templateRow)[]) => {
   const query = {
     from: vi.fn(),
     innerJoin: vi.fn(),
@@ -69,6 +68,9 @@ describe("templates.list", () => {
 
     const result = await call(appRouter.templates.list, undefined, { context })
 
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ readme: expect.anything() })
+    )
     expect(result).toEqual({
       templates: [
         {
@@ -82,7 +84,6 @@ describe("templates.list", () => {
           labels: ["nextjs", "saas", "auth"],
           image: "/ship-your-saas.png",
           cloneUrl: "https://github.com/deessejs/saas-template",
-          readme: "# SaaS Starter",
           updatedAt: "2026-01-02T03:04:05.000Z",
           stars: 42,
         },
@@ -109,6 +110,25 @@ describe("templates.list", () => {
     await expect(
       call(appRouter.templates.list, undefined, { context })
     ).resolves.toEqual({ templates: [] })
+  })
+})
+
+describe("templates.detail", () => {
+  it("returns the requested official template including its README", async () => {
+    mockQuery([templateRow])
+    await expect(
+      call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+    ).resolves.toMatchObject({ slug: "saas-starter", readme: "# SaaS Starter" })
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ readme: expect.anything() })
+    )
+  })
+
+  it("returns null for a missing official template", async () => {
+    mockQuery([])
+    await expect(
+      call(appRouter.templates.detail, { slug: "missing" }, { context })
+    ).resolves.toBeNull()
   })
 })
 

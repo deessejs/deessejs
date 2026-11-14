@@ -11,12 +11,10 @@ async function getCommunityTemplate(
   organizationSlug: string,
   templateSlug: string,
   cache = liveCache
-): Promise<CommunityTemplateV1 | undefined> {
-  const { templates } = await orpc.templates.community.list(undefined, cache)
-  return templates.find(
-    (template) =>
-      template.organizationSlug === organizationSlug &&
-      template.templateSlug === templateSlug
+): Promise<CommunityTemplateV1 | null> {
+  return orpc.templates.community.detail(
+    { organizationSlug, templateSlug },
+    cache
   )
 }
 

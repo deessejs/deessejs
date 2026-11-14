@@ -36,8 +36,10 @@ export const generateMetadata = async ({
 }): Promise<Metadata> => {
   const { template_slug } = await params
   try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    const template = result.templates.find((t) => t.slug === template_slug)
+    const template = await orpc.templates.detail(
+      { slug: template_slug },
+      liveCache
+    )
     if (!template) return { title: "Template not found" }
     return {
       title: template.name,
@@ -73,8 +75,7 @@ const TemplateDetailPage = async ({ params }: { params: Promise<Params> }) => {
   const { template_slug } = await params
   let template
   try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    template = result.templates.find((t) => t.slug === template_slug)
+    template = await orpc.templates.detail({ slug: template_slug }, liveCache)
   } catch {
     // Build-time fallback: a failed fetch during prerender becomes
     // a 404 (the slug cannot be confirmed). Production runtime

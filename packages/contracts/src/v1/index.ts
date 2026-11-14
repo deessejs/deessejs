@@ -1,5 +1,9 @@
 export { TemplateV1, type TemplateV1 as TemplateV1Type } from "./template.js"
 export {
+  TemplateSummaryV1,
+  type TemplateSummaryV1 as TemplateSummaryV1Type,
+} from "./template-summary.js"
+export {
   OrganizationBlockV1,
   OrganizationBlockCreateInputV1,
   OrganizationBlocksListResponseV1,
@@ -14,6 +18,10 @@ export {
   CommunityTemplateV1,
   type CommunityTemplateV1 as CommunityTemplateV1Type,
 } from "./community-template.js"
+export {
+  CommunityTemplateSummaryV1,
+  type CommunityTemplateSummaryV1 as CommunityTemplateSummaryV1Type,
+} from "./community-template-summary.js"
 export {
   CommunityTemplatesListResponseV1,
   type CommunityTemplatesListResponseV1 as CommunityTemplatesListResponseV1Type,

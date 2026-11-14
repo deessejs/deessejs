@@ -1,6 +1,6 @@
 import {
+  fetchTemplateByAddress,
   fetchTemplates,
-  resolveTemplateBySlug,
   type Template,
 } from "../api/index.js"
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
@@ -56,13 +56,22 @@ export async function resolveTemplateSource(
   }
 
   let template: TemplateSource | undefined
-  if (options.fastCatalogLookup && !slugOrUrl.startsWith("@")) {
+  if (options.fastCatalogLookup !== false) {
     let catalogTemplates: Template[] | undefined
     try {
-      template = (await resolveTemplateBySlug(slugOrUrl)) ?? undefined
-    } catch {
-      // Older deployed API versions do not yet expose templates.resolve.
-      // Fall back to the existing list route until that API deploys.
+      template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
+    } catch (error) {
+      // Older deployed API versions may not yet expose targeted detail reads.
+      // Fall back only when the procedure is absent, not for service failures.
+      if (
+        !(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "NOT_FOUND"
+        )
+      ) {
+        throw error
+      }
       catalogTemplates = await fetchTemplatesForInfo()
       template = catalogTemplates.find((item) => item.slug === slugOrUrl)
     }

@@ -88,6 +88,26 @@ export const resolveTemplateBySlug = async (
   }
 }
 
+/** Fetch one currently public template, without reading either catalog. */
+export const fetchTemplateByAddress = async (
+  address: string
+): Promise<Template | null> => {
+  try {
+    if (address.startsWith("@")) {
+      const [, organizationSlug, templateSlug] =
+        /^@([^/]+)\/(.+)$/.exec(address) ?? []
+      if (!organizationSlug || !templateSlug) return null
+      return await orpc.templates.community.detail({
+        organizationSlug,
+        templateSlug,
+      })
+    }
+    return await orpc.templates.detail({ slug: address })
+  } catch (e) {
+    throw normaliseError(e)
+  }
+}
+
 export const resolveOfficialBlock = async (slug: string) => {
   const result = await fromAsyncThrowable({
     onSuccess: async () =>
