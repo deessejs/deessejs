@@ -13,14 +13,22 @@ export const listCommand = new Command("list")
   .option("--verbose", "show human-readable output")
   .action((options: ListCommandOptions) => runListCommand(options))
 
-type ListCommandOptions = { category?: string; json?: boolean; verbose?: boolean; refresh?: boolean }
+type ListCommandOptions = {
+  category?: string
+  json?: boolean
+  verbose?: boolean
+  refresh?: boolean
+}
 type ListSpinner = ReturnType<typeof ora> | null
 
 async function runListCommand(options: ListCommandOptions): Promise<void> {
   const json = !options.verbose || !!options.json
   const spinner = json ? null : ora("Fetching templates...").start()
   try {
-    const all = await fetchTemplates({ useLocalCache: true, ...(options.refresh ? { refresh: true } : {}) })
+    const all = await fetchTemplates({
+      useLocalCache: true,
+      ...(options.refresh ? { refresh: true } : {}),
+    })
     const filtered = options.category
       ? all.filter((template) => template.category === options.category)
       : all

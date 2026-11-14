@@ -1,12 +1,20 @@
 import { toORPCError } from "@orpc/client"
 import { fromAsyncThrowable } from "@deessejs/fp"
 import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
-import { CommunityTemplatesListResponseV1, TemplatesListResponseV1 } from "@workspace/contracts/v1"
+import {
+  CommunityTemplatesListResponseV1,
+  TemplatesListResponseV1,
+} from "@workspace/contracts/v1"
 
 import { networkError } from "../errors/index.js"
 import { maybeWarnAboutOutdatedCli } from "../version/check.js"
 import { orpc } from "./client.js"
-import { readDiskCache, responseCacheKey, RESPONSE_CACHE_TTL_MS, writeDiskCache } from "../cache/index.js"
+import {
+  readDiskCache,
+  responseCacheKey,
+  RESPONSE_CACHE_TTL_MS,
+  writeDiskCache,
+} from "../cache/index.js"
 
 export type Template = TemplateV1 | CommunityTemplateV1
 
@@ -71,11 +79,24 @@ export const fetchTemplates = async (
   if (options.useLocalCache && !options.refresh) {
     const official = readDiskCache(officialKey)
     const community = readDiskCache(communityKey)
-    const valid = (entry: typeof official) => entry && Date.now() - Date.parse(entry.fetchedAt) >= 0 && Date.now() - Date.parse(entry.fetchedAt) < RESPONSE_CACHE_TTL_MS
-    const parsedOfficial = official && TemplatesListResponseV1.safeParse(official.body)
-    const parsedCommunity = community && CommunityTemplatesListResponseV1.safeParse(community.body)
-    if (valid(official) && valid(community) && parsedOfficial?.success && parsedCommunity?.success) {
-      return [...parsedOfficial.data.templates, ...parsedCommunity.data.templates]
+    const valid = (entry: typeof official) =>
+      entry &&
+      Date.now() - Date.parse(entry.fetchedAt) >= 0 &&
+      Date.now() - Date.parse(entry.fetchedAt) < RESPONSE_CACHE_TTL_MS
+    const parsedOfficial =
+      official && TemplatesListResponseV1.safeParse(official.body)
+    const parsedCommunity =
+      community && CommunityTemplatesListResponseV1.safeParse(community.body)
+    if (
+      valid(official) &&
+      valid(community) &&
+      parsedOfficial?.success &&
+      parsedCommunity?.success
+    ) {
+      return [
+        ...parsedOfficial.data.templates,
+        ...parsedCommunity.data.templates,
+      ]
     }
   }
   if (!options.skipVersionCheck) {
@@ -90,7 +111,8 @@ export const fetchTemplates = async (
     if (options.useLocalCache) {
       try {
         const parsedOfficial = TemplatesListResponseV1.safeParse(result)
-        const parsedCommunity = CommunityTemplatesListResponseV1.safeParse(communityResult)
+        const parsedCommunity =
+          CommunityTemplatesListResponseV1.safeParse(communityResult)
         if (parsedOfficial.success && parsedCommunity.success) {
           writeDiskCache(officialKey, parsedOfficial.data, null)
           writeDiskCache(communityKey, parsedCommunity.data, null)

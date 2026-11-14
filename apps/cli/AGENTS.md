@@ -24,7 +24,7 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 `info` accepts a catalog slug or a GitHub repository URL. Both forms show only descriptor data and read the root `deesse-template.json` through the GitHub Contents API without downloading the repository archive.
 
-`list` and `info` may use validated local catalog responses for five minutes. `--refresh` bypasses and replaces those entries. `init` always fetches current catalog data. `deessejs cache clear` removes response cache files and preserves authentication state.
+`list` may use validated local catalog responses for five minutes. `list --refresh` bypasses and replaces those entries. `info` and `init` use targeted detail reads and do not use the catalog cache. `deessejs cache clear` removes response cache files and preserves authentication state.
 
 `init` options: `--pm`, `--dir`, `--ref`, `--no-install`, `--force`, `--json`, `--verbose`.
 `info` options: `--ref`, `--json`.
