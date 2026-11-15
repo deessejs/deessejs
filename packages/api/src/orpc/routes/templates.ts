@@ -1,15 +1,13 @@
 import { ORPCError } from "@orpc/server"
 import { z } from "zod"
 import { and, asc, eq } from "drizzle-orm"
-import type {
+import {
   CommunityTemplateV1,
+  CommunityTemplatesListResponseV1,
+  CommunityTemplatesSummaryResponseV1,
   TemplateV1,
   TemplatesListResponseV1,
   TemplatesSummaryResponseV1,
-} from "@workspace/contracts/v1"
-import {
-  CommunityTemplatesListResponseV1,
-  CommunityTemplatesSummaryResponseV1,
 } from "@workspace/contracts/v1"
 import {
   db,
@@ -255,6 +253,7 @@ export const summary = base.handler(
 
 export const detail = base
   .input(z.object({ slug: z.string().min(1) }))
+  .output(TemplateV1.nullable())
   .handler(async ({ input }): Promise<TemplateV1 | null> => {
     const [row] = await db
       .select(publicTemplateDetailColumns)
@@ -344,6 +343,7 @@ const community = {
         templateSlug: z.string().min(1),
       })
     )
+    .output(CommunityTemplateV1.nullable())
     .handler(async ({ input }): Promise<CommunityTemplateV1 | null> => {
       const [row] = await db
         .select(communityDetailColumns)

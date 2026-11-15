@@ -131,6 +131,13 @@ describe("templates.detail", () => {
       call(appRouter.templates.detail, { slug: "missing" }, { context })
     ).resolves.toBeNull()
   })
+
+  it("validates returned official details against the V1 contract", async () => {
+    mockQuery([{ ...templateRow, slug: "" }])
+    await expect(
+      call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+    ).rejects.toThrow()
+  })
 })
 
 describe("templates.summary", () => {
@@ -198,6 +205,17 @@ describe("templates.community public summary and detail", () => {
     await expect(
       call(appRouter.templates.community.summary, undefined, { context })
     ).resolves.toEqual({ templates: [] })
+  })
+
+  it("validates returned community details against the V1 contract", async () => {
+    mockQuery([{ ...publication, sourceCommit: "not-a-commit" }])
+    await expect(
+      call(
+        appRouter.templates.community.detail,
+        { organizationSlug: "acme", templateSlug: "starter" },
+        { context }
+      )
+    ).rejects.toThrow()
   })
 })
 

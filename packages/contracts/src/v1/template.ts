@@ -22,9 +22,9 @@ import { z } from "zod"
  * unknown keys the default mode strips, and would make every new field
  * breaking for the clients that validate with it.
  *
- * Note the current state of the enforcement: the oRPC procedure types its
- * response with this schema rather than attaching it as a runtime output
- * schema, so the guarantee today is a compile-time one on both sides.
+ * oRPC procedures that attach this schema as an output contract also validate
+ * their responses at runtime. Procedures that only annotate their handler
+ * return type rely on compile-time checking instead.
  */
 export const TemplateV1 = z.object({
   slug: z.string().min(1),
