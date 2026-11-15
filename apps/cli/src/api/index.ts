@@ -11,6 +11,7 @@ export type Template = TemplateV1 | CommunityTemplateV1
 export type FetchOptions = {
   /** Skip the version probe. Used by info and by the version probe itself. */
   skipVersionCheck?: boolean
+  legacyV1List?: boolean
 }
 
 /**
@@ -67,10 +68,11 @@ export const fetchTemplates = async (
   }
 
   try {
-    const [result, communityResult] = await Promise.all([
-      orpc.templates.list(),
-      orpc.templates.community.list(),
-    ])
+    const [result, communityResult] = await Promise.all(
+      options.legacyV1List
+        ? [orpc.templates.list(), orpc.templates.community.list()]
+        : [orpc.templates.summary(), orpc.templates.community.summary()]
+    )
     return [...result.templates, ...communityResult.templates]
   } catch (e) {
     throw normaliseError(e)

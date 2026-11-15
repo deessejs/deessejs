@@ -5,8 +5,12 @@ import type {
   CommunityTemplateV1,
   TemplateV1,
   TemplatesListResponseV1,
+  TemplatesSummaryResponseV1,
 } from "@workspace/contracts/v1"
-import { CommunityTemplatesListResponseV1 } from "@workspace/contracts/v1"
+import {
+  CommunityTemplatesListResponseV1,
+  CommunityTemplatesSummaryResponseV1,
+} from "@workspace/contracts/v1"
 import {
   db,
   templatePublications,
@@ -206,7 +210,7 @@ export const list = base
 
     try {
       const rows = await db
-        .select(publicTemplateColumns)
+        .select(publicTemplateDetailColumns)
         .from(templates)
         .innerJoin(
           templateRepositorySnapshots,
@@ -216,9 +220,7 @@ export const list = base
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
       return {
-        templates: rows.map((row) =>
-          toPublicTemplate({ ...row, readme: null })
-        ),
+        templates: rows.map((row) => toPublicTemplate(row)),
       }
     } catch (error) {
       const message =
@@ -233,6 +235,23 @@ export const list = base
       })
     }
   })
+
+export const summary = base.handler(
+  async (): Promise<TemplatesSummaryResponseV1> => {
+    const rows = await db
+      .select(publicTemplateColumns)
+      .from(templates)
+      .innerJoin(
+        templateRepositorySnapshots,
+        eq(templates.id, templateRepositorySnapshots.templateId)
+      )
+      .where(eq(templates.ownerType, "platform"))
+      .orderBy(asc(templates.sortOrder), asc(templates.slug))
+    return {
+      templates: rows.map((row) => toPublicTemplate({ ...row, readme: null })),
+    }
+  }
+)
 
 export const detail = base
   .input(z.object({ slug: z.string().min(1) }))
@@ -289,7 +308,7 @@ const community = {
     .output(CommunityTemplatesListResponseV1)
     .handler(async (): Promise<{ templates: CommunityTemplateV1[] }> => {
       const rows = await db
-        .select(communityListColumns)
+        .select(communityDetailColumns)
         .from(templatePublications)
         .where(and(publicCommunity))
         .orderBy(
@@ -301,6 +320,21 @@ const community = {
       return {
         templates: rows.map((row) => toCommunityTemplate(row)),
       }
+    }),
+
+  summary: base
+    .output(CommunityTemplatesSummaryResponseV1)
+    .handler(async () => {
+      const rows = await db
+        .select(communityListColumns)
+        .from(templatePublications)
+        .where(publicCommunity)
+        .orderBy(
+          asc(templatePublications.organizationName),
+          asc(templatePublications.name),
+          asc(templatePublications.slug)
+        )
+      return { templates: rows.map((row) => toCommunityTemplate(row)) }
     }),
 
   detail: base
@@ -375,6 +409,7 @@ const community = {
 
 export const templatesRouter = {
   list,
+  summary,
   detail,
   resolve,
   community,

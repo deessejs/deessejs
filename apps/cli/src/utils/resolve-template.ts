@@ -17,9 +17,11 @@ export type ResolvedTemplateSource = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
-async function fetchTemplatesForInfo(): Promise<Template[]> {
+async function fetchTemplatesForInfo(
+  legacyV1List = false
+): Promise<Template[]> {
   try {
-    return await fetchTemplates({ skipVersionCheck: true })
+    return await fetchTemplates({ skipVersionCheck: true, legacyV1List })
   } catch (error) {
     if (error instanceof Error && error.name === "CliError") throw error
     const detail =
@@ -72,7 +74,7 @@ export async function resolveTemplateSource(
       ) {
         throw error
       }
-      catalogTemplates = await fetchTemplatesForInfo()
+      catalogTemplates = await fetchTemplatesForInfo(true)
       template = catalogTemplates.find((item) => item.slug === slugOrUrl)
     }
     if (!template) {

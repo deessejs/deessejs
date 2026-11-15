@@ -430,8 +430,8 @@ describe.skipIf(process.platform !== "linux")(
           .map((request) => request.split(" ")[1])
         expect(unknownInfoRequests).toEqual([
           "https://app.deessejs.com/api/v1/rpc/templates/detail",
-          "https://app.deessejs.com/api/v1/rpc/templates/list",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
+          "https://app.deessejs.com/api/v1/rpc/templates/summary",
+          "https://app.deessejs.com/api/v1/rpc/templates/community/summary",
         ])
 
         const directInfoResult = await runCommand(
@@ -825,14 +825,28 @@ describe.skipIf(process.platform !== "linux")(
           requests
             .filter((request) => request.includes("/rpc/templates/"))
             .join("\n")
-        ).toHaveLength(2)
+        ).toHaveLength(1)
         expect(
           requests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
             )
           )
-        ).toHaveLength(2)
+        ).toHaveLength(1)
+        expect(
+          requests.filter((request) =>
+            request.startsWith(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/summary"
+            )
+          )
+        ).toHaveLength(1)
+        expect(
+          requests.filter((request) =>
+            request.startsWith(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/community/summary"
+            )
+          )
+        ).toHaveLength(1)
         expect(
           requests.filter((request) =>
             request.startsWith(

@@ -13,6 +13,8 @@ export {
 export {
   TemplatesListResponseV1,
   type TemplatesListResponseV1 as TemplatesListResponseV1Type,
+  TemplatesSummaryResponseV1,
+  type TemplatesSummaryResponseV1 as TemplatesSummaryResponseV1Type,
 } from "./templates-response.js"
 export {
   CommunityTemplateV1,
@@ -25,6 +27,8 @@ export {
 export {
   CommunityTemplatesListResponseV1,
   type CommunityTemplatesListResponseV1 as CommunityTemplatesListResponseV1Type,
+  CommunityTemplatesSummaryResponseV1,
+  type CommunityTemplatesSummaryResponseV1 as CommunityTemplatesSummaryResponseV1Type,
 } from "./community-templates-response.js"
 export {
   OrganizationTemplateV1,
