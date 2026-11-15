@@ -92,20 +92,20 @@ describe("public community template reads", () => {
           {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ data: null, path: ["templates", "community", "summary"] }),
+            body: JSON.stringify({
+              data: null,
+              path: ["templates", "community", "summary"],
+            }),
           }
         )
         expect(summaryResponse.status).toBe(200)
         const summary = await summaryResponse.json()
-        expect(summary.json.templates.map((template: { slug: string }) => template.slug)).toContain(
-          `@${orgSlug}/visible`
+        const summarySlugs = summary.json.templates.map(
+          (template: { slug: string }) => template.slug
         )
-        expect(summary.json.templates.map((template: { slug: string }) => template.slug)).not.toContain(
-          `@${orgSlug}/pending`
-        )
-        expect(summary.json.templates.map((template: { slug: string }) => template.slug)).not.toContain(
-          `@${orgSlug}/unpublished`
-        )
+        expect(summarySlugs).toContain(`@${orgSlug}/visible`)
+        expect(summarySlugs).not.toContain(`@${orgSlug}/pending`)
+        expect(summarySlugs).not.toContain(`@${orgSlug}/unpublished`)
         expect(summary.json.templates[0]).not.toHaveProperty("readme")
 
         for (const hiddenSlug of ["pending", "unpublished"]) {
@@ -115,7 +115,7 @@ describe("public community template reads", () => {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
-                data: { organizationSlug: orgSlug, templateSlug: hiddenSlug },
+                json: { organizationSlug: orgSlug, templateSlug: hiddenSlug },
                 path: ["templates", "community", "detail"],
               }),
             }
@@ -130,7 +130,7 @@ describe("public community template reads", () => {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
-              data: { organizationSlug: orgSlug, templateSlug: "visible" },
+              json: { organizationSlug: orgSlug, templateSlug: "visible" },
               path: ["templates", "community", "detail"],
             }),
           }
