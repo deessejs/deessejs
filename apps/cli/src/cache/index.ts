@@ -1,4 +1,11 @@
-import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 
 import { cachePath, ensureCacheDir } from "./location.js"
 
@@ -9,7 +16,8 @@ export type CacheEntry<T = unknown> = {
 }
 
 export const RESPONSE_CACHE_TTL_MS = 5 * 60 * 1000
-export const responseCacheKey = (name: string): string => `response-v1-${name}.json`
+export const responseCacheKey = (name: string): string =>
+  `response-v1-${name}.json`
 
 export const readDiskCache = (name: string): CacheEntry<unknown> | null => {
   const path = cachePath(name)
@@ -33,7 +41,7 @@ export const readDiskCache = (name: string): CacheEntry<unknown> | null => {
       body: parsed.body,
     }
   } catch {
-    // Corrupt or unreadable. Caller logs a warning; we don't overwrite.
+    // Corrupt or unreadable entries are misses; a later successful fetch can replace them.
     return null
   }
 }
