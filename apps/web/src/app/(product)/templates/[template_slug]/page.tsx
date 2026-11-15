@@ -58,8 +58,9 @@ export const generateMetadata = async ({
   }
 }
 
-/** Detail page at /templates/[template_slug]. */
 /**
+ * Detail page at /templates/[template_slug].
+ *
  * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
  * transient failure cannot poison the Next.js data cache. On a
  * runtime error the request propagates to the segment's `error.tsx`
