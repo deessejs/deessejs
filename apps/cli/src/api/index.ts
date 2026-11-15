@@ -2,7 +2,9 @@ import { toORPCError } from "@orpc/client"
 import { fromAsyncThrowable } from "@deessejs/fp"
 import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
 import {
+  CommunityTemplateV1 as CommunityTemplateSchema,
   CommunityTemplatesListResponseV1,
+  TemplateV1 as TemplateSchema,
   TemplatesListResponseV1,
 } from "@workspace/contracts/v1"
 
@@ -23,6 +25,91 @@ export type FetchOptions = {
   skipVersionCheck?: boolean
   useLocalCache?: boolean
   refresh?: boolean
+  legacyV1List?: boolean
+}
+
+const isFreshCacheEntry = (
+  entry: ReturnType<typeof readDiskCache>
+): boolean => {
+  if (!entry) return false
+  const age = Date.now() - Date.parse(entry.fetchedAt)
+  return age >= 0 && age < RESPONSE_CACHE_TTL_MS
+}
+
+function readCachedTemplates(
+  officialKey: string,
+  communityKey: string
+): Template[] | null {
+  const official = readDiskCache(officialKey)
+  const community = readDiskCache(communityKey)
+  if (
+    !official ||
+    !community ||
+    !isFreshCacheEntry(official) ||
+    !isFreshCacheEntry(community)
+  ) {
+    return null
+  }
+
+  const parsedOfficial = TemplatesListResponseV1.safeParse(official.body)
+  const parsedCommunity = CommunityTemplatesListResponseV1.safeParse(
+    community.body
+  )
+  if (!parsedOfficial.success || !parsedCommunity.success) return null
+  return [...parsedOfficial.data.templates, ...parsedCommunity.data.templates]
+}
+
+function writeCachedTemplates(
+  officialKey: string,
+  communityKey: string,
+  result: { templates: TemplateV1[] },
+  communityResult: { templates: CommunityTemplateV1[] }
+): void {
+  const parsedOfficial = TemplatesListResponseV1.safeParse(result)
+  const parsedCommunity =
+    CommunityTemplatesListResponseV1.safeParse(communityResult)
+  if (!parsedOfficial.success || !parsedCommunity.success) return
+  try {
+    writeDiskCache(officialKey, parsedOfficial.data, null)
+    writeDiskCache(communityKey, parsedCommunity.data, null)
+  } catch {
+    // Cache persistence is best-effort; successful live data remains usable.
+  }
+}
+
+function parseAddressCache(address: string, body: unknown): Template | null {
+  const parsed = address.startsWith("@")
+    ? CommunityTemplateSchema.safeParse(body)
+    : TemplateSchema.safeParse(body)
+  return parsed.success ? parsed.data : null
+}
+
+function readCachedAddress(address: string, key: string): Template | null {
+  const entry = readDiskCache(key)
+  if (!entry || !isFreshCacheEntry(entry)) return null
+  return parseAddressCache(address, entry.body)
+}
+
+function writeCachedAddress(
+  address: string,
+  key: string,
+  template: Template
+): void {
+  const parsed = parseAddressCache(address, template)
+  if (!parsed) return
+  try {
+    writeDiskCache(key, parsed, null)
+  } catch {
+    // Cache persistence is best-effort; successful live data remains usable.
+  }
+}
+
+async function fetchAddressFromApi(address: string): Promise<Template | null> {
+  if (!address.startsWith("@")) return orpc.templates.detail({ slug: address })
+  const [, organizationSlug, templateSlug] =
+    /^@([^/]+)\/(.+)$/.exec(address) ?? []
+  if (!organizationSlug || !templateSlug) return null
+  return orpc.templates.community.detail({ organizationSlug, templateSlug })
 }
 
 /**
@@ -77,50 +164,21 @@ export const fetchTemplates = async (
   const officialKey = responseCacheKey("templates-official")
   const communityKey = responseCacheKey("templates-community")
   if (options.useLocalCache && !options.refresh) {
-    const official = readDiskCache(officialKey)
-    const community = readDiskCache(communityKey)
-    const valid = (entry: typeof official) =>
-      entry &&
-      Date.now() - Date.parse(entry.fetchedAt) >= 0 &&
-      Date.now() - Date.parse(entry.fetchedAt) < RESPONSE_CACHE_TTL_MS
-    const parsedOfficial =
-      official && TemplatesListResponseV1.safeParse(official.body)
-    const parsedCommunity =
-      community && CommunityTemplatesListResponseV1.safeParse(community.body)
-    if (
-      valid(official) &&
-      valid(community) &&
-      parsedOfficial?.success &&
-      parsedCommunity?.success
-    ) {
-      return [
-        ...parsedOfficial.data.templates,
-        ...parsedCommunity.data.templates,
-      ]
-    }
+    const cached = readCachedTemplates(officialKey, communityKey)
+    if (cached) return cached
   }
   if (!options.skipVersionCheck) {
     await maybeWarnAboutOutdatedCli()
   }
 
   try {
-    const [result, communityResult] = await Promise.all([
-      orpc.templates.list(),
-      orpc.templates.community.list(),
-    ])
-    if (options.useLocalCache) {
-      try {
-        const parsedOfficial = TemplatesListResponseV1.safeParse(result)
-        const parsedCommunity =
-          CommunityTemplatesListResponseV1.safeParse(communityResult)
-        if (parsedOfficial.success && parsedCommunity.success) {
-          writeDiskCache(officialKey, parsedOfficial.data, null)
-          writeDiskCache(communityKey, parsedCommunity.data, null)
-        }
-      } catch {
-        // Cache persistence is best-effort; successful live data remains usable.
-      }
-    }
+    const [result, communityResult] = await Promise.all(
+      options.legacyV1List
+        ? [orpc.templates.list(), orpc.templates.community.list()]
+        : [orpc.templates.summary(), orpc.templates.community.summary()]
+    )
+    if (options.useLocalCache)
+      writeCachedTemplates(officialKey, communityKey, result, communityResult)
     return [...result.templates, ...communityResult.templates]
   } catch (e) {
     throw normaliseError(e)
@@ -140,19 +198,19 @@ export const resolveTemplateBySlug = async (
 
 /** Fetch one currently public template, without reading either catalog. */
 export const fetchTemplateByAddress = async (
-  address: string
+  address: string,
+  options: { useLocalCache?: boolean; refresh?: boolean } = {}
 ): Promise<Template | null> => {
+  const key = responseCacheKey(`template-${encodeURIComponent(address)}`)
+  if (options.useLocalCache && !options.refresh) {
+    const cached = readCachedAddress(address, key)
+    if (cached) return cached
+  }
   try {
-    if (address.startsWith("@")) {
-      const [, organizationSlug, templateSlug] =
-        /^@([^/]+)\/(.+)$/.exec(address) ?? []
-      if (!organizationSlug || !templateSlug) return null
-      return await orpc.templates.community.detail({
-        organizationSlug,
-        templateSlug,
-      })
-    }
-    return await orpc.templates.detail({ slug: address })
+    const result = await fetchAddressFromApi(address)
+    if (result && options.useLocalCache)
+      writeCachedAddress(address, key, result)
+    return result
   } catch (e) {
     throw normaliseError(e)
   }

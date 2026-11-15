@@ -65,8 +65,8 @@ const TemplatesIndexPage = async ({
   let templates: CatalogTemplate[] = []
   try {
     const [result, communityResult] = await Promise.all([
-      orpc.templates.list(undefined, liveCache),
-      orpc.templates.community.list(undefined, liveCache),
+      orpc.templates.summary(undefined, liveCache),
+      orpc.templates.community.summary(undefined, liveCache),
     ])
     // Defensive: `result.templates` may be undefined if the upstream
     // returns a malformed payload (the oRPC route handler already

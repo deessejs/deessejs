@@ -42,7 +42,7 @@ const templateRow = {
   stars: 42,
 }
 
-const mockQuery = (rows: (typeof templateRow)[]) => {
+const mockQuery = (rows: unknown[]) => {
   const query = {
     from: vi.fn(),
     innerJoin: vi.fn(),
@@ -69,7 +69,7 @@ describe("templates.list", () => {
     const result = await call(appRouter.templates.list, undefined, { context })
 
     expect(selectMock).toHaveBeenCalledWith(
-      expect.not.objectContaining({ readme: expect.anything() })
+      expect.objectContaining({ readme: expect.anything() })
     )
     expect(result).toEqual({
       templates: [
@@ -84,6 +84,7 @@ describe("templates.list", () => {
           labels: ["nextjs", "saas", "auth"],
           image: "/ship-your-saas.png",
           cloneUrl: "https://github.com/deessejs/saas-template",
+          readme: "# SaaS Starter",
           updatedAt: "2026-01-02T03:04:05.000Z",
           stars: 42,
         },
@@ -129,6 +130,74 @@ describe("templates.detail", () => {
     await expect(
       call(appRouter.templates.detail, { slug: "missing" }, { context })
     ).resolves.toBeNull()
+  })
+})
+
+describe("templates.summary", () => {
+  it("returns compact rows without README while preserving the V1 list payload", async () => {
+    mockQuery([templateRow])
+    const result = await call(appRouter.templates.summary, undefined, {
+      context,
+    })
+    expect(result.templates[0]).not.toHaveProperty("readme")
+    expect(result.templates[0].slug).toBe("saas-starter")
+  })
+})
+
+describe("templates.community public summary and detail", () => {
+  const publication = {
+    organizationSlug: "acme",
+    organizationName: "Acme",
+    slug: "starter",
+    name: "Starter",
+    description: "A community starter",
+    owner: "acme",
+    repo: "starter",
+    license: "MIT",
+    category: "saas",
+    labels: ["nextjs"],
+    imageName: null,
+    imageObjectId: null,
+    canonicalUrl: "https://github.com/acme/starter",
+    repositoryUpdatedAt: null,
+    stars: null,
+    sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+    readme: "# Starter",
+  }
+
+  it("maps public summaries without README and detail with README", async () => {
+    mockQuery([publication])
+    const summary = await call(
+      appRouter.templates.community.summary,
+      undefined,
+      { context }
+    )
+    expect(summary.templates[0]).toMatchObject({
+      slug: "@acme/starter",
+      community: true,
+    })
+    expect(summary.templates[0]).not.toHaveProperty("readme")
+    mockQuery([publication])
+    const detail = await call(
+      appRouter.templates.community.detail,
+      { organizationSlug: "acme", templateSlug: "starter" },
+      { context }
+    )
+    expect(detail).toMatchObject({ slug: "@acme/starter", readme: "# Starter" })
+  })
+
+  it("does not return pending or unpublished rows", async () => {
+    mockQuery([])
+    await expect(
+      call(
+        appRouter.templates.community.detail,
+        { organizationSlug: "acme", templateSlug: "hidden" },
+        { context }
+      )
+    ).resolves.toBeNull()
+    await expect(
+      call(appRouter.templates.community.summary, undefined, { context })
+    ).resolves.toEqual({ templates: [] })
   })
 })
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { cache } from "react"
 
 import { TemplateDetail } from "@/components/templates/template-detail"
 import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
@@ -7,20 +8,21 @@ import type { CommunityTemplateV1 } from "@workspace/contracts/v1"
 
 type Params = { organization_slug: string; template_slug: string }
 
-async function getCommunityTemplate(
-  organizationSlug: string,
-  templateSlug: string,
-  cache = liveCache
-): Promise<CommunityTemplateV1 | null> {
-  return orpc.templates.community.detail(
-    { organizationSlug, templateSlug },
-    cache
-  )
-}
+const getCommunityTemplate = cache(
+  async (
+    organizationSlug: string,
+    templateSlug: string
+  ): Promise<CommunityTemplateV1 | null> => {
+    return orpc.templates.community.detail(
+      { organizationSlug, templateSlug },
+      liveCache
+    )
+  }
+)
 
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const { templates } = await orpc.templates.community.list(
+    const { templates } = await orpc.templates.community.summary(
       undefined,
       staticParamsCache
     )

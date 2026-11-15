@@ -277,8 +277,8 @@ describe.skipIf(process.platform !== "linux")(
             .filter((path) => path.includes("/api/v1/rpc/templates/")),
           `${coldList.stdout}\n${coldList.stderr}\n${traceRequests().join("\n")}`
         ).toEqual([
-          "https://app.deessejs.com/api/v1/rpc/templates/list",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
+          "https://app.deessejs.com/api/v1/rpc/templates/summary",
+          "https://app.deessejs.com/api/v1/rpc/templates/community/summary",
         ])
         const beforeWarmList = requestPaths().length
         const warmList = await runCommand(cliExecutable, ["list", "--json"], {
@@ -417,7 +417,7 @@ describe.skipIf(process.platform !== "linux")(
               request.startsWith("POST https://app.deessejs.com")
             )
             .map((request) => request.split(" ")[1])
-        ).toEqual(["https://app.deessejs.com/api/v1/rpc/templates/detail"])
+        ).toEqual([])
         expect(catalogInfoResult.stdout).toContain(
           "Install: deessejs init init-regression-fixture"
         )
@@ -449,8 +449,6 @@ describe.skipIf(process.platform !== "linux")(
           .map((request) => request.split(" ")[1])
         expect(unknownInfoRequests).toEqual([
           "https://app.deessejs.com/api/v1/rpc/templates/detail",
-          "https://app.deessejs.com/api/v1/rpc/templates/list",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
         ])
 
         const directInfoResult = await runCommand(
@@ -846,14 +844,28 @@ describe.skipIf(process.platform !== "linux")(
           allRequests
             .filter((request) => request.includes("/rpc/templates/"))
             .join("\n")
-        ).toHaveLength(3)
+        ).toHaveLength(1)
         expect(
           allRequests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
             )
           )
-        ).toHaveLength(3)
+        ).toHaveLength(1)
+        expect(
+          allRequests.filter((request) =>
+            request.startsWith(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/summary"
+            )
+          )
+        ).toHaveLength(1)
+        expect(
+          allRequests.filter((request) =>
+            request.startsWith(
+              "POST https://app.deessejs.com/api/v1/rpc/templates/community/summary"
+            )
+          )
+        ).toHaveLength(1)
         expect(
           allRequests.filter((request) =>
             request.startsWith(

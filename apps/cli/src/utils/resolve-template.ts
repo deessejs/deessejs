@@ -17,9 +17,18 @@ export type ResolvedTemplateSource = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
-async function fetchTemplatesForInfo(): Promise<Template[]> {
+async function fetchTemplatesForInfo(
+  legacyV1List = false,
+  useLocalCache = false,
+  refresh = false
+): Promise<Template[]> {
   try {
-    return await fetchTemplates({ skipVersionCheck: true })
+    return await fetchTemplates({
+      skipVersionCheck: true,
+      legacyV1List,
+      useLocalCache,
+      refresh,
+    })
   } catch (error) {
     if (error instanceof Error && error.name === "CliError") throw error
     const detail =
@@ -34,7 +43,12 @@ async function fetchTemplatesForInfo(): Promise<Template[]> {
 
 export async function resolveTemplateSource(
   slugOrUrl: string,
-  options: { skipVersionCheck?: boolean; fastCatalogLookup?: boolean } = {}
+  options: {
+    skipVersionCheck?: boolean
+    fastCatalogLookup?: boolean
+    useLocalCache?: boolean
+    refresh?: boolean
+  } = {}
 ): Promise<ResolvedTemplateSource> {
   const directRepository = parseGitHubRepositoryUrl(slugOrUrl)
   if (looksLikeUrl(slugOrUrl) && !directRepository) {
@@ -59,7 +73,11 @@ export async function resolveTemplateSource(
   if (options.fastCatalogLookup !== false) {
     let catalogTemplates: Template[] | undefined
     try {
-      template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
+      template =
+        (await fetchTemplateByAddress(slugOrUrl, {
+          useLocalCache: options.useLocalCache ?? false,
+          refresh: options.refresh ?? false,
+        })) ?? undefined
     } catch (error) {
       // Older deployed API versions may not yet expose targeted detail reads.
       // Fall back only when the procedure is absent, not for service failures.
@@ -72,11 +90,19 @@ export async function resolveTemplateSource(
       ) {
         throw error
       }
-      catalogTemplates = await fetchTemplatesForInfo()
+      catalogTemplates = await fetchTemplatesForInfo(
+        true,
+        options.useLocalCache ?? false,
+        options.refresh ?? false
+      )
       template = catalogTemplates.find((item) => item.slug === slugOrUrl)
     }
     if (!template) {
-      catalogTemplates ??= await fetchTemplatesForInfo()
+      catalogTemplates ??= await fetchTemplatesForInfo(
+        false,
+        options.useLocalCache ?? false,
+        options.refresh ?? false
+      )
       throw notFound(
         slugOrUrl,
         catalogTemplates.map((item) => item.slug)
