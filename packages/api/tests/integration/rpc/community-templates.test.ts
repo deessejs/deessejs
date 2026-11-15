@@ -2,7 +2,7 @@
  * @testClass integration
  * @database postgres
  *
- * Verify that public community template reads expose only current approved
+ * Verify that the public community list exposes only current approved
  * publications at the database boundary.
  */
 import { randomUUID } from "node:crypto"
@@ -23,7 +23,7 @@ describe("public community template reads", () => {
   if (!POSTGRES_READY) {
     it.skip("requires Postgres", () => {})
   } else {
-    it("returns only approved current publications from summary and detail", async () => {
+    it("returns only approved current publications from list and detail", async () => {
       const suffix = randomUUID()
       const organizationId = `community-read-${suffix}`
       const userId = `community-read-${suffix}`
@@ -87,8 +87,8 @@ describe("public community template reads", () => {
           }))
         )
 
-        const summaryResponse = await api.request(
-          "/api/v1/rpc/templates/community/summary",
+        const listResponse = await api.request(
+          "/api/v1/rpc/templates/community/list",
           {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -98,15 +98,15 @@ describe("public community template reads", () => {
             }),
           }
         )
-        expect(summaryResponse.status).toBe(200)
-        const summary = await summaryResponse.json()
-        const summarySlugs = summary.json.templates.map(
+        expect(listResponse.status).toBe(200)
+        const list = await listResponse.json()
+        const listSlugs = list.json.templates.map(
           (template: { slug: string }) => template.slug
         )
-        expect(summarySlugs).toContain(`@${orgSlug}/visible`)
-        expect(summarySlugs).not.toContain(`@${orgSlug}/pending`)
-        expect(summarySlugs).not.toContain(`@${orgSlug}/unpublished`)
-        expect(summary.json.templates[0]).not.toHaveProperty("readme")
+        expect(listSlugs).toContain(`@${orgSlug}/visible`)
+        expect(listSlugs).not.toContain(`@${orgSlug}/pending`)
+        expect(listSlugs).not.toContain(`@${orgSlug}/unpublished`)
+        expect(list.json.templates[0]).not.toHaveProperty("readme")
 
         for (const hiddenSlug of ["pending", "unpublished"]) {
           const hiddenResponse = await api.request(

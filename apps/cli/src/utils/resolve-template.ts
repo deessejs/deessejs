@@ -2,6 +2,7 @@ import {
   fetchTemplateByAddress,
   fetchTemplates,
   type Template,
+  type TemplateSummary,
 } from "../api/index.js"
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
@@ -17,11 +18,9 @@ export type ResolvedTemplateSource = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
-async function fetchTemplatesForInfo(
-  legacyV1List = false
-): Promise<Template[]> {
+async function fetchTemplatesForInfo(): Promise<TemplateSummary[]> {
   try {
-    return await fetchTemplates({ skipVersionCheck: true, legacyV1List })
+    return await fetchTemplates({ skipVersionCheck: true })
   } catch (error) {
     if (error instanceof Error && error.name === "CliError") throw error
     const detail =
@@ -59,24 +58,8 @@ export async function resolveTemplateSource(
 
   let template: TemplateSource | undefined
   if (options.fastCatalogLookup !== false) {
-    let catalogTemplates: Template[] | undefined
-    try {
-      template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
-    } catch (error) {
-      // Older deployed API versions may not yet expose targeted detail reads.
-      // Fall back only when the procedure is absent, not for service failures.
-      if (
-        !(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "NOT_FOUND"
-        )
-      ) {
-        throw error
-      }
-      catalogTemplates = await fetchTemplatesForInfo(true)
-      template = catalogTemplates.find((item) => item.slug === slugOrUrl)
-    }
+    let catalogTemplates: TemplateSummary[] | undefined
+    template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
     if (!template) {
       catalogTemplates ??= await fetchTemplatesForInfo()
       throw notFound(

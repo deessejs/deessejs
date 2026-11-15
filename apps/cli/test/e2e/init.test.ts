@@ -304,43 +304,6 @@ describe.skipIf(process.platform !== "linux")(
             )
           )
         ).toBe(false)
-        const legacyApiEnv = {
-          ...env,
-          DEESSEJS_INIT_LEGACY_DETAIL_API: "1",
-        }
-        const legacyApiProject = join(consumerDirectory, "legacy-api-project")
-        const requestsBeforeLegacyApi = readFileSync(fetchTracePath, "utf8")
-          .trim()
-          .split("\n").length
-        const legacyApiResult = await runCommand(
-          cliExecutable,
-          [
-            "init",
-            "init-regression-fixture",
-            "--dir",
-            legacyApiProject,
-            "--no-install",
-            "--json",
-          ],
-          { cwd: consumerDirectory, env: legacyApiEnv, timeout: 2 * 60_000 }
-        )
-        expect(
-          legacyApiResult.exitCode,
-          `${legacyApiResult.stdout}\n${legacyApiResult.stderr}`
-        ).toBe(0)
-        const legacyApiRequests = readFileSync(fetchTracePath, "utf8")
-          .trim()
-          .split("\n")
-          .slice(requestsBeforeLegacyApi)
-          .filter((request) =>
-            request.startsWith("POST https://app.deessejs.com")
-          )
-          .map((request) => request.split(" ")[1])
-        expect(legacyApiRequests).toEqual([
-          "https://app.deessejs.com/api/v1/rpc/templates/detail",
-          "https://app.deessejs.com/api/v1/rpc/templates/list",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
-        ])
         expect(
           initialInitRequests.some((request) =>
             request.startsWith(
@@ -430,8 +393,8 @@ describe.skipIf(process.platform !== "linux")(
           .map((request) => request.split(" ")[1])
         expect(unknownInfoRequests).toEqual([
           "https://app.deessejs.com/api/v1/rpc/templates/detail",
-          "https://app.deessejs.com/api/v1/rpc/templates/summary",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/summary",
+          "https://app.deessejs.com/api/v1/rpc/templates/list",
+          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
         ])
 
         const directInfoResult = await runCommand(
@@ -815,7 +778,7 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           requests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(15)
+        ).toBe(14)
         expect(
           requests.filter((request) =>
             request.startsWith(
@@ -830,20 +793,6 @@ describe.skipIf(process.platform !== "linux")(
           requests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
-            )
-          )
-        ).toHaveLength(1)
-        expect(
-          requests.filter((request) =>
-            request.startsWith(
-              "POST https://app.deessejs.com/api/v1/rpc/templates/summary"
-            )
-          )
-        ).toHaveLength(1)
-        expect(
-          requests.filter((request) =>
-            request.startsWith(
-              "POST https://app.deessejs.com/api/v1/rpc/templates/community/summary"
             )
           )
         ).toHaveLength(1)

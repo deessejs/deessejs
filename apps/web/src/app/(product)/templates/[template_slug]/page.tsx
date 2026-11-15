@@ -26,7 +26,7 @@ const getTemplate = cache((slug: string) =>
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const result = await orpc.templates.summary(undefined, staticParamsCache)
+    const result = await orpc.templates.list(undefined, staticParamsCache)
     return result.templates.map((t) => ({ template_slug: t.slug }))
   } catch {
     return []

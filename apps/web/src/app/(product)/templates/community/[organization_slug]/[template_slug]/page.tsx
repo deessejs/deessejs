@@ -22,7 +22,7 @@ const getCommunityTemplate = cache(
 
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const { templates } = await orpc.templates.community.summary(
+    const { templates } = await orpc.templates.community.list(
       undefined,
       staticParamsCache
     )

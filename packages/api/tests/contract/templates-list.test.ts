@@ -63,13 +63,13 @@ beforeEach(() => {
 })
 
 describe("templates.list", () => {
-  it("projects the database catalog into the declared V1 wire shape", async () => {
+  it("projects a compact catalog response without README", async () => {
     mockQuery([templateRow])
 
     const result = await call(appRouter.templates.list, undefined, { context })
 
     expect(selectMock).toHaveBeenCalledWith(
-      expect.objectContaining({ readme: expect.anything() })
+      expect.not.objectContaining({ readme: expect.anything() })
     )
     expect(result).toEqual({
       templates: [
@@ -84,7 +84,6 @@ describe("templates.list", () => {
           labels: ["nextjs", "saas", "auth"],
           image: "/ship-your-saas.png",
           cloneUrl: "https://github.com/deessejs/saas-template",
-          readme: "# SaaS Starter",
           updatedAt: "2026-01-02T03:04:05.000Z",
           stars: 42,
         },
@@ -140,18 +139,7 @@ describe("templates.detail", () => {
   })
 })
 
-describe("templates.summary", () => {
-  it("returns compact rows without README while preserving the V1 list payload", async () => {
-    mockQuery([templateRow])
-    const result = await call(appRouter.templates.summary, undefined, {
-      context,
-    })
-    expect(result.templates[0]).not.toHaveProperty("readme")
-    expect(result.templates[0].slug).toBe("saas-starter")
-  })
-})
-
-describe("templates.community public summary and detail", () => {
+describe("templates.community public list and detail", () => {
   const publication = {
     organizationSlug: "acme",
     organizationName: "Acme",
@@ -172,18 +160,21 @@ describe("templates.community public summary and detail", () => {
     readme: "# Starter",
   }
 
-  it("maps public summaries without README and detail with README", async () => {
+  it("maps public list rows without README and detail with README", async () => {
     mockQuery([publication])
-    const summary = await call(
-      appRouter.templates.community.summary,
+    const list = await call(
+      appRouter.templates.community.list,
       undefined,
       { context }
     )
-    expect(summary.templates[0]).toMatchObject({
+    expect(list.templates[0]).toMatchObject({
       slug: "@acme/starter",
       community: true,
     })
-    expect(summary.templates[0]).not.toHaveProperty("readme")
+    expect(list.templates[0]).not.toHaveProperty("readme")
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ readme: expect.anything() })
+    )
     mockQuery([publication])
     const detail = await call(
       appRouter.templates.community.detail,
@@ -203,7 +194,7 @@ describe("templates.community public summary and detail", () => {
       )
     ).resolves.toBeNull()
     await expect(
-      call(appRouter.templates.community.summary, undefined, { context })
+      call(appRouter.templates.community.list, undefined, { context })
     ).resolves.toEqual({ templates: [] })
   })
 

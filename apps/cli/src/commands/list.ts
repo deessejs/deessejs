@@ -36,9 +36,7 @@ function renderTemplates(
   _spinner: ListSpinner
 ): void {
   if (options.json) {
-    printJson({
-      templates: templates.map(({ readme: _readme, ...template }) => template),
-    })
+    printJson({ templates })
     return
   }
   if (options.category) console.log(pc.dim(`Category: ${options.category}`))

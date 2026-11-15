@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest"
 import {
   TemplateV1,
   TemplatesListResponseV1,
-  TemplatesSummaryResponseV1,
 } from "../src/v1/index.js"
 
 const validTemplate = {
@@ -53,15 +52,8 @@ describe("TemplateV1", () => {
 })
 
 describe("TemplatesListResponseV1", () => {
-  it("preserves the optional README field for V1 list clients", () => {
+  it("omits README from the compact V1 list payload", () => {
     const result = TemplatesListResponseV1.parse({
-      templates: [{ ...validTemplate, readme: "# Detail only" }],
-    })
-    expect(result.templates[0].readme).toBe("# Detail only")
-  })
-
-  it("keeps README out of the additive summary response", () => {
-    const result = TemplatesSummaryResponseV1.parse({
       templates: [{ ...validTemplate, readme: "# Detail only" }],
     })
     expect(result.templates[0]).not.toHaveProperty("readme")
