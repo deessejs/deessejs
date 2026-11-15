@@ -43,7 +43,8 @@
     "remark-gfm": "catalog:",
     "shiki": "catalog:",
     "sonner": "catalog:",
-    "zustand": "catalog:"
+    "zustand": "catalog:",
+    "@workspace/content": "workspace:*"
   },
   "devDependencies": {
     "@content-collections/cli": "catalog:",

@@ -216,7 +216,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let communityTemplatePages: MetadataRoute.Sitemap = []
   try {
-    const { templates } = await orpc.templates.community.summary(
+    const { templates } = await orpc.templates.community.list(
       undefined,
       staticParamsCache
     )

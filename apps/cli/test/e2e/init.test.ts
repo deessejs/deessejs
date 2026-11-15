@@ -277,8 +277,8 @@ describe.skipIf(process.platform !== "linux")(
             .filter((path) => path.includes("/api/v1/rpc/templates/")),
           `${coldList.stdout}\n${coldList.stderr}\n${traceRequests().join("\n")}`
         ).toEqual([
-          "https://app.deessejs.com/api/v1/rpc/templates/summary",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/summary",
+          "https://app.deessejs.com/api/v1/rpc/templates/list",
+          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
         ])
         const beforeWarmList = requestPaths().length
         const warmList = await runCommand(cliExecutable, ["list", "--json"], {
@@ -331,43 +331,6 @@ describe.skipIf(process.platform !== "linux")(
             )
             .map((request) => request.split(" ")[1])
         ).toEqual(["https://app.deessejs.com/api/v1/rpc/templates/detail"])
-        const legacyApiEnv = {
-          ...env,
-          DEESSEJS_INIT_LEGACY_DETAIL_API: "1",
-        }
-        const legacyApiProject = join(consumerDirectory, "legacy-api-project")
-        const requestsBeforeLegacyApi = readFileSync(fetchTracePath, "utf8")
-          .trim()
-          .split("\n").length
-        const legacyApiResult = await runCommand(
-          cliExecutable,
-          [
-            "init",
-            "init-regression-fixture",
-            "--dir",
-            legacyApiProject,
-            "--no-install",
-            "--json",
-          ],
-          { cwd: consumerDirectory, env: legacyApiEnv, timeout: 2 * 60_000 }
-        )
-        expect(
-          legacyApiResult.exitCode,
-          `${legacyApiResult.stdout}\n${legacyApiResult.stderr}`
-        ).toBe(0)
-        const legacyApiRequests = readFileSync(fetchTracePath, "utf8")
-          .trim()
-          .split("\n")
-          .slice(requestsBeforeLegacyApi)
-          .filter((request) =>
-            request.startsWith("POST https://app.deessejs.com")
-          )
-          .map((request) => request.split(" ")[1])
-        expect(legacyApiRequests).toEqual([
-          "https://app.deessejs.com/api/v1/rpc/templates/detail",
-          "https://app.deessejs.com/api/v1/rpc/templates/list",
-          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
-        ])
         const requestsBeforeCatalogInfo = readFileSync(fetchTracePath, "utf8")
           .trim()
           .split("\n").length
@@ -834,7 +797,7 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         expect(
           allRequests.filter((request) => request.includes("/tarball/")).length
-        ).toBe(15)
+        ).toBe(14)
         expect(
           allRequests.filter((request) =>
             request.startsWith(
@@ -849,20 +812,6 @@ describe.skipIf(process.platform !== "linux")(
           allRequests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
-            )
-          )
-        ).toHaveLength(1)
-        expect(
-          allRequests.filter((request) =>
-            request.startsWith(
-              "POST https://app.deessejs.com/api/v1/rpc/templates/summary"
-            )
-          )
-        ).toHaveLength(1)
-        expect(
-          allRequests.filter((request) =>
-            request.startsWith(
-              "POST https://app.deessejs.com/api/v1/rpc/templates/community/summary"
             )
           )
         ).toHaveLength(1)

@@ -1,6 +1,11 @@
 import { toORPCError } from "@orpc/client"
 import { fromAsyncThrowable } from "@deessejs/fp"
-import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
+import type {
+  CommunityTemplateSummaryV1,
+  CommunityTemplateV1,
+  TemplateSummaryV1,
+  TemplateV1,
+} from "@workspace/contracts/v1"
 import {
   CommunityTemplateV1 as CommunityTemplateSchema,
   CommunityTemplatesListResponseV1,
@@ -19,13 +24,13 @@ import {
 } from "../cache/index.js"
 
 export type Template = TemplateV1 | CommunityTemplateV1
+export type TemplateSummary = TemplateSummaryV1 | CommunityTemplateSummaryV1
 
 export type FetchOptions = {
   /** Skip the version probe. Used by info and by the version probe itself. */
   skipVersionCheck?: boolean
   useLocalCache?: boolean
   refresh?: boolean
-  legacyV1List?: boolean
 }
 
 const isFreshCacheEntry = (
@@ -39,7 +44,7 @@ const isFreshCacheEntry = (
 function readCachedTemplates(
   officialKey: string,
   communityKey: string
-): Template[] | null {
+): TemplateSummary[] | null {
   const official = readDiskCache(officialKey)
   const community = readDiskCache(communityKey)
   if (
@@ -62,8 +67,8 @@ function readCachedTemplates(
 function writeCachedTemplates(
   officialKey: string,
   communityKey: string,
-  result: { templates: TemplateV1[] },
-  communityResult: { templates: CommunityTemplateV1[] }
+  result: { templates: TemplateSummaryV1[] },
+  communityResult: { templates: CommunityTemplateSummaryV1[] }
 ): void {
   const parsedOfficial = TemplatesListResponseV1.safeParse(result)
   const parsedCommunity =
@@ -144,7 +149,7 @@ export const normaliseError = (e: unknown): Error => {
  * Flow:
  *   1. (If not skipVersionCheck) probe /version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
- *   2. Call templates.list on the shared typed client. Retry on
+ *   2. Call the compact official and community list procedures. Retry on
  *      5xx and 429 is handled by the official oRPC plugins configured
  *      in ./client.ts.
  *   3. Surface typed errors via `normaliseError`.
@@ -160,7 +165,7 @@ export const normaliseError = (e: unknown): Error => {
  */
 export const fetchTemplates = async (
   options: FetchOptions = {}
-): Promise<Template[]> => {
+): Promise<TemplateSummary[]> => {
   const officialKey = responseCacheKey("templates-official")
   const communityKey = responseCacheKey("templates-community")
   if (options.useLocalCache && !options.refresh) {
@@ -172,11 +177,10 @@ export const fetchTemplates = async (
   }
 
   try {
-    const [result, communityResult] = await Promise.all(
-      options.legacyV1List
-        ? [orpc.templates.list(), orpc.templates.community.list()]
-        : [orpc.templates.summary(), orpc.templates.community.summary()]
-    )
+    const [result, communityResult] = await Promise.all([
+      orpc.templates.list(),
+      orpc.templates.community.list(),
+    ])
     if (options.useLocalCache)
       writeCachedTemplates(officialKey, communityKey, result, communityResult)
     return [...result.templates, ...communityResult.templates]

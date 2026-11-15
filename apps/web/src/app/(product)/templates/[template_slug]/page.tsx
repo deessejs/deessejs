@@ -26,7 +26,7 @@ const getTemplate = cache((slug: string) =>
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const result = await orpc.templates.summary(undefined, staticParamsCache)
+    const result = await orpc.templates.list(undefined, staticParamsCache)
     return result.templates.map((t) => ({ template_slug: t.slug }))
   } catch {
     return []
@@ -58,8 +58,9 @@ export const generateMetadata = async ({
   }
 }
 
-/** Detail page at /templates/[template_slug]. */
 /**
+ * Detail page at /templates/[template_slug].
+ *
  * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
  * transient failure cannot poison the Next.js data cache. On a
  * runtime error the request propagates to the segment's `error.tsx`

@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { TemplateV1 } from "./template.js"
 import { TemplateSummaryV1 } from "./template-summary.js"
 
 /**
@@ -10,14 +9,7 @@ import { TemplateSummaryV1 } from "./template-summary.js"
  * and apps/web already consume.
  */
 export const TemplatesListResponseV1 = z.object({
-  templates: z.array(TemplateV1),
+  templates: z.array(TemplateSummaryV1),
 })
 
 export type TemplatesListResponseV1 = z.infer<typeof TemplatesListResponseV1>
-
-export const TemplatesSummaryResponseV1 = z.object({
-  templates: z.array(TemplateSummaryV1),
-})
-export type TemplatesSummaryResponseV1 = z.infer<
-  typeof TemplatesSummaryResponseV1
->

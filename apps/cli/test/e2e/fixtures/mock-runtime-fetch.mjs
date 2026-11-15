@@ -83,17 +83,6 @@ const githubResponse = (pathname) => {
 }
 
 function templateDetailResponse(body) {
-  if (process.env.DEESSEJS_INIT_LEGACY_DETAIL_API === "1") {
-    return new globalThis.Response(
-      JSON.stringify({
-        defined: false,
-        code: "NOT_FOUND",
-        message: "Route not found",
-        requestId: "legacy-api-test-request",
-      }),
-      { status: 404, headers: { "content-type": "application/json" } }
-    )
-  }
   const parsed = JSON.parse(String(body ?? "{}"))
   const slug = parsed.json?.slug ?? parsed.slug
   return jsonResponse({
@@ -130,9 +119,7 @@ function appResponse(requestUrl, method, body) {
     return jsonResponse({ json: null })
   }
   if (
-    ["/api/v1/rpc/templates/list", "/api/v1/rpc/templates/summary"].includes(
-      requestUrl.pathname
-    ) &&
+    requestUrl.pathname === "/api/v1/rpc/templates/list" &&
     method === "POST"
   ) {
     return jsonResponse({
@@ -140,10 +127,7 @@ function appResponse(requestUrl, method, body) {
     })
   }
   if (
-    [
-      "/api/v1/rpc/templates/community/list",
-      "/api/v1/rpc/templates/community/summary",
-    ].includes(requestUrl.pathname) &&
+    requestUrl.pathname === "/api/v1/rpc/templates/community/list" &&
     method === "POST"
   ) {
     return jsonResponse({ json: { templates: [] } })

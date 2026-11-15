@@ -1,15 +1,11 @@
 import { ORPCError } from "@orpc/server"
 import { z } from "zod"
 import { and, asc, eq } from "drizzle-orm"
-import type {
+import {
   CommunityTemplateV1,
+  CommunityTemplatesListResponseV1,
   TemplateV1,
   TemplatesListResponseV1,
-  TemplatesSummaryResponseV1,
-} from "@workspace/contracts/v1"
-import {
-  CommunityTemplatesListResponseV1,
-  CommunityTemplatesSummaryResponseV1,
 } from "@workspace/contracts/v1"
 import {
   db,
@@ -204,13 +200,14 @@ export const list = base
         "Failed to load the templates catalog. Try again in a few minutes.",
     },
   })
+  .output(TemplatesListResponseV1)
   .handler(async ({ context }): Promise<TemplatesListResponseV1> => {
     const forced = e2eForceFail(context.headers)
     if (forced !== null) return forced
 
     try {
       const rows = await db
-        .select(publicTemplateDetailColumns)
+        .select(publicTemplateColumns)
         .from(templates)
         .innerJoin(
           templateRepositorySnapshots,
@@ -220,7 +217,7 @@ export const list = base
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
       return {
-        templates: rows.map((row) => toPublicTemplate(row)),
+        templates: rows.map((row) => toPublicTemplate({ ...row, readme: null })),
       }
     } catch (error) {
       const message =
@@ -236,25 +233,9 @@ export const list = base
     }
   })
 
-export const summary = base.handler(
-  async (): Promise<TemplatesSummaryResponseV1> => {
-    const rows = await db
-      .select(publicTemplateColumns)
-      .from(templates)
-      .innerJoin(
-        templateRepositorySnapshots,
-        eq(templates.id, templateRepositorySnapshots.templateId)
-      )
-      .where(eq(templates.ownerType, "platform"))
-      .orderBy(asc(templates.sortOrder), asc(templates.slug))
-    return {
-      templates: rows.map((row) => toPublicTemplate({ ...row, readme: null })),
-    }
-  }
-)
-
 export const detail = base
   .input(z.object({ slug: z.string().min(1) }))
+  .output(TemplateV1.nullable())
   .handler(async ({ input }): Promise<TemplateV1 | null> => {
     const [row] = await db
       .select(publicTemplateDetailColumns)
@@ -306,9 +287,9 @@ export const resolve = base
 const community = {
   list: base
     .output(CommunityTemplatesListResponseV1)
-    .handler(async (): Promise<{ templates: CommunityTemplateV1[] }> => {
+    .handler(async (): Promise<CommunityTemplatesListResponseV1> => {
       const rows = await db
-        .select(communityDetailColumns)
+        .select(communityListColumns)
         .from(templatePublications)
         .where(and(publicCommunity))
         .orderBy(
@@ -322,21 +303,6 @@ const community = {
       }
     }),
 
-  summary: base
-    .output(CommunityTemplatesSummaryResponseV1)
-    .handler(async () => {
-      const rows = await db
-        .select(communityListColumns)
-        .from(templatePublications)
-        .where(publicCommunity)
-        .orderBy(
-          asc(templatePublications.organizationName),
-          asc(templatePublications.name),
-          asc(templatePublications.slug)
-        )
-      return { templates: rows.map((row) => toCommunityTemplate(row)) }
-    }),
-
   detail: base
     .input(
       z.object({
@@ -344,6 +310,7 @@ const community = {
         templateSlug: z.string().min(1),
       })
     )
+    .output(CommunityTemplateV1.nullable())
     .handler(async ({ input }): Promise<CommunityTemplateV1 | null> => {
       const [row] = await db
         .select(communityDetailColumns)
@@ -409,7 +376,6 @@ const community = {
 
 export const templatesRouter = {
   list,
-  summary,
   detail,
   resolve,
   community,

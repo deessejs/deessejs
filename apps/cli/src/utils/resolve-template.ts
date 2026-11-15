@@ -2,6 +2,7 @@ import {
   fetchTemplateByAddress,
   fetchTemplates,
   type Template,
+  type TemplateSummary,
 } from "../api/index.js"
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
@@ -18,14 +19,12 @@ export type ResolvedTemplateSource = {
 }
 
 async function fetchTemplatesForInfo(
-  legacyV1List = false,
   useLocalCache = false,
   refresh = false
-): Promise<Template[]> {
+): Promise<TemplateSummary[]> {
   try {
     return await fetchTemplates({
       skipVersionCheck: true,
-      legacyV1List,
       useLocalCache,
       refresh,
     })
@@ -71,35 +70,14 @@ export async function resolveTemplateSource(
 
   let template: TemplateSource | undefined
   if (options.fastCatalogLookup !== false) {
-    let catalogTemplates: Template[] | undefined
-    try {
-      template =
-        (await fetchTemplateByAddress(slugOrUrl, {
-          useLocalCache: options.useLocalCache ?? false,
-          refresh: options.refresh ?? false,
-        })) ?? undefined
-    } catch (error) {
-      // Older deployed API versions may not yet expose targeted detail reads.
-      // Fall back only when the procedure is absent, not for service failures.
-      if (
-        !(
-          error instanceof Error &&
-          "code" in error &&
-          error.code === "NOT_FOUND"
-        )
-      ) {
-        throw error
-      }
-      catalogTemplates = await fetchTemplatesForInfo(
-        true,
-        options.useLocalCache ?? false,
-        options.refresh ?? false
-      )
-      template = catalogTemplates.find((item) => item.slug === slugOrUrl)
-    }
+    let catalogTemplates: TemplateSummary[] | undefined
+    template =
+      (await fetchTemplateByAddress(slugOrUrl, {
+        useLocalCache: options.useLocalCache ?? false,
+        refresh: options.refresh ?? false,
+      })) ?? undefined
     if (!template) {
       catalogTemplates ??= await fetchTemplatesForInfo(
-        false,
         options.useLocalCache ?? false,
         options.refresh ?? false
       )

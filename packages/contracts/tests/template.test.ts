@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { TemplateV1, TemplatesListResponseV1 } from "../src/v1/index.js"
+import {
+  TemplateV1,
+  TemplatesListResponseV1,
+} from "../src/v1/index.js"
 
 const validTemplate = {
   slug: "saas-starter",
@@ -49,7 +52,7 @@ describe("TemplateV1", () => {
 })
 
 describe("TemplatesListResponseV1", () => {
-  it("uses the compact summary while preserving compatibility with extra fields", () => {
+  it("omits README from the compact V1 list payload", () => {
     const result = TemplatesListResponseV1.parse({
       templates: [{ ...validTemplate, readme: "# Detail only" }],
     })
