@@ -24,6 +24,7 @@ describe("public web HTTP endpoints", () => {
     expect(missing.status).toBe(404)
     expect(await missing.text()).toBe("Not found")
     expect((await api.request(`${API_BASE_PATH}/r/button/extra.json`)).status).toBe(404)
+    expect((await api.request(`${API_BASE_PATH}/r/button`)).status).toBe(404)
   })
 
   it("serves the blog RSS with canonical links and cache headers", async () => {
@@ -48,5 +49,16 @@ describe("public web HTTP endpoints", () => {
     expect(body).toContain(`${serverEnv.WEB_URL}/changelog/0.3.1`)
     const versions = [...body.matchAll(/<guid isPermaLink="true">[^<]*\/changelog\/(\d+\.\d+\.\d+)<\/guid>/g)].map((match) => match[1])
     expect(versions).toEqual(["0.3.1", "0.3.0", "0.2.1", "0.2.0", "0.1.1", "0.1.0"])
+  })
+
+  it("serves paginated blog posts and preserves validation statuses", async () => {
+    const response = await api.request(`${API_BASE_PATH}/api/blog/posts?page=1`)
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.page).toBe(1)
+    expect(body.posts).toHaveLength(9)
+    expect(body.posts[0].date >= body.posts[1].date).toBe(true)
+    expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=0`)).status).toBe(400)
+    expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=1&tag=unknown`)).status).toBe(404)
   })
 })

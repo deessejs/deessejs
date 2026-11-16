@@ -15,7 +15,9 @@ const readCollection = async (folder, kind) => {
     if (kind === "posts" && field("draft") === "true") continue
     const scheduled = field("scheduled")
     if (scheduled && Date.parse(scheduled) > now) continue
-    output.push({ title: field("title"), description: field("description"), date: field("date"), url: `/${kind === "posts" ? "blog" : "changelog"}/${file.replace(/\.mdx$/, "")}`, ...(kind === "releases" ? { version: field("version") } : {}) })
+    const tags = frontmatter[1].match(/^tags:\s*\[([^\]]*)\]/m)?.[1]
+      ?.split(",").map((tag) => tag.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean) ?? []
+    output.push({ title: field("title"), description: field("description"), date: field("date"), url: `/${kind === "posts" ? "blog" : "changelog"}/${file.replace(/\.mdx$/, "")}`, ...(kind === "posts" ? { tags } : {}), ...(kind === "releases" ? { version: field("version") } : {}) })
   }
   output.sort((a, b) => kind === "posts"
     ? b.date.localeCompare(a.date)
