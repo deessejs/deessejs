@@ -203,7 +203,9 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     }
     const validTags = new Set(["engineering", "community", "news", "customers", "security"])
     if (tag && !validTags.has(tag)) return c.json({ error: "Invalid tag" }, 404)
-    const selected = posts.filter((post) => !tag || post.tags.includes(tag))
+    const selected = posts.filter(
+      (post) => !tag || post.tags.some((postTag) => postTag === tag),
+    )
     const pageSize = 9
     const start = (page - 1) * pageSize
     return c.json({ posts: selected.slice(start, start + pageSize), hasMore: start + pageSize < selected.length, page })

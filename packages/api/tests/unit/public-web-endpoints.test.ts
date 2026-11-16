@@ -35,7 +35,10 @@ describe("public web HTTP endpoints", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=3600, s-maxage=3600")
     expect(body).toContain(`<link>${serverEnv.WEB_URL}/blog</link>`)
     expect(body).toContain(`${serverEnv.WEB_URL}/blog/welcome`)
-    const dates = [...body.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)].map((match) => Date.parse(match[1]!))
+    const dates = [...body.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)]
+      .map((match) => match[1])
+      .filter((date): date is string => typeof date === "string")
+      .map(Date.parse)
     expect(dates).toEqual([...dates].sort((a, b) => b - a))
   })
 
