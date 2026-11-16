@@ -17,9 +17,13 @@ describe("public web HTTP endpoints", () => {
     const response = await api.request(`${API_BASE_PATH}/r/button.json`)
     expect(response.status).toBe(200)
     expect((await response.json()).name).toBe("button")
+    const namespaced = await api.request(`${API_BASE_PATH}/r/components/button.json`)
+    expect(namespaced.status).toBe(200)
+    expect((await namespaced.json()).name).toBe("button")
     const missing = await api.request(`${API_BASE_PATH}/r/does-not-exist.json`)
     expect(missing.status).toBe(404)
     expect(await missing.text()).toBe("Not found")
+    expect((await api.request(`${API_BASE_PATH}/r/button/extra.json`)).status).toBe(404)
   })
 
   it("serves the blog RSS with canonical links and cache headers", async () => {
@@ -30,6 +34,8 @@ describe("public web HTTP endpoints", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=3600, s-maxage=3600")
     expect(body).toContain(`<link>${serverEnv.WEB_URL}/blog</link>`)
     expect(body).toContain(`${serverEnv.WEB_URL}/blog/welcome`)
+    const dates = [...body.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)].map((match) => Date.parse(match[1]!))
+    expect(dates).toEqual([...dates].sort((a, b) => b - a))
   })
 
   it("serves the changelog RSS with canonical links and cache headers", async () => {
@@ -40,5 +46,7 @@ describe("public web HTTP endpoints", () => {
     expect(response.headers.get("cache-control")).toBe("public, max-age=3600, s-maxage=3600")
     expect(body).toContain(`<link>${serverEnv.WEB_URL}/changelog</link>`)
     expect(body).toContain(`${serverEnv.WEB_URL}/changelog/0.3.1`)
+    const versions = [...body.matchAll(/<guid isPermaLink="true">[^<]*\/changelog\/(\d+\.\d+\.\d+)<\/guid>/g)].map((match) => match[1])
+    expect(versions).toEqual(["0.3.1", "0.3.0", "0.2.1", "0.2.0", "0.1.1", "0.1.0"])
   })
 })
