@@ -69,6 +69,8 @@ describe("public web HTTP endpoints", () => {
     })
     expect(body.posts[0].slug).toEqual(expect.any(String))
     expect(body.posts[0].url).toBe(`/blog/${body.posts[0].slug}`)
+    expect(body.posts[0].readingTime).toEqual(expect.any(Number))
+    expect(body.posts.every((post: { readingTime: number }) => post.readingTime >= 1)).toBe(true)
     expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=0`)).status).toBe(400)
     expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=1&tag=unknown`)).status).toBe(404)
   })

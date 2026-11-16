@@ -26,6 +26,7 @@ describe("Next route handler guard", () => {
     const root = await fixture()
     await route(root, "apps/app/app/api/[[...route]]/route.ts")
     await route(root, "apps/docs/src/app/api/search/route.ts")
+    await route(root, "apps/app/.next/server/app/api/[[...route]]/route.js")
     const result = await checkRouteHandlers(root)
     assert.deepEqual(result.violations, [])
     assert.equal(result.found.length, 1)

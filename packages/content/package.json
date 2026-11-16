@@ -6,6 +6,9 @@
   "scripts": {
     "build": "node scripts/generate-feeds.mjs && tsc"
   },
+  "dependencies": {
+    "reading-time": "catalog:"
+  },
   "exports": {
     "./registry": {
       "types": "./dist/shadcn-registry/index.d.ts",

@@ -1,6 +1,7 @@
 import { readFile, readdir, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import readingTime from "reading-time"
 
 const base = resolve(fileURLToPath(new URL("../src", import.meta.url)))
 const now = Date.now()
@@ -30,7 +31,7 @@ const parseTags = (block) => block.match(/^tags:\s*\[([^\]]*)\]/m)?.[1]
 const parseAuthorHandles = (field) => field("authors")?.match(/[\w-]+/g)
   ?? (field("author") ? [field("author")] : [])
 
-const createRecord = (file, kind, field, block) => {
+const createRecord = (file, kind, field, block, content) => {
   const slug = file.replace(/\.mdx$/, "")
   const isPost = kind === "posts"
   const handles = isPost ? parseAuthorHandles(field) : []
@@ -43,6 +44,7 @@ const createRecord = (file, kind, field, block) => {
     ...(isPost ? {
       tags: parseTags(block),
       cover: field("cover"),
+      readingTime: Math.max(1, Math.round(readingTime(content).minutes)),
       author: authors.get(handles[0]),
       authors: handles.map((handle) => authors.get(handle)).filter(Boolean),
     } : {}),
@@ -54,7 +56,8 @@ const readEntry = async (folder, kind, file) => {
   const text = await readFile(join(base, folder, file), "utf8")
   const { field, block } = parseFields(text)
   if (!block || isSkipped(kind, field)) return undefined
-  return createRecord(file, kind, field, block)
+  const content = text.slice(text.indexOf("\n---", 3) + 4).trim()
+  return createRecord(file, kind, field, block, content)
 }
 
 const compareEntries = (kind) => (a, b) => kind === "posts"

@@ -6,6 +6,7 @@ const allowed = `apps/app/app/api/[[...route]]/route.ts`
 
 async function walk(root, dir, found) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() && (entry.name === ".next" || entry.name === "node_modules")) continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) await walk(root, path, found)
     else if (/^route\.[cm]?[jt]sx?$/.test(entry.name)) {
