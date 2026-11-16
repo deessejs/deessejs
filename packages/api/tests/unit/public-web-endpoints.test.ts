@@ -25,6 +25,7 @@ describe("public web HTTP endpoints", () => {
     expect(await missing.text()).toBe("Not found")
     expect((await api.request(`${API_BASE_PATH}/r/button/extra.json`)).status).toBe(404)
     expect((await api.request(`${API_BASE_PATH}/r/button`)).status).toBe(404)
+    expect((await api.request(`${API_BASE_PATH}/r/button`)).status).toBe(404)
   })
 
   it("serves the blog RSS with canonical links and cache headers", async () => {
