@@ -33,7 +33,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/api --deny-warnings",
-    "build": "node ../../packages/content/scripts/generate-feeds.mjs && tsc",
+    "build": "tsc",
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e:avatar": "vitest run --config vitest.e2e.config.ts",

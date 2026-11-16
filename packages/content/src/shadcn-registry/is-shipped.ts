@@ -1,4 +1,4 @@
-import { ITEMS } from "./items"
+import { ITEMS } from "./items.js"
 
 /**
  * Returns `true` if a given slug is registered as an installable

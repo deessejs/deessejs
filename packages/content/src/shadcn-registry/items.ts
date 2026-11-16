@@ -12,9 +12,9 @@
  * but not yet shipped as registry items. They will be added
  * as their primitives land in @workspace/ui.
  */
-import { badge } from "./items/badge"
-import { button } from "./items/button"
-import { input } from "./items/input"
+import { badge } from "./items/badge.js"
+import { button } from "./items/button.js"
+import { input } from "./items/input.js"
 
 export const ITEMS = {
   components: {
@@ -25,4 +25,4 @@ export const ITEMS = {
   blocks: {},
 } as const
 
-export { isShipped } from "./is-shipped"
+export { isShipped } from "./is-shipped.js"

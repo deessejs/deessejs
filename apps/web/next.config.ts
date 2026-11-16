@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       { source: "/api/blog/posts", destination: new URL(`${API_BASE_PATH}/api/blog/posts`, apiBaseUrl).toString() },
     ]
   },
-  transpilePackages: ["@workspace/ui"],
+  transpilePackages: ["@workspace/ui", "@workspace/content"],
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   serverExternalPackages: ["shiki"],
   images: {

@@ -1,4 +1,4 @@
-import { registryItem } from "../item-helper"
+import { registryItem } from "../item-helper.js"
 
 /**
  * Source content captured from packages/ui/src/components/button.tsx

@@ -1,4 +1,4 @@
-import { ITEMS } from "./items"
+import { ITEMS } from "./items.js"
 
 /**
  * The catalogue index served by `GET /r/registry.json`. Derived

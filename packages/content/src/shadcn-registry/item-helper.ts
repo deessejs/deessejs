@@ -1,4 +1,4 @@
-import { rewriteImports } from "./rewrite-imports"
+import { rewriteImports } from "./rewrite-imports.js"
 
 type Args = {
   name: string
