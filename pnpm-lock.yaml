@@ -725,6 +725,9 @@ importers:
       '@workspace/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@workspace/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
