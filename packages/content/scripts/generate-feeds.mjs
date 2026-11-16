@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url"
 const base = resolve(fileURLToPath(new URL("../src", import.meta.url)))
 const now = Date.now()
 const parseFields = (text) => {
-  const block = text.match(/^---\s*\n([\s\S]*?)\n---/)?.[1] ?? ""
+  const opening = text.indexOf("---")
+  const closing = opening === 0 ? text.indexOf("\n---", 3) : -1
+  const block = closing === -1 ? "" : text.slice(3, closing).trim()
   const field = (key) => block.match(new RegExp(`^${key}:\\s*(?:["']([^"']*)["']|([^\\n#]+))`, "m"))?.slice(1).find(Boolean)?.trim()
   return { field, block }
 }
@@ -16,26 +18,53 @@ for (const file of await readdir(join(base, "authors")).catch(() => [])) {
   const handle = field("handle")
   if (handle) authors.set(handle, { handle, name: field("name"), role: field("role"), avatar: field("avatar"), bio: field("bio") })
 }
-const readCollection = async (folder, kind) => {
-  const entries = await readdir(join(base, folder))
-  const output = []
-  for (const file of entries.filter((name) => name.endsWith(".mdx"))) {
-    const text = await readFile(join(base, folder, file), "utf8")
-    const { field, block } = parseFields(text)
-    if (!block) continue
-    if (kind === "posts" && field("draft") === "true") continue
-    const scheduled = field("scheduled")
-    if (scheduled && Date.parse(scheduled) > now) continue
-    const tags = block.match(/^tags:\s*\[([^\]]*)\]/m)?.[1]
-      ?.split(",").map((tag) => tag.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean) ?? []
-    const slug = file.replace(/\.mdx$/, "")
-    const handles = field("authors")?.match(/[\w-]+/g) ?? (field("author") ? [field("author")] : [])
-    output.push({ title: field("title"), description: field("description"), date: field("date"), slug, url: `/${kind === "posts" ? "blog" : "changelog"}/${slug}`, ...(kind === "posts" ? { tags, cover: field("cover"), author: authors.get(handles[0]), authors: handles.map((handle) => authors.get(handle)).filter(Boolean) } : {}), ...(kind === "releases" ? { version: field("version") } : {}) })
+const isSkipped = (kind, field) => {
+  if (kind === "posts" && field("draft") === "true") return true
+  const scheduled = field("scheduled")
+  return Boolean(scheduled && Date.parse(scheduled) > now)
+}
+
+const parseTags = (block) => block.match(/^tags:\s*\[([^\]]*)\]/m)?.[1]
+  ?.split(",").map((tag) => tag.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean) ?? []
+
+const parseAuthorHandles = (field) => field("authors")?.match(/[\w-]+/g)
+  ?? (field("author") ? [field("author")] : [])
+
+const createRecord = (file, kind, field, block) => {
+  const slug = file.replace(/\.mdx$/, "")
+  const isPost = kind === "posts"
+  const handles = isPost ? parseAuthorHandles(field) : []
+  return {
+    title: field("title"),
+    description: field("description"),
+    date: field("date"),
+    slug,
+    url: `/${isPost ? "blog" : "changelog"}/${slug}`,
+    ...(isPost ? {
+      tags: parseTags(block),
+      cover: field("cover"),
+      author: authors.get(handles[0]),
+      authors: handles.map((handle) => authors.get(handle)).filter(Boolean),
+    } : {}),
+    ...(kind === "releases" ? { version: field("version") } : {}),
   }
-  output.sort((a, b) => kind === "posts"
-    ? b.date.localeCompare(a.date)
-    : compareVersions(b.version, a.version) || b.date.localeCompare(a.date))
-  return output
+}
+
+const readEntry = async (folder, kind, file) => {
+  const text = await readFile(join(base, folder, file), "utf8")
+  const { field, block } = parseFields(text)
+  if (!block || isSkipped(kind, field)) return undefined
+  return createRecord(file, kind, field, block)
+}
+
+const compareEntries = (kind) => (a, b) => kind === "posts"
+  ? b.date.localeCompare(a.date)
+  : compareVersions(b.version, a.version) || b.date.localeCompare(a.date)
+
+const readCollection = async (folder, kind) => {
+  const entries = (await readdir(join(base, folder))).filter((file) => file.endsWith(".mdx"))
+  const records = await Promise.all(entries.map((file) => readEntry(folder, kind, file)))
+  return records.filter(Boolean).sort(compareEntries(kind))
 }
 const compareVersions = (left = "0.0.0", right = "0.0.0") => {
   const a = left.split(".").map(Number)
