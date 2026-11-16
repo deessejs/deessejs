@@ -80,7 +80,7 @@ function slugify(text: string): string {
 
 const authors = defineCollection({
   name: "authors",
-  directory: "content/authors",
+  directory: "../../packages/content/src/authors",
   include: "*.md",
   schema: z.object({
     handle: z.string().min(1).max(60),

@@ -381,9 +381,6 @@ importers:
       '@workspace/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@workspace/content':
-        specifier: workspace:*
-        version: link:../../packages/content
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

@@ -25,7 +25,6 @@ describe("public web HTTP endpoints", () => {
     expect(await missing.text()).toBe("Not found")
     expect((await api.request(`${API_BASE_PATH}/r/button/extra.json`)).status).toBe(404)
     expect((await api.request(`${API_BASE_PATH}/r/button`)).status).toBe(404)
-    expect((await api.request(`${API_BASE_PATH}/r/button`)).status).toBe(404)
   })
 
   it("serves the blog RSS with canonical links and cache headers", async () => {
@@ -59,6 +58,14 @@ describe("public web HTTP endpoints", () => {
     expect(body.page).toBe(1)
     expect(body.posts).toHaveLength(9)
     expect(body.posts[0].date >= body.posts[1].date).toBe(true)
+    expect(body.posts[0]).toMatchObject({
+      title: expect.any(String),
+      description: expect.any(String),
+      tags: expect.any(Array),
+      authors: [{ handle: "admin", name: "David Pereira" }],
+    })
+    expect(body.posts[0].slug).toEqual(expect.any(String))
+    expect(body.posts[0].url).toBe(`/blog/${body.posts[0].slug}`)
     expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=0`)).status).toBe(400)
     expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=1&tag=unknown`)).status).toBe(404)
   })
