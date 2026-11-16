@@ -9,6 +9,10 @@
   "dependencies": {
     "reading-time": "catalog:"
   },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  },
   "exports": {
     "./registry": {
       "types": "./dist/shadcn-registry/index.d.ts",
