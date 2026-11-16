@@ -6,6 +6,10 @@ import { visit } from "unist-util-visit"
 import { z } from "zod"
 import readingTime from "reading-time"
 import { validateRecommendedGuideSlugs } from "./src/lib/knowledge-base/recommended-guides.js"
+import { fileURLToPath } from "node:url"
+import { resolve } from "node:path"
+
+const sharedContent = (path: string) => resolve(fileURLToPath(new URL(".", import.meta.url)), "../../packages/content/src", path)
 
 /**
  * Build-time rehype plugin that assigns stable `id` attributes to
@@ -98,7 +102,7 @@ const authors = defineCollection({
 
 const posts = defineCollection({
   name: "posts",
-  directory: "content/posts",
+  directory: sharedContent("posts"),
   include: "*.mdx",
   schema: z.object({
     title: z.string().min(1).max(120),
@@ -187,7 +191,7 @@ const posts = defineCollection({
 
 const releases = defineCollection({
   name: "releases",
-  directory: "content/releases",
+  directory: sharedContent("releases"),
   include: "*.mdx",
   schema: z.object({
     title: z.string().min(1).max(120),

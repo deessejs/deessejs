@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./registry": "./src/shadcn-registry/index.ts",
+    "./feeds": "./src/generated-feeds.ts",
+    "./registry/*": "./src/shadcn-registry/*.ts"
+  }
+}
