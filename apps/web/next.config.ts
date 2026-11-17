@@ -1,12 +1,22 @@
 import type { NextConfig } from "next"
 import { withContentCollections } from "@content-collections/next"
+import { API_BASE_PATH } from "@workspace/api/base-path"
+import { apiBaseUrl } from "./src/lib/preview-urls"
 
 const apiUrl = new URL(
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001"
 )
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@workspace/ui"],
+  async rewrites() {
+    return [
+      { source: "/r/:path*", destination: new URL(`${API_BASE_PATH}/r/:path*`, apiBaseUrl).toString() },
+      { source: "/blog/feed.xml", destination: new URL(`${API_BASE_PATH}/blog/feed.xml`, apiBaseUrl).toString() },
+      { source: "/changelog/feed.xml", destination: new URL(`${API_BASE_PATH}/changelog/feed.xml`, apiBaseUrl).toString() },
+      { source: "/api/blog/posts", destination: new URL(`${API_BASE_PATH}/blog/posts`, apiBaseUrl).toString() },
+    ]
+  },
+  transpilePackages: ["@workspace/ui", "@workspace/content"],
   pageExtensions: ["ts", "tsx", "js", "jsx", "md", "mdx"],
   serverExternalPackages: ["shiki"],
   images: {

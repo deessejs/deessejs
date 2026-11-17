@@ -23,6 +23,9 @@ import { getAvatarStorage } from "../../core/avatars/storage.js"
 import { templatePublications, templates } from "@workspace/database/schema"
 import { user } from "@workspace/database/schema"
 import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
+import { mountBlogRoutes } from "./blog.js"
+import { mountChangelogRoutes } from "./changelog.js"
+import { mountRegistryRoutes } from "./registry.js"
 
 async function resolveAvatarImageAccess(objectId: string, viewerId?: string) {
   if (!viewerId) return null
@@ -168,6 +171,9 @@ async function resolveTemplateImageAccess(objectId: string, viewerId?: string) {
  * most things belong in `routes/templates.ts` and friends.
  */
 export const mountHttp = (api: Hono<ApiEnv>): void => {
+  mountRegistryRoutes(api)
+  mountBlogRoutes(api)
+  mountChangelogRoutes(api)
   // Liveness — cheap, always 200 unless the process is dead.
   api.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() })
