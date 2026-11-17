@@ -22,11 +22,10 @@ import { cleanupAvatars } from "../../core/avatars/lifecycle.js"
 import { getAvatarStorage } from "../../core/avatars/storage.js"
 import { templatePublications, templates } from "@workspace/database/schema"
 import { user } from "@workspace/database/schema"
-import { CATALOGUE, ITEMS } from "@workspace/content/registry"
-import { posts, releases } from "@workspace/content/feeds"
-import { buildBlogFeed, buildChangelogFeed } from "../../web-registry/feed.js"
-import { API_BASE_PATH } from "../../constants/base-path.js"
 import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
+import { mountBlogRoutes } from "./blog.js"
+import { mountChangelogRoutes } from "./changelog.js"
+import { mountRegistryRoutes } from "./registry.js"
 
 async function resolveAvatarImageAccess(objectId: string, viewerId?: string) {
   if (!viewerId) return null
@@ -172,44 +171,9 @@ async function resolveTemplateImageAccess(objectId: string, viewerId?: string) {
  * most things belong in `routes/templates.ts` and friends.
  */
 export const mountHttp = (api: Hono<ApiEnv>): void => {
-  api.get("/r/registry.json", (c) => c.json(CATALOGUE))
-  api.get("/r/*", (c) => {
-    const path = c.req.path.slice(`${API_BASE_PATH}/r/`.length)
-    if (!path.endsWith(".json")) return c.text("Not found", 404)
-    const name = path.slice(0, -5)
-    const segments = name.split("/")
-    const namespaced = segments.length === 2 && (segments[0] === "components" || segments[0] === "blocks")
-    if (segments.length !== 1 && !namespaced) return c.text("Not found", 404)
-    const key = namespaced ? segments[1] : segments[0]
-    const group = namespaced && segments[0] === "blocks" ? ITEMS.blocks : ITEMS.components
-    const item = Object.entries(group).find(([entry]) => entry === key)?.[1]
-    return item ? c.json(item) : c.text("Not found", 404)
-  })
-  api.get("/blog/feed.xml", (c) => {
-    c.header("content-type", "application/rss+xml; charset=utf-8")
-    c.header("cache-control", "public, max-age=3600, s-maxage=3600")
-    return c.body(buildBlogFeed([...posts], serverEnv.WEB_URL))
-  })
-  api.get("/changelog/feed.xml", (c) => {
-    c.header("content-type", "application/rss+xml; charset=utf-8")
-    c.header("cache-control", "public, max-age=3600, s-maxage=3600")
-    return c.body(buildChangelogFeed([...releases], serverEnv.WEB_URL))
-  })
-  api.get("/api/blog/posts", (c) => {
-    const page = Number(c.req.query("page"))
-    const tag = c.req.query("tag")
-    if (!Number.isSafeInteger(page) || page < 1 || page > 1000) {
-      return c.json({ error: "Invalid page" }, 400)
-    }
-    const validTags = new Set(["engineering", "community", "news", "customers", "security"])
-    if (tag && !validTags.has(tag)) return c.json({ error: "Invalid tag" }, 404)
-    const selected = posts.filter(
-      (post) => !tag || post.tags.some((postTag) => postTag === tag),
-    )
-    const pageSize = 9
-    const start = (page - 1) * pageSize
-    return c.json({ posts: selected.slice(start, start + pageSize), hasMore: start + pageSize < selected.length, page })
-  })
+  mountRegistryRoutes(api)
+  mountBlogRoutes(api)
+  mountChangelogRoutes(api)
   // Liveness — cheap, always 200 unless the process is dead.
   api.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() })

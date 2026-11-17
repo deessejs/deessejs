@@ -55,7 +55,7 @@ describe("public web HTTP endpoints", () => {
   })
 
   it("serves paginated blog posts and preserves validation statuses", async () => {
-    const response = await api.request(`${API_BASE_PATH}/api/blog/posts?page=1`)
+    const response = await api.request(`${API_BASE_PATH}/blog/posts?page=1`)
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.page).toBe(1)
@@ -71,7 +71,8 @@ describe("public web HTTP endpoints", () => {
     expect(body.posts[0].url).toBe(`/blog/${body.posts[0].slug}`)
     expect(body.posts[0].readingTime).toEqual(expect.any(Number))
     expect(body.posts.every((post: { readingTime: number }) => post.readingTime >= 1)).toBe(true)
-    expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=0`)).status).toBe(400)
-    expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=1&tag=unknown`)).status).toBe(404)
+    expect((await api.request(`${API_BASE_PATH}/blog/posts?page=0`)).status).toBe(400)
+    expect((await api.request(`${API_BASE_PATH}/blog/posts?page=1&tag=unknown`)).status).toBe(404)
+    expect((await api.request(`${API_BASE_PATH}/api/blog/posts?page=1`)).status).toBe(404)
   })
 })

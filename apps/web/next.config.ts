@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       { source: "/r/:path*", destination: new URL(`${API_BASE_PATH}/r/:path*`, apiBaseUrl).toString() },
       { source: "/blog/feed.xml", destination: new URL(`${API_BASE_PATH}/blog/feed.xml`, apiBaseUrl).toString() },
       { source: "/changelog/feed.xml", destination: new URL(`${API_BASE_PATH}/changelog/feed.xml`, apiBaseUrl).toString() },
-      { source: "/api/blog/posts", destination: new URL(`${API_BASE_PATH}/api/blog/posts`, apiBaseUrl).toString() },
+      { source: "/api/blog/posts", destination: new URL(`${API_BASE_PATH}/blog/posts`, apiBaseUrl).toString() },
     ]
   },
   transpilePackages: ["@workspace/ui", "@workspace/content"],
