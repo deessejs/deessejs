@@ -1,7 +1,3 @@
-import { createORPCClient } from "@orpc/client"
-import { RPCLink } from "@orpc/client/fetch"
-import type { RouterClient } from "@orpc/server"
-
 // Type-only import: `appRouter` is referenced exclusively as `typeof
 // appRouter` in the typed-client shape below. Tree-shaking the runtime
 // value out keeps node-only modules transitively pulled by the API
@@ -12,7 +8,7 @@ import type { RouterClient } from "@orpc/server"
 // node-only: the new `playbook` route does (it imports
 // `@workspace/email`, which uses `node:crypto`-backed modules), so
 // the import is now tightened to type-only.
-import type { appRouter } from "@workspace/api/router"
+import { createWebClient, type WebClient } from "@workspace/api/client/web"
 import { API_RPC_PATH } from "@workspace/api/base-path"
 
 import { apiBaseUrl } from "./preview-urls"
@@ -115,33 +111,22 @@ export const buildFetchIsrInit = (
  * `@workspace/database` → `postgres` into the client bundle, which
  * Turbopack cannot satisfy (node builtins `net`/`tls`/`perf_hooks`).
  */
-const link = new RPCLink({
-  // The oRPC endpoint URL is composed from the path constant
-  // (single source of truth for the API prefix) and the host
-  // constant (declared in @workspace/env, defaults to
-  // localhost:3001 in dev, app.deessejs.com in prod). The previous
-  // form `url: API_RPC_PATH` (a relative path) resolved against
-  // the current domain and hit /api/v1 on deessejs.com, which
-  // does not host the backend. `new URL(path, base)` is robust
-  // to a trailing slash on either side: the leading slash on the
-  // path erases the trailing slash on the base. The schema's
-  // `.refine` rejects trailing slashes at parse time as a second
-  // layer of defence.
-  url: new URL(API_RPC_PATH, apiBaseUrl).toString(),
-  fetch: (request, init, options) => {
-    const isrInit = buildFetchIsrInit(init, options?.context?.cache)
-    return globalThis.fetch(request, isrInit)
-  },
-})
+const apiUrl = new URL(API_RPC_PATH, apiBaseUrl).toString()
 
 /**
  * Typed oRPC client. We re-type the inferred context with
  * `FetchCacheOptions` so the per-call `cache` shape is accepted by
  * TypeScript while server-side context fields remain available.
  */
-export type ORPCClient = RouterClient<typeof appRouter, FetchCacheOptions>
+export type ORPCClient = WebClient<FetchCacheOptions>
 
-export const orpc: ORPCClient = createORPCClient(link)
+export const orpc: ORPCClient = createWebClient<FetchCacheOptions>({
+  url: apiUrl,
+  fetch: (request, init, options) => globalThis.fetch(
+    request,
+    buildFetchIsrInit(init, options?.context?.cache),
+  ),
+})
 
 /**
  * Tag a call as "live runtime, do not poison the cache on failure".
