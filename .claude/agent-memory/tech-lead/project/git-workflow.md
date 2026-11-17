@@ -32,14 +32,14 @@ feature/fix branch  ─PR─▶  staging  ─merge (human, manual)─▶  main  
 
 ## How to apply
 
-- `/spec`, `/implement`, `/create-pr`, `/review-pr` all reset to `staging` and open PRs against `staging` — these skills are the source of truth
+- The repository-owned `/create-pr` skill opens PRs against `staging`
 - `AGENTS.md` has a "Git workflow — staging-first" section that summarises this
 - If a PR was opened against `main` by mistake → close it, recreate targeting `staging`
 - If you find a skill referencing `main` as base or target → that's a bug, fix it
 
 ## Branch naming
 
-- `impl/{n}-{slug}` for issue-driven work (`/spec`, `/implement`)
+- `impl/{n}-{slug}` for issue-driven work
 - `chore/{slug}` for chores, refactors, infra
 - `fix/{slug}` for unsolicited bug fixes
 
