@@ -2,31 +2,27 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowRight } from "lucide-react"
-import { cache } from "react"
-
-import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
+import {
+  getPlatformTemplateCatalog,
+  getPlatformTemplateDetail,
+} from "@/lib/template-catalog-cache"
 import { TemplateDetail } from "@/components/templates/template-detail"
 import { Button } from "@workspace/ui/components/button"
 
 type Params = { template_slug: string }
-const getTemplate = cache((slug: string) =>
-  orpc.templates.detail({ slug }, liveCache)
-)
-
 /**
  * Pre-generate one static page per known slug at build time.
  * Falls back to on-demand rendering for slugs not seen at build
  * (Next.js handles ISR transparently for both).
  *
- * Uses `staticParamsCache` (revalidate: 600, tag `templates:static`)
- * so the slug list is cached across builds but cannot collide with
- * the runtime cache. If the fetch fails (no network in CI, backend
- * temporarily down), we return an empty array rather than failing
+ * Uses the shared public catalog cache for the slug list. If the fetch
+ * fails (no network in CI or a temporary backend outage), return an
+ * empty array rather than failing
  * the build; missing slugs are generated on demand via ISR.
  */
 export const generateStaticParams = async (): Promise<Params[]> => {
   try {
-    const result = await orpc.templates.list(undefined, staticParamsCache)
+    const result = await getPlatformTemplateCatalog()
     return result.templates.map((t) => ({ template_slug: t.slug }))
   } catch {
     return []
@@ -40,7 +36,7 @@ export const generateMetadata = async ({
 }): Promise<Metadata> => {
   const { template_slug } = await params
   try {
-    const template = await getTemplate(template_slug)
+    const template = await getPlatformTemplateDetail(template_slug)
     if (!template) return { title: "Template not found" }
     return {
       title: template.name,
@@ -61,9 +57,9 @@ export const generateMetadata = async ({
 /**
  * Detail page at /templates/[template_slug].
  *
- * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
- * transient failure cannot poison the Next.js data cache. On a
- * runtime error the request propagates to the segment's `error.tsx`
+ * Uses the persistent public detail cache with a bounded TTL. Failed
+ * upstream requests are not cached. On a runtime error, the request
+ * propagates to the segment's `error.tsx`
  * boundary. A fetch error is NOT a 404 — do NOT `notFound()` in the
  * catch. During `next build` we fall back to `notFound()` so the
  * build still ships when the API is unreachable.
@@ -72,7 +68,7 @@ const TemplateDetailPage = async ({ params }: { params: Promise<Params> }) => {
   const { template_slug } = await params
   let template
   try {
-    template = await getTemplate(template_slug)
+    template = await getPlatformTemplateDetail(template_slug)
   } catch {
     // Build-time fallback: a failed fetch during prerender becomes
     // a 404 (the slug cannot be confirmed). Production runtime
