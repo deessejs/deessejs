@@ -3,7 +3,7 @@
 import { client } from "@/lib/client"
 import { useRef, useState } from "react"
 import { useProfileAvatar, useProfileAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
-import { useUpdateProfileName } from "@/hooks/use-settings-mutations"
+import { useUpdateProfileName } from "@/hooks/use-settings-profile-mutations"
 import { toast } from "sonner"
 import {
   Avatar,

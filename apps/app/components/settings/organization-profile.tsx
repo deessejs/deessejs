@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useOrganizationAvatar, useOrganizationAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
-import { useUpdateOrganizationProfile } from "@/hooks/use-settings-mutations"
+import { useUpdateOrganizationProfile } from "@/hooks/use-settings-profile-mutations"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"

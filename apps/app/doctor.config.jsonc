@@ -1,0 +1,37 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    "overrides": [
+      // Active organization state is owned by Better Auth's useSession hook;
+      // createOrganization's caller refetches Better Auth useListOrganizations.
+      {
+        "files": ["hooks/use-organization-context-mutations.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      },
+      // The admin moderation lists are server-rendered, and their callers use
+      // router.refresh() after decisions or creation.
+      {
+        "files": ["hooks/use-admin-review-mutations.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      },
+      // Sign-in, signup, password reset, and OAuth state is owned by Better Auth;
+      // the forgot-password response is intentionally generic for privacy.
+      {
+        "files": ["hooks/use-auth-form-mutations.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      },
+      // Template and block catalog/submission data is server-rendered; callers
+      // refresh the route after successful mutations.
+      {
+        "files": ["hooks/use-resource-mutations.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      },
+      // Profile identity is read through Better Auth's reactive session hook;
+      // organization profile data is server-rendered and refreshed by its caller.
+      {
+        "files": ["hooks/use-settings-profile-mutations.ts"],
+        "rules": ["react-doctor/query-mutation-missing-invalidation"]
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCreateOrganization } from "@/hooks/use-account-actions"
+import { useCreateOrganization } from "@/hooks/use-organization-context-mutations"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"

@@ -36,17 +36,6 @@ export function useAccountInvitations() {
   return useQuery(accountInvitationsQueryOptions)
 }
 
-export function useSetActiveOrganization() {
-  return useMutation({
-    mutationFn: async (organizationId: string) => {
-      const { error } = await client.auth.organization.setActive({ organizationId })
-      if (error) throw new Error(error.message ?? "The organization could not be selected.")
-    },
-    // Better Auth's useSession/useListOrganizations hooks own this state. The
-    // callers navigate after success, which refreshes the route tree.
-  })
-}
-
 export function useRespondToInvitation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -81,13 +70,5 @@ export function useSignOut() {
     // Remove user-scoped cached data at the auth boundary so a later sign-in
     // cannot render data from the previous account. Better Auth owns session state.
     onSuccess: () => queryClient.clear(),
-  })
-}
-
-export function useCreateOrganization() {
-  return useMutation({
-    // Organization lists are owned by Better Auth's useListOrganizations hook.
-    // The dialog navigates to the created organization after success.
-    mutationFn: (name: string) => client.rpc.organization.create({ name }),
   })
 }

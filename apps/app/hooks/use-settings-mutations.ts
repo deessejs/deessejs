@@ -27,34 +27,6 @@ export function useChangePassword(userId: string | undefined) {
   })
 }
 
-export function useUpdateProfileName() {
-  return useMutation({
-    mutationFn: async (name: string) => {
-      const { error } = await client.auth.updateUser({ name })
-      if (error) throw new Error(error.message ?? "Failed to update profile")
-    },
-    // Profile identity is read from Better Auth's reactive useSession hook.
-  })
-}
-
-export function useUpdateOrganizationProfile() {
-  return useMutation({
-    mutationFn: async ({ organizationId, name, logo }: {
-      organizationId: string
-      name: string
-      logo: string | null
-    }) => {
-      const { error } = await client.auth.organization.update({
-        organizationId,
-        data: { name, logo },
-      })
-      if (error) throw new Error(error.message ?? "Could not update organization")
-    },
-    // The organization profile is supplied by the server route. Its owner calls
-    // router.refresh() after this mutation; no TanStack Query cache owns it.
-  })
-}
-
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -70,10 +42,16 @@ export function useDeleteAccount() {
 
 export function useDisconnectGitHubApp(slug: string) {
   const queryClient = useQueryClient()
+  const githubAppRoot = organizationProjectsQueryOptions(slug).queryKey[0]
   return useMutation({
     mutationFn: () => client.rpc.githubApp.disconnect({ slug }),
     onSuccess: () => queryClient.invalidateQueries({
-      queryKey: organizationProjectsQueryOptions(slug).queryKey,
+      predicate: ({ queryKey }) => {
+        if (queryKey[0] !== githubAppRoot || queryKey[2] !== slug) return false
+        return queryKey[1] === "projects"
+          || queryKey[1] === "repositories"
+          || queryKey[1] === "project-config"
+      },
     }),
   })
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { client } from "@/lib/client"
-import { useSetActiveOrganization } from "@/hooks/use-account-actions"
+import { useSetActiveOrganization } from "@/hooks/use-organization-context-mutations"
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
