@@ -2,7 +2,7 @@
 
 import { client } from "@/lib/client"
 import { useRef, useState } from "react"
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useProfileAvatar, useProfileAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
 import { toast } from "sonner"
 import {
   Avatar,
@@ -14,13 +14,7 @@ import { Input } from "@workspace/ui/components/input"
 
 import { getInitials } from "@/lib/initials"
 
-const profileAvatarQueryOptions = () =>
-  queryOptions({
-    queryKey: ["profile", "avatar"],
-    queryFn: () => client.rpc.profile.avatar.get(),
-    retry: false,
-  })
-const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
+const avatarContentTypes: readonly AvatarContentType[] = ["image/jpeg", "image/png", "image/webp"]
 
 const VERCEL_AVATAR_BASE = "https://vercel.com/api/www/avatar"
 
@@ -36,18 +30,15 @@ function getAvatarUrl(email: string, image?: string | null): string {
  * changes.
  */
 export function ProfileHeaderCard() {
-  const queryClient = useQueryClient()
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const { data: session } = client.auth.useSession()
-  const avatar = useQuery({
-    ...profileAvatarQueryOptions(),
-    enabled: Boolean(session?.user),
-  })
+  const avatar = useProfileAvatar(Boolean(session?.user))
+  const avatarMutations = useProfileAvatarMutations()
   const user = session?.user
   const [displayName, setDisplayName] = useState(user?.name ?? "")
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [avatarBusy, setAvatarBusy] = useState(false)
+  const avatarBusy = avatarMutations.upload.isPending || avatarMutations.remove.isPending
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return
@@ -56,47 +47,11 @@ export function ProfileHeaderCard() {
       toast.error("Choose a JPEG, PNG, or WebP image.")
       return
     }
-    setAvatarBusy(true)
-    try {
-      const upload = await client.rpc.profile.avatar.createUpload({
-        contentType,
-        byteSize: file.size,
-      })
-      const response = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        headers: upload.requiredHeaders,
-        body: file,
-      })
-      if (!response.ok) throw new Error("Could not upload this image.")
-      await client.rpc.profile.avatar.complete({ uploadId: upload.uploadId })
-      await queryClient.invalidateQueries({
-        queryKey: profileAvatarQueryOptions().queryKey,
-      })
-      toast.success("Avatar updated")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update avatar"
-      )
-    } finally {
-      setAvatarBusy(false)
-    }
+    avatarMutations.upload.mutate(file, { onSuccess: () => toast.success("Avatar updated"), onError: (error) => toast.error(error.message) })
   }
 
   async function handleAvatarRemove() {
-    setAvatarBusy(true)
-    try {
-      await client.rpc.profile.avatar.remove()
-      await queryClient.invalidateQueries({
-        queryKey: profileAvatarQueryOptions().queryKey,
-      })
-      toast.success("Uploaded avatar removed")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not remove avatar"
-      )
-    } finally {
-      setAvatarBusy(false)
-    }
+    avatarMutations.remove.mutate(undefined, { onSuccess: () => toast.success("Uploaded avatar removed"), onError: (error) => toast.error(error.message) })
   }
 
   async function handleSubmit(e: React.FormEvent) {
