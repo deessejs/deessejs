@@ -8,6 +8,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import { useEffect } from "react"
 
 export type BillingPlan = "pro-monthly" | "pro-annual"
 export type BillingSubscription = {
@@ -37,7 +38,18 @@ export function organizationSubscriptionQueryOptions(organizationId: string) {
 }
 
 export function useOrganizationBilling(organizationId: string) {
-  return useQuery(organizationSubscriptionQueryOptions(organizationId))
+  const queryClient = useQueryClient()
+  const query = useQuery(organizationSubscriptionQueryOptions(organizationId))
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has("checkoutSessionId") && !params.has("success")) return
+    void queryClient.invalidateQueries({
+      queryKey: organizationSubscriptionQueryOptions(organizationId).queryKey,
+    })
+  }, [organizationId, queryClient])
+
+  return query
 }
 
 export function useOrganizationBillingMutations(organizationId: string) {

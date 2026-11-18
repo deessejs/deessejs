@@ -1,12 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
-import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import {
   canManageBilling,
-  organizationSubscriptionQueryOptions,
   selectCurrentSubscription,
   useOrganizationBilling,
   useOrganizationBillingMutations,
@@ -14,6 +11,15 @@ import {
 } from "@/hooks/use-organization-billing"
 
 type Organization = { id: string; name: string; slug: string; role: string }
+
+function BillingSubscriptionStatus({ query, subscription }: {
+  query: ReturnType<typeof useOrganizationBilling>
+  subscription: ReturnType<typeof selectCurrentSubscription>
+}) {
+  if (query.isPending) return <p role="status">Loading billing details…</p>
+  if (query.isError) return <p role="alert" className="text-copy-14 text-destructive">Billing details are unavailable. {query.error.message}</p>
+  return <p aria-live="polite">{subscription ? `${subscription.plan} · ${subscription.status}${subscription.cancelAtPeriodEnd ? " · Cancels at period end" : ""}` : "No active subscription"}</p>
+}
 
 function BillingActions({
   canManage,
@@ -42,19 +48,12 @@ function BillingActions({
 }
 
 export function OrganizationBilling({ organization }: { organization: Organization }) {
-  const queryClient = useQueryClient()
   const subscriptionQuery = useOrganizationBilling(organization.id)
   const { checkout, portal } = useOrganizationBillingMutations(organization.id)
   const subscription = selectCurrentSubscription(subscriptionQuery.data ?? [])
   const busy = checkout.isPending || portal.isPending
   const canManage = canManageBilling(organization.role)
   const canChangePlan = !subscription || Boolean(subscription.stripeSubscriptionId)
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (!params.has("checkoutSessionId") && !params.has("success")) return
-    void queryClient.invalidateQueries({ queryKey: organizationSubscriptionQueryOptions(organization.id).queryKey })
-  }, [organization.id, queryClient])
 
   function startCheckout(plan: BillingPlan) {
     if (subscription?.plan === plan) return
@@ -68,9 +67,7 @@ export function OrganizationBilling({ organization }: { organization: Organizati
     <header><h1 className="text-heading-32">Billing</h1><p className="text-copy-14 text-muted-foreground">Manage the {organization.name} subscription and Pro access.</p></header>
     <Card><CardHeader><CardTitle>Organization subscription</CardTitle><CardDescription>Pro access is shared with every member of this organization.</CardDescription></CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {subscriptionQuery.isPending ? <p role="status">Loading billing details…</p> : null}
-        {subscriptionQuery.isError ? <p role="alert" className="text-copy-14 text-destructive">Billing details are unavailable. {subscriptionQuery.error.message}</p> : null}
-        {!subscriptionQuery.isPending && !subscriptionQuery.isError ? <p aria-live="polite">{subscription ? `${subscription.plan} · ${subscription.status}${subscription.cancelAtPeriodEnd ? " · Cancels at period end" : ""}` : "No active subscription"}</p> : null}
+        <BillingSubscriptionStatus query={subscriptionQuery} subscription={subscription} />
         <BillingActions canManage={canManage} busy={busy || !canChangePlan} loading={subscriptionQuery.isPending} hasError={subscriptionQuery.isError} plan={subscription?.plan} onCheckout={startCheckout} onPortal={() => portal.mutate()} />
         {error && !subscriptionQuery.isError ? <p role="alert" className="text-copy-14 text-destructive">{error.message}</p> : null}
       </CardContent>
