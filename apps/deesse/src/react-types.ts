@@ -5,16 +5,11 @@ export interface DeesseReactRegistry {
   __prototype?: never
 }
 
-export type DeesseReactApplication = DeesseReactRegistry[keyof DeesseReactRegistry] extends infer T
-  ? T extends { router: infer TRouter extends AnyRouter; authOptions?: infer TAuth extends BetterAuthClientOptions }
-    ? { router: TRouter; authOptions: TAuth }
-    : never
-  : never
+type RegistryEntry = DeesseReactRegistry[keyof DeesseReactRegistry]
+type AuthOptionsFrom<T> = T extends { authOptions: infer TAuth } ? TAuth : never
+type RouterFrom<T> = T extends { router: infer TRouter extends AnyRouter } ? TRouter : never
+type RegisteredAuthOptions = AuthOptionsFrom<RegistryEntry>
+type RegisteredRouter = RouterFrom<RegistryEntry>
 
-export type DeesseReactAuthOptions = DeesseReactApplication extends { authOptions: infer TAuth extends BetterAuthClientOptions }
-  ? TAuth
-  : BetterAuthClientOptions
-
-export type DeesseReactRouter = DeesseReactApplication extends { router: infer TRouter extends AnyRouter }
-  ? TRouter
-  : AnyRouter
+export type DeesseReactAuthOptions = [RegisteredAuthOptions] extends [never] ? BetterAuthClientOptions : RegisteredAuthOptions
+export type DeesseReactRouter = [RegisteredRouter] extends [never] ? AnyRouter : RegisteredRouter

@@ -1,33 +1,89 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth"
+import type { BetterAuthPlugin } from "better-auth"
+import type { BetterAuthClientPlugin } from "better-auth/client"
 import type { AnyRouter } from "@orpc/server"
 import type { input as ZodInput, infer as ZodOutput, ZodType } from "zod"
 
-export interface DeesseDatabase {
-  readonly capabilities: { readonly transactions: boolean }
+export interface DeesseDatabaseService<TCapabilities extends object = Record<never, never>> {
+  readonly capabilities: TCapabilities
 }
 
-export interface DatabaseAdapter<TDatabase extends DeesseDatabase = DeesseDatabase, TAuthAdapter = unknown> {
+export interface DeesseDatabaseAdapter<
+  TDatabase extends DeesseDatabaseService = DeesseDatabaseService,
+  TAuthAdapter = unknown,
+> {
   readonly database: TDatabase
   readonly authAdapter: TAuthAdapter
 }
 
-export type PluginContribution<TRouter extends AnyRouter = AnyRouter> = {
-  api?: { router: TRouter }
+export type DeesseDatabase = DeesseDatabaseService
+export type DatabaseAdapter<TDatabase extends DeesseDatabaseService = DeesseDatabaseService, TAuthAdapter = unknown> =
+  DeesseDatabaseAdapter<TDatabase, TAuthAdapter>
+
+export type CapabilitiesOf<TAdapter extends DeesseDatabaseAdapter> = TAdapter["database"]["capabilities"]
+
+export type DeesseBetterAuthOptions = BetterAuthOptions
+export type BetterAuthServerInstance = {
+  readonly handler: (request: Request) => Promise<Response>
+  readonly fetch: (request: Request) => Promise<Response>
+  readonly api: object
+  readonly options: BetterAuthOptions
+  readonly $Infer: { readonly Session: { readonly session: object; readonly user: object } }
 }
 
-export type PluginDefinition<TSchema extends ZodType, TContribution extends PluginContribution> = {
+export type PluginContribution = {
+  database?: { schema: unknown }
+  auth?: {
+    serverPlugins?: readonly BetterAuthPlugin[]
+    clientPlugins?: readonly BetterAuthClientPlugin[]
+  }
+  api?: { router: AnyRouter }
+  extensions?: Readonly<Record<string, unknown>>
+}
+
+export type PluginDefinition<
+  TSchema extends ZodType,
+  TContribution extends PluginContribution,
+  TRequires extends readonly string[] = readonly string[],
+  TExtensionPoints extends Readonly<Record<string, unknown>> = Readonly<Record<string, unknown>>,
+> = {
   id: string
   args: TSchema
+  requires?: TRequires
+  extensionPoints?: TExtensionPoints
   handler: (args: ZodOutput<TSchema>) => TContribution
 }
 
-export type AnyPlugin = { id: string; definition: { handler: (...args: never[]) => unknown } }
+export type PluginRegistration<TDefinition extends { id: string; handler: (...args: never[]) => unknown }> = {
+  id: TDefinition["id"]
+  args: TDefinition extends { args: infer TSchema extends ZodType } ? ZodOutput<TSchema> : unknown
+  definition: TDefinition
+}
 
-export type DeesseApiOptions = { router?: AnyRouter }
+export type AnyPlugin = PluginRegistration<{ id: string; handler: (...args: never[]) => unknown }>
+
+export type PluginExtension<TProvider, TPoint extends string> = TProvider extends {
+  definition: { extensionPoints?: infer TPoints }
+} ? NonNullable<TPoints> extends infer TPointMap ? TPoint extends keyof TPointMap
+  ? TPointMap[TPoint] extends ZodType ? ZodOutput<TPointMap[TPoint]> : TPointMap[TPoint]
+  : never : never : never
+
+export type ContributionOf<TPlugins extends readonly AnyPlugin[]> = TPlugins[number] extends infer TPlugin
+  ? TPlugin extends { definition: { handler: (...args: never[]) => infer TContribution } } ? TContribution : never
+  : never
+
+export type AppAuthPlugin<TAuth extends BetterAuthOptions> = NonNullable<TAuth["plugins"]>[number]
+export type PluginAuthServerPlugin<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
+  ? TContribution extends { auth?: { serverPlugins?: readonly (infer TPlugin)[] } } ? Extract<TPlugin, BetterAuthPlugin> : never
+  : never
+export type ComposedBetterAuthOptions<TAuth extends BetterAuthOptions, TPlugins extends readonly AnyPlugin[]> =
+  Omit<TAuth, "plugins"> & { plugins: Array<AppAuthPlugin<TAuth> | PluginAuthServerPlugin<TPlugins>> }
+
+export type DeesseApiOptions = { router?: AnyRouter; [key: string]: unknown }
 
 export type DeesseConfig<
-  TDatabaseAdapter extends DatabaseAdapter,
-  TAuthOptions extends BetterAuthOptions,
+  TDatabaseAdapter extends DeesseDatabaseAdapter,
+  TAuthOptions extends DeesseBetterAuthOptions,
   TApiOptions extends DeesseApiOptions = DeesseApiOptions,
   TPlugins extends readonly AnyPlugin[] = readonly [],
 > = {
@@ -46,8 +102,12 @@ export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
 
 export type DeesseFetchHandler = (request: Request) => Promise<Response>
 
-export type DeesseInstance<TDatabase extends DeesseDatabase, TAuth, TApiRouter> = {
-  readonly database: TDatabase
+export type DeesseInstance<
+  TAdapter extends DeesseDatabaseAdapter,
+  TAuth extends BetterAuthServerInstance,
+  TApiRouter,
+> = {
+  readonly database: DeesseDatabaseService<CapabilitiesOf<TAdapter>>
   readonly auth: TAuth
   readonly api: { readonly router: TApiRouter }
   readonly handler: DeesseFetchHandler
