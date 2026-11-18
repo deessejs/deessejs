@@ -37,7 +37,10 @@ Other release channels:
 ```bash
 deessejs list
 deessejs list --category saas --json
+deessejs list --refresh
 deessejs info saas-starter --json
+deessejs info saas-starter --refresh
+deessejs cache clear
 deessejs info https://github.com/owner/repository --ref main
 deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
@@ -65,6 +68,8 @@ deessejs organization template add acme --slug starter-kit --name "Starter Kit" 
 If the selected files include a root `deesse.json`, `init` validates it against project config V1 and preserves its contents. If the template does not include one, `init` creates a default config with the project schema URL and `formatVersion: 1`.
 
 `info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
+
+Catalog list and targeted template detail responses used by `list` and `info` are cached locally for five minutes. `--refresh` bypasses and refreshes that cache. `init` always resolves current template details. `deessejs cache clear` removes cached response files under `~/.deessejs/` and preserves authentication state.
 
 `block info` accepts a local block directory, a public HTTPS GitHub repository URL, a shorthand GitHub directory URL such as `https://github.com/owner/repository/block`, or a canonical `/tree/<ref>/<block-path>` URL. It resolves a remote ref to a commit before reading the root `deesse-block.json` and the package manifests declared by its file mappings. It does not modify a project, install dependencies or execute package scripts. `--json` returns the descriptor, package summaries and source identity.
 

@@ -18,9 +18,16 @@ export type ResolvedTemplateSource = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
-async function fetchTemplatesForInfo(): Promise<TemplateSummary[]> {
+async function fetchTemplatesForInfo(
+  useLocalCache = false,
+  refresh = false
+): Promise<TemplateSummary[]> {
   try {
-    return await fetchTemplates({ skipVersionCheck: true })
+    return await fetchTemplates({
+      skipVersionCheck: true,
+      useLocalCache,
+      refresh,
+    })
   } catch (error) {
     if (error instanceof Error && error.name === "CliError") throw error
     const detail =
@@ -35,7 +42,12 @@ async function fetchTemplatesForInfo(): Promise<TemplateSummary[]> {
 
 export async function resolveTemplateSource(
   slugOrUrl: string,
-  options: { skipVersionCheck?: boolean; fastCatalogLookup?: boolean } = {}
+  options: {
+    skipVersionCheck?: boolean
+    fastCatalogLookup?: boolean
+    useLocalCache?: boolean
+    refresh?: boolean
+  } = {}
 ): Promise<ResolvedTemplateSource> {
   const directRepository = parseGitHubRepositoryUrl(slugOrUrl)
   if (looksLikeUrl(slugOrUrl) && !directRepository) {
@@ -59,9 +71,16 @@ export async function resolveTemplateSource(
   let template: TemplateSource | undefined
   if (options.fastCatalogLookup !== false) {
     let catalogTemplates: TemplateSummary[] | undefined
-    template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
+    template =
+      (await fetchTemplateByAddress(slugOrUrl, {
+        useLocalCache: options.useLocalCache ?? false,
+        refresh: options.refresh ?? false,
+      })) ?? undefined
     if (!template) {
-      catalogTemplates ??= await fetchTemplatesForInfo()
+      catalogTemplates ??= await fetchTemplatesForInfo(
+        options.useLocalCache ?? false,
+        options.refresh ?? false
+      )
       throw notFound(
         slugOrUrl,
         catalogTemplates.map((item) => item.slug)
