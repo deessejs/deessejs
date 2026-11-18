@@ -13,7 +13,6 @@ export interface DatabaseAdapter<TDatabase extends DeesseDatabase = DeesseDataba
 
 export type PluginContribution<TRouter extends AnyRouter = AnyRouter> = {
   api?: { router: TRouter }
-  auth?: { serverPlugins?: readonly unknown[] }
 }
 
 type PluginDefinition<TSchema extends ZodType, TContribution extends PluginContribution> = {
