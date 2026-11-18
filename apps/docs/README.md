@@ -51,5 +51,3 @@ content/docs/
 - **Uses**: [`@workspace/ui`](../../packages/ui/README.md)
 
 <!-- Vercel selective-build deployment test: docs-only -->
-
-<!-- Temporary Vercel hotfix retest: docs. -->
