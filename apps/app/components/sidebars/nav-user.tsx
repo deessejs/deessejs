@@ -1,6 +1,7 @@
 "use client"
 
 import { client } from "@/lib/client"
+import { useSignOut } from "@/hooks/use-account-actions"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -90,20 +91,17 @@ export function NavUser() {
     ...profileAvatarQueryOptions(),
     enabled: Boolean(session?.user),
   })
-  const [loggingOut, setLoggingOut] = useState(false)
+  const signOut = useSignOut()
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
   const user = session?.user
 
-  async function handleLogout() {
-    setLoggingOut(true)
+  function handleLogout() {
     setLogoutDialogOpen(false)
-    await client.auth.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          queryClient.clear()
-          router.push("/login")
-        },
+    signOut.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.clear()
+        router.push("/login")
       },
     })
   }
@@ -201,7 +199,7 @@ export function NavUser() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setLogoutDialogOpen(true)}
-                disabled={loggingOut}
+                disabled={signOut.isPending}
               >
                 <LogOutIcon />
                 Log out
@@ -226,8 +224,8 @@ export function NavUser() {
             >
               Cancel
             </Button>
-            <Button onClick={handleLogout} disabled={loggingOut}>
-              {loggingOut ? "Signing out…" : "Log out"}
+            <Button onClick={handleLogout} disabled={signOut.isPending}>
+              {signOut.isPending ? "Signing out…" : "Log out"}
             </Button>
           </DialogFooter>
         </DialogContent>

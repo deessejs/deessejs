@@ -1,6 +1,7 @@
 "use client"
 
 import { client } from "@/lib/client"
+import { useSetActiveOrganization } from "@/hooks/use-account-actions"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
@@ -31,7 +32,7 @@ export function OrganizationList() {
   const router = useRouter()
   const organizations = client.auth.useListOrganizations()
   const [query, setQuery] = useState("")
-  const [failure, setFailure] = useState<string | null>(null)
+  const selectOrganization = useSetActiveOrganization()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const list = organizations.data ?? []
@@ -46,23 +47,8 @@ export function OrganizationList() {
             organization.slug.toLowerCase().includes(needle)
         )
 
-  async function choose(organizationId: string, slug: string) {
-    setFailure(null)
-    try {
-      const { error: refusal } = await client.auth.organization.setActive({
-        organizationId,
-      })
-      if (refusal) {
-        setFailure(refusal.message ?? "The organization could not be selected.")
-        return
-      }
-    } catch {
-      // The call never came back. The browser cannot tell that apart
-      // from a refusal, and neither can the caller.
-      setFailure("The organization could not be selected.")
-      return
-    }
-    router.push(workspaceHomePath(slug))
+  function choose(organizationId: string, slug: string) {
+    selectOrganization.mutate(organizationId, { onSuccess: () => router.push(workspaceHomePath(slug)) })
   }
 
   return (
@@ -87,9 +73,9 @@ export function OrganizationList() {
           </Button>
         </div>
 
-        {failure && (
+        {selectOrganization.error && (
           <p className="text-sm text-destructive" role="alert">
-            {failure}
+            {selectOrganization.error.message}
           </p>
         )}
 

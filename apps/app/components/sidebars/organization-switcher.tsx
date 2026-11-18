@@ -1,6 +1,7 @@
 "use client"
 
 import { client } from "@/lib/client"
+import { useSetActiveOrganization } from "@/hooks/use-account-actions"
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -43,7 +44,6 @@ import { CreateOrganizationDialog } from "@/components/organizations/create-orga
  * The two differ in the log, not in the rail, and a rail that blamed
  * the caller for the server's absence would be lying.
  */
-const SWITCH_FAILED_MESSAGE = "The organization could not be selected."
 
 /**
  * The organization the page belongs to, and the way to another one.
@@ -78,7 +78,7 @@ export function OrganizationSwitcher({
     ? null
     : organizationSlugFromPathname(pathname)
   const organizations = client.auth.useListOrganizations()
-  const [failure, setFailure] = useState<string | null>(null)
+  const selectOrganization = useSetActiveOrganization()
   const [dialogOpen, setDialogOpen] = useState(false)
 
   const list = organizations.data ?? []
@@ -91,23 +91,8 @@ export function OrganizationSwitcher({
     (activeOrganization ? "Select an organization" : (slug ?? "Organization"))
   const currentSlug = current?.slug ?? slug
 
-  async function switchTo(organization: { id: string; slug: string }) {
-    setFailure(null)
-    try {
-      const { error: refusal } = await client.auth.organization.setActive({
-        organizationId: organization.id,
-      })
-      if (refusal) {
-        setFailure(refusal.message ?? SWITCH_FAILED_MESSAGE)
-        return
-      }
-    } catch {
-      // The call never came back: the network is down, or the server
-      // answered nothing. The browser cannot tell that apart from a
-      // refusal, and neither can the caller.
-      setFailure(SWITCH_FAILED_MESSAGE)
-      return
-    }
+  function switchTo(organization: { id: string; slug: string }) {
+    selectOrganization.mutate(organization.id, { onSuccess: () => {
     setOpenMobile(false)
     const settingsPath =
       preserveSettingsPath && slug ? workspaceSettingsPath(slug) : null
@@ -121,6 +106,7 @@ export function OrganizationSwitcher({
         ? workspaceHomePath(organization.slug)
         : `${workspaceSettingsPath(organization.slug)}${settingsSuffix}`
     )
+    } })
   }
 
   return (
@@ -208,9 +194,9 @@ export function OrganizationSwitcher({
         </SidebarMenuItem>
       </SidebarMenu>
 
-      {failure && (
+      {selectOrganization.error && (
         <p className="text-xs text-destructive" role="alert">
-          {failure}
+          {selectOrganization.error.message}
         </p>
       )}
 

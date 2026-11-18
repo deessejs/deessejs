@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useAdminTemplatePublicationDecision } from "@/hooks/use-admin-review-mutations"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
@@ -44,51 +44,34 @@ export function AdminTemplateSubmissionsPage({
   const [selected, setSelected] = useState<Submission | null>(null)
   const [decision, setDecision] = useState<Decision>("approve")
   const [reason, setReason] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
+  const decisionMutation = useAdminTemplatePublicationDecision()
+  const busy = decisionMutation.isPending
+  const failure = decisionMutation.error instanceof ORPCError && decisionMutation.error.code === "TEMPLATE_SUBMISSION_NOT_PENDING"
+    ? "Another administrator already reviewed this request. Refresh the queue."
+    : decisionMutation.error ? "The decision could not be saved. Refresh the queue and try again." : null
 
   function openReview(submission: Submission, nextDecision: Decision) {
     setSelected(submission)
     setDecision(nextDecision)
     setReason("")
-    setFailure(null)
+    decisionMutation.reset()
   }
 
   function closeReview(open: boolean) {
     if (!open && !busy) {
       setSelected(null)
       setReason("")
-      setFailure(null)
+      decisionMutation.reset()
     }
   }
 
   async function decide() {
     if (!selected || busy) return
-    setFailure(null)
-    setBusy(true)
     try {
-      if (decision === "approve") {
-        await client.rpc.admin.templates.publications.approve({
-          publicationId: selected.id,
-        })
-      } else {
-        await client.rpc.admin.templates.publications.reject({
-          publicationId: selected.id,
-          reason: reason.trim(),
-        })
-      }
+      await decisionMutation.mutateAsync({ publicationId: selected.id, decision, reason: reason.trim() })
       setSelected(null)
       router.refresh()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError &&
-          error.code === "TEMPLATE_SUBMISSION_NOT_PENDING"
-          ? "Another administrator already reviewed this request. Refresh the queue."
-          : "The decision could not be saved. Refresh the queue and try again."
-      )
-    } finally {
-      setBusy(false)
-    }
+    } catch { /* Mutation error is rendered below. */ }
   }
 
   return (

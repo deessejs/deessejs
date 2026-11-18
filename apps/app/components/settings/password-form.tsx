@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useChangePassword } from "@/hooks/use-settings-mutations"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
@@ -10,8 +10,7 @@ export function PasswordForm() {
 	const [currentPassword, setCurrentPassword] = useState("")
 	const [newPassword, setNewPassword] = useState("")
 	const [confirmPassword, setConfirmPassword] = useState("")
-	const [submitting, setSubmitting] = useState(false)
-	const [saved, setSaved] = useState(false)
+  const changePassword = useChangePassword()
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -26,28 +25,19 @@ export function PasswordForm() {
 			return
 		}
 
-		setSubmitting(true)
-		const { error } = await client.auth.changePassword({
-			currentPassword,
-			newPassword,
-		})
-		setSubmitting(false)
-
-		if (error) {
-			toast.error(error.message ?? "Failed to update password")
-			return
-		}
-
-		setSaved(true)
-		setCurrentPassword("")
-		setNewPassword("")
-		setConfirmPassword("")
-		setTimeout(() => setSaved(false), 3000)
+    changePassword.mutate({ currentPassword, newPassword }, {
+      onSuccess: () => {
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      },
+      onError: (error) => toast.error(error.message),
+    })
 	}
 
 	return (
 		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-			{saved && (
+			{changePassword.isSuccess && (
 				<p className="text-sm text-green-600 dark:text-green-400">
 					Password updated.
 				</p>
@@ -87,8 +77,8 @@ export function PasswordForm() {
 			</div>
 
 			<div className="flex justify-end">
-				<Button type="submit" disabled={submitting}>
-					{submitting ? "Updating…" : "Update password"}
+        <Button type="submit" disabled={changePassword.isPending}>
+			{changePassword.isPending ? "Updating…" : "Update password"}
 				</Button>
 			</div>
 		</form>

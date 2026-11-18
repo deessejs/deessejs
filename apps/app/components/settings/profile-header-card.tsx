@@ -3,6 +3,7 @@
 import { client } from "@/lib/client"
 import { useRef, useState } from "react"
 import { useProfileAvatar, useProfileAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
+import { useUpdateProfileName } from "@/hooks/use-settings-mutations"
 import { toast } from "sonner"
 import {
   Avatar,
@@ -36,8 +37,7 @@ export function ProfileHeaderCard() {
   const avatarMutations = useProfileAvatarMutations()
   const user = session?.user
   const [displayName, setDisplayName] = useState(user?.name ?? "")
-  const [submitting, setSubmitting] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const updateName = useUpdateProfileName()
   const avatarBusy = avatarMutations.upload.isPending || avatarMutations.remove.isPending
 
   async function handleAvatarChange(file: File | undefined) {
@@ -58,19 +58,7 @@ export function ProfileHeaderCard() {
     e.preventDefault()
     if (!displayName.trim()) return
 
-    setSubmitting(true)
-    const { error } = await client.auth.updateUser({
-      name: displayName.trim(),
-    })
-    setSubmitting(false)
-
-    if (error) {
-      toast.error(error.message ?? "Failed to update profile")
-      return
-    }
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    updateName.mutate(displayName.trim(), { onError: (error) => toast.error(error.message) })
   }
 
   const name = user?.name ?? ""
@@ -135,21 +123,21 @@ export function ProfileHeaderCard() {
             id="name"
             name="name"
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
+            onChange={(e) => { updateName.reset(); setDisplayName(e.target.value) }}
             autoComplete="name"
             placeholder="Your name"
           />
         </div>
 
-        {saved && (
+        {updateName.isSuccess && (
           <p className="text-sm text-green-600 dark:text-green-400">
             Changes saved.
           </p>
         )}
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={submitting || displayName === name}>
-            {submitting ? "Saving…" : saved ? "Saved" : "Save changes"}
+          <Button type="submit" disabled={updateName.isPending || displayName === name}>
+            {updateName.isPending ? "Saving…" : updateName.isSuccess ? "Saved" : "Save changes"}
           </Button>
         </div>
       </form>

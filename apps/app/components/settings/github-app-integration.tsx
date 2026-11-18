@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useDisconnectGitHubApp } from "@/hooks/use-settings-mutations"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -131,10 +131,12 @@ export function GitHubAppIntegration({
   result: string | undefined
 }) {
   const router = useRouter()
-  const [pending, setPending] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+  const disconnect = useDisconnectGitHubApp(slug)
+  const pending = redirecting || disconnect.isPending
 
   function connectGitHubAccount() {
-    setPending(true)
+    setRedirecting(true)
     const url = new URL(
       `${API_BASE_PATH}/github-app/oauth/start`,
       window.location.origin
@@ -144,7 +146,7 @@ export function GitHubAppIntegration({
   }
 
   async function installGitHubApp() {
-    setPending(true)
+    setRedirecting(true)
     const url = new URL(
       `${API_BASE_PATH}/github-app/install/start`,
       window.location.origin
@@ -154,20 +156,10 @@ export function GitHubAppIntegration({
   }
 
   async function disconnectGitHubApp() {
-    setPending(true)
-    try {
-      await client.rpc.githubApp.disconnect({ slug })
-      toast.success("GitHub App disconnected from this organization")
-      router.refresh()
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not disconnect GitHub App"
-      )
-    } finally {
-      setPending(false)
-    }
+    disconnect.mutate(undefined, {
+      onSuccess: () => { toast.success("GitHub App disconnected from this organization"); router.refresh() },
+      onError: (error) => toast.error(error.message),
+    })
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useCreateOrganizationTemplate } from "@/hooks/use-resource-mutations"
 import { useState } from "react"
 import type { ReactNode } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -108,6 +108,7 @@ export function CreateOrganizationTemplateDialog({
   onCreated: () => void
 }) {
   const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateOrganizationTemplate()
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
@@ -116,7 +117,7 @@ export function CreateOrganizationTemplateDialog({
   const category = useWatch({ control: form.control, name: "category" })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
+    if (!next && !createMutation.isPending) {
       setFailure(null)
       reset(defaults)
     }
@@ -126,7 +127,7 @@ export function CreateOrganizationTemplateDialog({
   async function create(values: FormValues) {
     setFailure(null)
     try {
-      await client.rpc.organization.templates.create({
+      await createMutation.mutateAsync({
         organizationSlug,
         slug: values.slug,
         name: values.name,
@@ -271,12 +272,12 @@ export function CreateOrganizationTemplateDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Adding..." : "Add template"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Adding..." : "Add template"}
             </Button>
           </DialogFooter>
         </form>

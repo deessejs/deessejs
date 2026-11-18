@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useCreateOrganizationBlock } from "@/hooks/use-resource-mutations"
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
@@ -61,6 +61,7 @@ export function AddOrganizationBlockDialog({
   onCreated: () => void
 }) {
   const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateOrganizationBlock()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -68,7 +69,7 @@ export function AddOrganizationBlockDialog({
   const { register, handleSubmit, formState, reset } = form
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
+    if (!next && !createMutation.isPending) {
       setFailure(null)
       reset(defaults)
     }
@@ -78,7 +79,7 @@ export function AddOrganizationBlockDialog({
   async function addBlock(values: FormValues) {
     setFailure(null)
     try {
-      await client.rpc.organization.blocks.create({
+      await createMutation.mutateAsync({
         organizationSlug,
         ...values,
       })
@@ -188,12 +189,12 @@ export function AddOrganizationBlockDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Importing…" : "Import block"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Importing…" : "Import block"}
             </Button>
           </DialogFooter>
         </form>
