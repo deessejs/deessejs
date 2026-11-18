@@ -104,5 +104,3 @@ MIT.
 - **Bundles**: the workspace dependencies into the published package at build time, so nothing is resolved at run time
 
 <!-- Vercel selective-build deployment test: cli-only -->
-
-<!-- Temporary Vercel hotfix retest: cli. -->

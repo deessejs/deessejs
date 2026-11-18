@@ -73,5 +73,3 @@ There is no test script: the primitives are exercised through the applications t
 The conventions of this package are in [AGENTS.md](AGENTS.md).
 
 <!-- Vercel selective-build deployment test: ui-shared -->
-
-<!-- Temporary Vercel hotfix retest: ui. -->
