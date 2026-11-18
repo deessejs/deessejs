@@ -1,7 +1,7 @@
-import type { AnyRouter, BetterAuthOptions, ZodInput, ZodType } from "./types.js"
-import type { AnyPlugin, ApiRouter, BetterAuthInstance, DatabaseAdapter, DeesseInstance, PluginContribution, PluginDefinition } from "./types.js"
+import type { AnyRouter, BetterAuthOptions, DeesseConfig, ZodInput, ZodType } from "./types.js"
+import type { AnyPlugin, ApiRouter, BetterAuthInstance, DatabaseAdapter, DeesseFetchHandler, DeesseInstance, PluginContribution, PluginDefinition } from "./types.js"
 
-export type { DatabaseAdapter, DeesseDatabase, DeesseInstance, PluginContribution } from "./types.js"
+export type { DatabaseAdapter, DeesseApiOptions, DeesseConfig, DeesseDatabase, DeesseFetchHandler, DeesseInstance, PluginContribution } from "./types.js"
 
 export function plugin<const TId extends string, TSchema extends ZodType, TContribution extends PluginContribution>(
   definition: PluginDefinition<TSchema, TContribution> & { id: TId },
@@ -17,15 +17,14 @@ export function createDeesse<
   TDatabase extends DatabaseAdapter,
   TAuth extends BetterAuthOptions,
   TApi extends { router?: AnyRouter } = Record<never, never>,
-  const TPlugins extends readonly AnyPlugin[] = [],
->(options: { database: TDatabase; auth: TAuth; api?: TApi; plugins?: TPlugins }): DeesseInstance<
-  TDatabase["database"],
-  BetterAuthInstance<TAuth>,
-  ApiRouter<TApi, TPlugins>
+  const TPlugins extends readonly AnyPlugin[] = readonly [],
+>(options: DeesseConfig<TDatabase, TAuth, TApi, TPlugins>): DeesseInstance<
+  TDatabase["database"], BetterAuthInstance<TAuth>, ApiRouter<TApi, TPlugins>
 > {
   return {
     database: options.database.database,
     auth: null as unknown as BetterAuthInstance<TAuth>,
     api: { router: null as unknown as ApiRouter<TApi, TPlugins> },
+    handler: null as unknown as DeesseFetchHandler,
   }
 }
