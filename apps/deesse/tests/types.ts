@@ -53,7 +53,12 @@ const auditFeature = plugin({
     extensions: { feature: { dashboardMetric: { label: "Audit events" } satisfies PluginExtension<typeof feature, "dashboardMetric"> } },
   }),
 })
-const noConfigPlugin = plugin({ id: "no-config", handler: () => ({}) })
+const noConfigPlugin = plugin({
+  id: "no-config",
+  requires: ["feature"] as const,
+  extensionPoints: { card: z.object({ title: z.string() }) },
+  handler: () => ({ api: { router: procedures }, database: { schema: { noConfig: { enabled: true } } } }),
+})
 const database = { database: { capabilities: { transactions: true as const } }, authAdapter: { adapter: true } }
 const auth = {
   baseURL: "https://example.test",
@@ -83,6 +88,9 @@ type InstanceExact = Assert<Equal<typeof app, ExpectedDeesseInstance>>
 type DirectRouterExact = Assert<Equal<typeof directApp.api.router, ExpectedRouter>>
 type DirectAuthExact = Assert<Equal<typeof directApp.auth, ExpectedAuthInstance>>
 type NoConfigArgsOmitted = Assert<Equal<keyof typeof noConfigRegistration, "id" | "definition">>
+type NoConfigContributionExact = Assert<Equal<ReturnType<typeof noConfigRegistration.definition.handler>, { api: { router: typeof procedures }; database: { schema: { noConfig: { enabled: boolean } } } }>>
+type NoConfigRequiresExact = Assert<Equal<typeof noConfigRegistration.definition.requires, readonly ["feature"]>>
+type NoConfigExtensionKeysExact = Assert<Equal<keyof typeof noConfigRegistration.definition.extensionPoints, "card">>
 type HandlerExact = Assert<Equal<typeof app.handler, (request: Request) => Promise<Response>>>
 type PluginTupleExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>>
 type PluginRouterRegistryKeysExact = Assert<Equal<keyof PluginContributions["api"], "feature" | "username">>
@@ -136,6 +144,8 @@ void minimalApp.api.router
 void minimalApp.api.router.missing
 // @ts-expect-error a plugin without an API contribution is absent from the composed router
 void app.api.router.audit
+// @ts-expect-error no-args plugin factories reject registration arguments
+noConfigPlugin({})
 
 declare module "deesse/react" {
   interface DeesseReactRegistry {
@@ -182,4 +192,4 @@ const organizationPermission: boolean = client.auth.organization.checkRolePermis
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, NoConfigArgsOmitted, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])

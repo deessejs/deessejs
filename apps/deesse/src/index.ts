@@ -6,9 +6,11 @@ export type { BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOption
 type Definition<TSchema extends ZodType, TContribution extends PluginContribution, TRequires extends readonly string[], TPoints extends Readonly<Record<string, unknown>>> =
   PluginDefinition<TSchema, TContribution, TRequires, TPoints>
 
-type NoArgsRegistration<TId extends string, TContribution extends PluginContribution> = { id: TId; definition: { id: TId; handler: () => TContribution } }
+type NoArgsRegistration<TDefinition extends { id: string; handler: () => PluginContribution }> = { id: TDefinition["id"]; definition: TDefinition }
 
-export function plugin<const TId extends string, TContribution extends PluginContribution>(definition: { id: TId; handler: () => TContribution; args?: never }): (() => NoArgsRegistration<TId, TContribution>) & { definition: typeof definition }
+export function plugin<const TDefinition extends { id: string; args?: never; requires?: readonly string[]; extensionPoints?: Readonly<Record<string, unknown>>; handler: () => PluginContribution }>(
+  definition: TDefinition,
+): (() => NoArgsRegistration<TDefinition>) & { definition: TDefinition }
 export function plugin<const TId extends string, TSchema extends ZodType, TContribution extends PluginContribution,
   const TRequires extends readonly string[] = readonly [], const TPoints extends Readonly<Record<string, unknown>> = Readonly<Record<never, never>>>(
   definition: Definition<TSchema, TContribution, TRequires, TPoints> & { id: TId },
