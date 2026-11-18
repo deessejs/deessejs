@@ -1,16 +1,14 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useRequestPasswordReset } from "@/hooks/use-auth-form-mutations"
 import Link from "next/link"
-import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
-import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Field } from "./field"
 import { forgotPasswordSchema } from "@/components/auth/schemas"
 
 export function ForgotPasswordForm() {
-	const [sent, setSent] = useState(false)
+	const resetRequest = useRequestPasswordReset()
 
 	const form = useForm({
 		defaultValues: { email: "" },
@@ -18,19 +16,11 @@ export function ForgotPasswordForm() {
 			onSubmit: forgotPasswordSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await client.auth.requestPasswordReset({
-				email: value.email,
-				redirectTo: "/reset-password",
-			})
-			// Always succeed to avoid email enumeration
-			setSent(true)
-			if (error) {
-				toast.error(error.message ?? "Something went wrong")
-			}
+			await resetRequest.mutateAsync(value.email)
 		},
 	})
 
-	if (sent) {
+	if (resetRequest.isSuccess) {
 		return (
 			<div className="flex flex-col gap-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
 				<p className="font-medium">Email sent</p>
@@ -68,15 +58,15 @@ export function ForgotPasswordForm() {
 				</form.Field>
 
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+					selector={(state) => state.canSubmit}
 				>
-					{([canSubmit, isSubmitting]) => (
+					{(canSubmit) => (
 						<Button
 							type="submit"
-							disabled={!canSubmit}
-							aria-busy={isSubmitting}
+							disabled={!canSubmit || resetRequest.isPending}
+							aria-busy={resetRequest.isPending}
 						>
-							{isSubmitting ? "Sending…" : "Send reset link"}
+							{resetRequest.isPending ? "Sending…" : "Send reset link"}
 						</Button>
 					)}
 				</form.Subscribe>

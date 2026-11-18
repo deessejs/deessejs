@@ -4,6 +4,7 @@ import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
 import {
+  useLinkAccount,
   useLinkedAccounts,
   useUnlinkAccount,
 } from "@/hooks/use-linked-accounts"
@@ -223,6 +224,7 @@ export function ConnectedAccountsList() {
   const userId = session?.user.id
   const accountsQuery = useLinkedAccounts(userId)
   const unlinkAccount = useUnlinkAccount(userId)
+  const linkAccount = useLinkAccount(userId)
   const accounts = accountsQuery.data ?? []
   const loading =
     sessionPending || (userId !== undefined && accountsQuery.isPending)
@@ -233,20 +235,7 @@ export function ConnectedAccountsList() {
   const [unlinkConfirm, setUnlinkConfirm] = useState<UnlinkConfirmation | null>(
     null
   )
-  const [linking, setLinking] = useState<string | null>(null)
-
-  async function startAccountLink(provider: string) {
-    setLinking(provider)
-    try {
-      await client.auth.linkSocial({ provider })
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to link account"
-      toast.error(message)
-    } finally {
-      setLinking(null)
-    }
-  }
+  const linking = linkAccount.isPending ? linkAccount.variables : null
 
   function unlinkConfirmedAccount() {
     if (!unlinkConfirm) return
@@ -277,9 +266,11 @@ export function ConnectedAccountsList() {
       )}
       <LinkAccountButtons
         accounts={accounts}
-        disabled={loading || loadError !== undefined}
+        disabled={loading || loadError !== undefined || linkAccount.isPending}
         linkingProvider={linking}
-        onLink={(provider) => void startAccountLink(provider)}
+        onLink={(provider) => linkAccount.mutate(provider, {
+          onError: (error) => toast.error(error.message),
+        })}
       />
       <UnlinkAccountDialog
         confirmation={unlinkConfirm}

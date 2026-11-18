@@ -52,3 +52,16 @@ export function useUnlinkAccount(userId: string | undefined) {
       }),
   })
 }
+
+export function useLinkAccount(userId: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (provider: string) => {
+      const { error } = await client.auth.linkSocial({ provider })
+      if (error) throw new Error(error.message ?? "Failed to link account")
+    },
+    onSuccess: () => queryClient.invalidateQueries({
+      queryKey: linkedAccountQueryOptions(userId).queryKey,
+    }),
+  })
+}

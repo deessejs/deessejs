@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useEmailLogin } from "@/hooks/use-auth-form-mutations"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
@@ -17,6 +17,7 @@ export function LoginForm({
 	redirectTo = "/home",
 }: { redirectTo?: string } = {}) {
 	const router = useRouter()
+	const login = useEmailLogin()
 
 	const form = useForm({
 		defaultValues: {
@@ -35,11 +36,11 @@ export function LoginForm({
 			// here is idempotent and keeps the call site
 			// self-contained.
 			const target = safeRedirect(redirectTo, "/home")
-			const { error } = await client.auth.signIn.email(value, {
-				onSuccess: () => router.push(target),
-			})
-			if (error) {
-				toast.error(error.message ?? "Invalid credentials")
+			try {
+				await login.mutateAsync(value)
+				router.push(target)
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Invalid credentials")
 			}
 		},
 	})
@@ -92,15 +93,15 @@ export function LoginForm({
 				</div>
 
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+					selector={(state) => state.canSubmit}
 				>
-					{([canSubmit, isSubmitting]) => (
+					{(canSubmit) => (
 						<Button
 							type="submit"
-							disabled={!canSubmit}
-							aria-busy={isSubmitting}
+							disabled={!canSubmit || login.isPending}
+							aria-busy={login.isPending}
 						>
-							{isSubmitting ? "Signing in…" : "Sign in"}
+							{login.isPending ? "Signing in…" : "Sign in"}
 						</Button>
 					)}
 				</form.Subscribe>

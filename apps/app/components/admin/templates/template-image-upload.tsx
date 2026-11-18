@@ -1,7 +1,11 @@
 "use client"
 
-import { client } from "@/lib/client"
 import { useState } from "react"
+import {
+  TemplateImageUploadError,
+  useTemplateImageUpload,
+  type TemplateImageUploadStep,
+} from "@/hooks/use-template-image-upload"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
@@ -30,74 +34,40 @@ export function TemplateImageUpload({
   organizationSlug?: string
   onUploaded: () => void
 }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [step, setStep] = useState<TemplateImageUploadStep>("requesting upload")
+  const uploadMutation = useTemplateImageUpload()
+  const error = uploadMutation.error
+    ? uploadMutation.error instanceof TemplateImageUploadError
+      ? getUploadErrorMessage(uploadMutation.error, uploadMutation.error.step)
+      : getUploadErrorMessage(uploadMutation.error, step)
+    : null
   return (
     <label className="inline-flex items-center gap-2">
       <Input
         className="sr-only"
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        disabled={busy}
-        onChange={async (event) => {
+        disabled={uploadMutation.isPending}
+        onChange={(event) => {
           const inputElement = event.currentTarget
           const file = inputElement.files?.[0]
           if (!file) return
-          setBusy(true)
-          setError(null)
-          let step: "requesting upload" | "uploading to storage" | "validating upload" =
-            "requesting upload"
-          try {
-            const input = {
-              templateId,
-              contentType: file.type as
-                | "image/jpeg"
-                | "image/png"
-                | "image/webp",
-              byteSize: file.size,
-            }
-            const upload = organizationSlug
-              ? await client.rpc.organization.templateImages.createUpload({
-                  ...input,
-                  organizationSlug,
-                })
-              : await client.rpc.admin.templates.image.createUpload(input)
-            step = "uploading to storage"
-            let response: Response
-            try {
-              response = await fetch(upload.uploadUrl, {
-                method: "PUT",
-                headers: upload.requiredHeaders,
-                body: file,
-              })
-            } catch {
-              throw new Error("storage-network")
-            }
-            if (!response.ok)
-              throw new Error(`storage-http-${response.status}`)
-            step = "validating upload"
-            if (organizationSlug)
-              await client.rpc.organization.templateImages.complete({
-                organizationSlug,
-                templateId,
-                uploadId: upload.uploadId,
-              })
-            else
-              await client.rpc.admin.templates.image.complete({
-                templateId,
-                uploadId: upload.uploadId,
-              })
-            onUploaded()
-          } catch (cause) {
-            setError(getUploadErrorMessage(cause, step))
-          } finally {
-            setBusy(false)
-            inputElement.value = ""
-          }
+          setStep("requesting upload")
+          uploadMutation.mutate({
+            templateId,
+            organizationSlug,
+            file,
+            onStepChange: setStep,
+          }, {
+            onSuccess: onUploaded,
+            onSettled: () => {
+              inputElement.value = ""
+            },
+          })
         }}
       />
-      <Button type="button" variant="outline" disabled={busy} asChild>
-        <span>{busy ? "Uploading…" : "Upload image"}</span>
+      <Button type="button" variant="outline" disabled={uploadMutation.isPending} asChild>
+        <span>{uploadMutation.isPending ? "Uploading…" : "Upload image"}</span>
       </Button>
       {error ? (
         <span role="alert" className="text-xs text-destructive">

@@ -64,7 +64,7 @@ async function fetchSessions(): Promise<AccountSession[]> {
   }))
 }
 
-function sessionsQueryOptions(userId: string | undefined) {
+export function sessionsQueryOptions(userId: string | undefined) {
   return queryOptions({
     queryKey: sessionQueryKeys.list(userId),
     queryFn: fetchSessions,

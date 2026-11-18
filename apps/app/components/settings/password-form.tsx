@@ -1,16 +1,18 @@
 "use client"
 
 import { useChangePassword } from "@/hooks/use-settings-mutations"
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { PasswordInput } from "@/components/auth/password-input"
 
 export function PasswordForm() {
+	const { data: session } = client.auth.useSession()
 	const [currentPassword, setCurrentPassword] = useState("")
 	const [newPassword, setNewPassword] = useState("")
 	const [confirmPassword, setConfirmPassword] = useState("")
-  const changePassword = useChangePassword()
+  const changePassword = useChangePassword(session?.user.id)
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()

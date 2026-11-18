@@ -1,7 +1,6 @@
 "use client"
 
 import { useCreateOrganizationBlock } from "@/hooks/use-resource-mutations"
-import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
@@ -60,8 +59,13 @@ export function AddOrganizationBlockDialog({
   organizationSlug: string
   onCreated: () => void
 }) {
-  const [failure, setFailure] = useState<string | null>(null)
   const createMutation = useCreateOrganizationBlock()
+  const genericFailure = "The block could not be imported. Check its descriptor and try again."
+  const failure = createMutation.error
+    ? createMutation.error instanceof ORPCError
+      ? failures[createMutation.error.code] ?? genericFailure
+      : genericFailure
+    : null
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -70,14 +74,13 @@ export function AddOrganizationBlockDialog({
 
   function handleOpenChange(next: boolean) {
     if (!next && !createMutation.isPending) {
-      setFailure(null)
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function addBlock(values: FormValues) {
-    setFailure(null)
     try {
       await createMutation.mutateAsync({
         organizationSlug,
@@ -86,14 +89,7 @@ export function AddOrganizationBlockDialog({
       reset(defaults)
       onOpenChange(false)
       onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (failures[error.code] ??
-              "The block could not be imported. Check its descriptor and try again.")
-          : "The block could not be imported. Check its descriptor and try again."
-      )
-    }
+    } catch { /* Mutation error is rendered from createMutation.error. */ }
   }
 
   return (

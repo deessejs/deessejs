@@ -1,8 +1,8 @@
 "use client"
 
-import { client } from "@/lib/client"
 import { useRef, useState } from "react"
 import { useOrganizationAvatar, useOrganizationAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
+import { useUpdateOrganizationProfile } from "@/hooks/use-settings-mutations"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
@@ -199,6 +199,7 @@ export function OrganizationProfile({
 }) {
   const router = useRouter()
   const canManage = hasManagingRole(organization.role)
+  const updateProfile = useUpdateOrganizationProfile()
   const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
   const form = useForm({
     defaultValues: { name: organization.name, logo: organization.logo ?? "" },
@@ -206,14 +207,11 @@ export function OrganizationProfile({
     onSubmit: async ({ value }) => {
       const savedValues = { ...value, logo: value.logo.trim() }
       try {
-        const { error } = await client.auth.organization.update({
+        await updateProfile.mutateAsync({
           organizationId: organization.id,
-          data: { name: savedValues.name, logo: savedValues.logo || null },
+          name: savedValues.name,
+          logo: savedValues.logo || null,
         })
-        if (error) {
-          toast.error(error.message ?? "Could not update organization")
-          return
-        }
         form.reset(savedValues)
         setLogoPreview(savedValues.logo)
         toast.success("Organization profile saved")
@@ -275,8 +273,9 @@ export function OrganizationProfile({
               initials.
             </p>
           </div>
-          <form.Subscribe selector={(state) => [state.isDirty, state.isSubmitting] as const}>
-            {([isDirty, isSubmitting]) => <div className="flex justify-end"><Button type="submit" disabled={!isDirty || isSubmitting} aria-busy={isSubmitting}>{isSubmitting ? "Saving..." : "Save changes"}</Button></div>}
+          {updateProfile.error ? <p className="text-sm text-destructive" role="alert">{updateProfile.error.message}</p> : null}
+          <form.Subscribe selector={(state) => state.isDirty}>
+            {(isDirty) => <div className="flex justify-end"><Button type="submit" disabled={!isDirty || updateProfile.isPending} aria-busy={updateProfile.isPending}>{updateProfile.isPending ? "Saving..." : "Save changes"}</Button></div>}
           </form.Subscribe>
         </form>
       ) : (

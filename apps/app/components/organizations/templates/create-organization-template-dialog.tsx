@@ -1,7 +1,6 @@
 "use client"
 
 import { useCreateOrganizationTemplate } from "@/hooks/use-resource-mutations"
-import { useState } from "react"
 import type { ReactNode } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
@@ -107,8 +106,12 @@ export function CreateOrganizationTemplateDialog({
   organizationSlug: string
   onCreated: () => void
 }) {
-  const [failure, setFailure] = useState<string | null>(null)
   const createMutation = useCreateOrganizationTemplate()
+  const failure = createMutation.error
+    ? createMutation.error instanceof ORPCError
+      ? refusals[createMutation.error.code] ?? genericFailure
+      : genericFailure
+    : null
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
@@ -118,14 +121,13 @@ export function CreateOrganizationTemplateDialog({
 
   function handleOpenChange(next: boolean) {
     if (!next && !createMutation.isPending) {
-      setFailure(null)
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function create(values: FormValues) {
-    setFailure(null)
     try {
       await createMutation.mutateAsync({
         organizationSlug,
@@ -143,13 +145,7 @@ export function CreateOrganizationTemplateDialog({
       reset(defaults)
       onOpenChange(false)
       onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (refusals[error.code] ?? genericFailure)
-          : genericFailure
-      )
-    }
+    } catch { /* Mutation error is rendered from createMutation.error. */ }
   }
 
   return (
