@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, type Dispatch, type SetStateAction } from "react"
+import { useEffect, useState } from "react"
 
-type Tech = { name: string; logo: string }
 function randomCycleMs() { return 7000 + Math.floor(Math.random() * 5000) }
 function swapAt<T>(input: ReadonlyArray<T>, i: number, j: number): T[] {
   const next = input.slice()
@@ -22,22 +21,32 @@ function pickDifferentIndex(length: number, exclude: number) {
   }
   return pick
 }
-function slotUpdater(slot: number): (current: ReadonlyArray<Tech>) => ReadonlyArray<Tech> {
-  return (current) => swapAt(current, slot, pickDifferentIndex(current.length, slot))
+function slotUpdater(slot: number, techCount: number): (current: ReadonlyArray<number>) => ReadonlyArray<number> {
+  return (current) => {
+    const slots = current.length === techCount
+      ? current
+      : Array.from({ length: techCount }, (_, index) => index)
+    return swapAt(slots, slot, pickDifferentIndex(slots.length, slot))
+  }
 }
-
-export function useTechStackRotation(techs: ReadonlyArray<Tech>, reducedMotion: boolean, setOrder: Dispatch<SetStateAction<ReadonlyArray<Tech>>>) {
+export function useTechStackRotation(techCount: number, reducedMotion: boolean) {
+  const [order, setOrder] = useState<ReadonlyArray<number>>([])
   useEffect(() => {
-    if (reducedMotion || techs.length < 2) return
-    const timeouts: number[] = []
+    if (reducedMotion || techCount < 2) return
+    const timers = new Map<number, number>()
     const armSlot = (slot: number) => {
       const id = window.setTimeout(() => {
-        setOrder(slotUpdater(slot))
+        timers.delete(slot)
+        setOrder(slotUpdater(slot, techCount))
         armSlot(slot)
       }, randomCycleMs())
-      timeouts.push(id)
+      timers.set(slot, id)
     }
-    for (let slot = 0; slot < techs.length; slot++) armSlot(slot)
-    return () => timeouts.forEach(window.clearTimeout)
-  }, [techs, reducedMotion, setOrder])
+    for (let slot = 0; slot < techCount; slot++) armSlot(slot)
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [techCount, reducedMotion])
+
+  return order.length === techCount
+    ? order
+    : Array.from({ length: techCount }, (_, index) => index)
 }

@@ -77,6 +77,7 @@ The tests live in `tests/`: `proxy.test.ts` covers the guard, `settings-paths.te
 - Project-defined hooks belong under `apps/app/hooks/`, grouped into feature subdirectories when useful. Keep data orchestration and browser subscriptions out of page and component modules.
 - Components and pages must not call React `useEffect` or `useLayoutEffect` directly. Put necessary external synchronization in a purpose-specific hook under `hooks/`, with explicit inputs and symmetric cleanup. Prefer render-time derivation, event handlers, and query/store APIs when they express the behavior directly.
 - Package-owned hooks stay in their owning package. Do not move third-party hooks into this app.
+- The Oxlint effect boundary resolves React named, default, and namespace imports, local identifier aliases, and literal computed members such as `React["useEffect"]`. Dynamically computed members and re-exported bindings need project-wide symbol analysis, which this local syntax rule does not perform. Do not use those indirections to hide effects.
 
 ## Related guides
 

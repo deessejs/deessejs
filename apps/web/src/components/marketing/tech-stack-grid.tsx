@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState, useSyncExternalStore } from "react"
+import { useSyncExternalStore } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { cn } from "@workspace/ui/lib/utils"
@@ -63,7 +63,6 @@ export function TechStackGrid({
   techs: ReadonlyArray<Tech>
   className?: string
 }) {
-  const [order, setOrder] = useState<ReadonlyArray<Tech>>(techs)
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     getReducedMotionSnapshot,
@@ -73,7 +72,7 @@ export function TechStackGrid({
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
   // exactly once at any moment.
-  useTechStackRotation(techs, reducedMotion, setOrder)
+  const animatedOrder = useTechStackRotation(techs.length, reducedMotion)
 
   return (
     <div
@@ -83,7 +82,7 @@ export function TechStackGrid({
       )}
     >
       {techs.map((slot, slotIdx) => {
-        const tech = order[slotIdx] ?? slot
+        const tech = techs[animatedOrder[slotIdx] ?? slotIdx] ?? slot
         return (
           <div
             key={slotIdx}

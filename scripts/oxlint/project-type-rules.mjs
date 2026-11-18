@@ -53,15 +53,6 @@ function checkNamedParameterTypes(context, node) {
   }
 }
 
-function importedFromReact(variable) {
-  return variable?.defs?.some((definition) => {
-    const specifier = definition.node
-    return specifier?.type === "ImportSpecifier" &&
-      ["useEffect", "useLayoutEffect"].includes(specifier.imported?.name ?? specifier.imported?.value) &&
-      (definition.parent?.source?.value ?? specifier.parent?.source?.value) === "react"
-  }) ?? false
-}
-
 function resolveVariable(scope, name) {
   for (let current = scope; current; current = current.upper) {
     const found = current.set?.get(name)
@@ -70,8 +61,27 @@ function resolveVariable(scope, name) {
   return undefined
 }
 
+function importedFromReact(variable, importedNames) {
+  return variable?.defs?.some((definition) => {
+    const specifier = definition.node
+    if ((definition.parent?.source?.value ?? specifier?.parent?.source?.value) !== "react") return false
+    if (specifier?.type === "ImportNamespaceSpecifier" || specifier?.type === "ImportDefaultSpecifier") return true
+    return specifier?.type === "ImportSpecifier" &&
+      importedNames.includes(specifier.imported?.name ?? specifier.imported?.value)
+  }) ?? false
+}
+
+function appHooksDirectory(filename) {
+  const normalized = filename.replaceAll("\\", "/")
+  if (/(?:^|\/)apps\/web\//.test(normalized)) return "apps/web/src/hooks/"
+  if (/(?:^|\/)apps\/app\//.test(normalized)) return "apps/app/hooks/"
+  return null
+}
+
 function isWithinHooksDirectory(filename) {
-  return /(?:^|[/\\])apps[/\\](?:app|web)[/\\](?:src[/\\])?hooks[/\\]/.test(filename)
+  const normalized = filename.replaceAll("\\", "/")
+  const expected = appHooksDirectory(normalized)
+  return expected !== null && new RegExp(`(?:^|/)${expected.replaceAll("/", "\\/")}`).test(normalized)
 }
 
 function hasHookCall(node) {
@@ -93,17 +103,51 @@ function hasHookCall(node) {
   return found
 }
 
+function memberName(expression) {
+  if (!expression.computed && expression.property.type === "Identifier") return expression.property.name
+  if (expression.computed && expression.property.type === "Literal" && typeof expression.property.value === "string") return expression.property.value
+  return null
+}
+
+function isReactNamespaceVariable(variable, scope, visited) {
+  if (!variable || visited.has(variable)) return false
+  visited.add(variable)
+  if (importedFromReact(variable, [])) return true
+  return variable.defs?.some((definition) => {
+    const declarator = definition.node
+    if (declarator?.type !== "VariableDeclarator" || declarator.init?.type !== "Identifier") return false
+    const declarationScope = variable.scope ?? scope
+    return isReactNamespaceVariable(resolveVariable(declarationScope, declarator.init.name), declarationScope, visited)
+  }) ?? false
+}
+
+function isEffectVariable(variable, scope, visited = new Set()) {
+  if (!variable || visited.has(variable)) return false
+  visited.add(variable)
+  if (importedFromReact(variable, ["useEffect", "useLayoutEffect"])) return true
+  return variable.defs?.some((definition) => {
+    const declarator = definition.node
+    if (declarator?.type !== "VariableDeclarator" || !declarator.init) return false
+    const declarationScope = variable.scope ?? scope
+    const init = declarator.init
+    if (init.type === "Identifier") {
+      return isEffectVariable(resolveVariable(declarationScope, init.name), declarationScope, visited)
+    }
+    if (init.type === "MemberExpression" && ["useEffect", "useLayoutEffect"].includes(memberName(init))) {
+      return init.object.type === "Identifier" && isReactNamespaceVariable(
+        resolveVariable(declarationScope, init.object.name), declarationScope, new Set()
+      )
+    }
+    return false
+  }) ?? false
+}
+
 function isReactEffectCall(context, node) {
   const scope = context.sourceCode?.getScope?.(node) ?? context.getScope?.()
   const callee = node.callee
-  if (callee.type === "Identifier") {
-    return importedFromReact(resolveVariable(scope, callee.name))
-  }
-  if (callee.type === "MemberExpression" && !callee.computed && ["useEffect", "useLayoutEffect"].includes(callee.property.name) && callee.object.type === "Identifier") {
-    const variable = resolveVariable(scope, callee.object.name)
-    return variable?.defs?.some((definition) =>
-      definition.node?.type === "ImportNamespaceSpecifier" &&
-      (definition.parent?.source?.value ?? definition.node?.parent?.source?.value) === "react") ?? false
+  if (callee.type === "Identifier") return isEffectVariable(resolveVariable(scope, callee.name), scope)
+  if (callee.type === "MemberExpression" && ["useEffect", "useLayoutEffect"].includes(memberName(callee)) && callee.object.type === "Identifier") {
+    return isReactNamespaceVariable(resolveVariable(scope, callee.object.name), scope, new Set())
   }
   return false
 }
@@ -174,6 +218,13 @@ const plugin = {
         return {
           FunctionDeclaration(node) { check(node, node.id?.name) },
           VariableDeclarator(node) { if (["ArrowFunctionExpression", "FunctionExpression"].includes(node.init?.type)) check(node.init, node.id?.name) },
+          MethodDefinition(node) { if (node.kind !== "constructor") check(node.value, node.key?.name) },
+          PropertyDefinition(node) { if (["ArrowFunctionExpression", "FunctionExpression"].includes(node.value?.type)) check(node.value, node.key?.name) },
+          Property(node) {
+            if (node.method || ["ArrowFunctionExpression", "FunctionExpression"].includes(node.value?.type)) {
+              check(node.value, node.key?.name)
+            }
+          },
         }
       },
     },
