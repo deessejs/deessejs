@@ -51,15 +51,19 @@ const orgClient = organizationClient()
 const additionalFieldsClient = inferAdditionalFields<typeof auth>()
 const minimalApp = createDeesse({ database, auth })
 const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>
-const app: DeesseInstance<typeof database, ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>>, typeof appRouter & { feature: typeof procedures; username: typeof appRouter }> = createDeesse(config)
+const app = createDeesse(config)
+type ExpectedAuthOptions = ComposedBetterAuthOptions<typeof auth, typeof config.plugins>
+type ExpectedAuthInstance = ReturnType<typeof betterAuth<ExpectedAuthOptions>>
+type ExpectedRouter = typeof appRouter & { feature: typeof procedures; username: typeof appRouter }
+type ExpectedDeesseInstance = DeesseInstance<typeof database, ExpectedAuthInstance, ExpectedRouter>
 type ConfigDatabaseExact = Assert<Equal<typeof config.database, typeof database>>
 type ConfigAuthExact = Assert<Equal<typeof config.auth, typeof auth>>
 type ConfigApiExact = Assert<Equal<typeof config.api.router, typeof appRouter>>
 type ConfigPluginsExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>>
 type DatabaseExact = Assert<Equal<typeof app.database, DeesseDatabaseService<CapabilitiesOf<typeof database>>>>
-type AuthExact = Assert<Equal<typeof app.auth, ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>>>>
-type RouterExact = Assert<Equal<typeof app.api.router, typeof appRouter & { feature: typeof procedures; username: typeof appRouter }>>
-type InstanceExact = Assert<Equal<typeof app, DeesseInstance<typeof database, ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>>, typeof appRouter & { feature: typeof procedures; username: typeof appRouter }>>>
+type AuthExact = Assert<Equal<typeof app.auth, ExpectedAuthInstance>>
+type RouterExact = Assert<Equal<typeof app.api.router, ExpectedRouter>>
+type InstanceExact = Assert<Equal<typeof app, ExpectedDeesseInstance>>
 type HandlerExact = Assert<Equal<typeof app.handler, (request: Request) => Promise<Response>>>
 type PluginTupleExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>>
 type ApiInputExact = Assert<Equal<InferRouterInputs<typeof app.api.router>["ping"], { count: number }>>
@@ -138,6 +142,8 @@ const usernameResponse = await usernameAvailable
 const availability: boolean | undefined = usernameResponse.data?.available
 const clientTeamCode: string = client.auth.$Infer.Session.user.teamCode
 const clientUsername: ReturnType<typeof client.auth.useSession> = client.auth.useSession()
-void client.auth.organization
-void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode]
+const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "admin" })
+// @ts-expect-error the organization client rejects roles outside the configured plugin
+client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
+void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission]
 void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, HandlerExact, PluginTupleExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
