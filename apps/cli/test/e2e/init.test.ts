@@ -259,6 +259,7 @@ describe.skipIf(process.platform !== "linux")(
         const noInstallResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -290,7 +291,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const catalogInfoResult = await runCommand(
           cliExecutable,
-          ["info", "init-regression-fixture", "--verbose"],
+          ["templates", "info", "init-regression-fixture", "--verbose"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(
@@ -304,7 +305,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const catalogJsonInfoResult = await runCommand(
           cliExecutable,
-          ["info", "init-regression-fixture", "--json"],
+          ["templates", "info", "init-regression-fixture", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(catalogJsonInfoResult.exitCode).toBe(0)
@@ -315,7 +316,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const unknownCatalogInfoResult = await runCommand(
           cliExecutable,
-          ["info", "test", "--json"],
+          ["templates", "info", "test", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(unknownCatalogInfoResult.exitCode).not.toBe(0)
@@ -331,6 +332,7 @@ describe.skipIf(process.platform !== "linux")(
         const directInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/init-regression-fixture",
             "--json",
@@ -357,6 +359,7 @@ describe.skipIf(process.platform !== "linux")(
         const directHumanInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/init-regression-fixture",
             "--ref",
@@ -406,7 +409,8 @@ describe.skipIf(process.platform !== "linux")(
           const result = await runCommand(
             cliExecutable,
             [
-              "init",
+              "templates",
+            "init",
               "init-regression-fixture",
               "--dir",
               target,
@@ -440,6 +444,7 @@ describe.skipIf(process.platform !== "linux")(
         const installResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -470,6 +475,7 @@ describe.skipIf(process.platform !== "linux")(
         const quietResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -491,6 +497,7 @@ describe.skipIf(process.platform !== "linux")(
         const noInstallVerboseResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -529,6 +536,7 @@ describe.skipIf(process.platform !== "linux")(
         const noInstallJsonResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -553,6 +561,7 @@ describe.skipIf(process.platform !== "linux")(
         const verboseResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -576,6 +585,7 @@ describe.skipIf(process.platform !== "linux")(
         const verboseJsonResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -599,6 +609,7 @@ describe.skipIf(process.platform !== "linux")(
         const directResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "https://github.com/deessejs/init-regression-fixture",
             "--dir",
@@ -626,6 +637,7 @@ describe.skipIf(process.platform !== "linux")(
         const unsupportedCatalogResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "legacy-starter",
             "--dir",
@@ -646,7 +658,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const unsupportedInfoResult = await runCommand(
           cliExecutable,
-          ["info", "legacy-starter", "--json"],
+          ["templates", "info", "legacy-starter", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(unsupportedInfoResult.exitCode).not.toBe(0)
@@ -659,6 +671,7 @@ describe.skipIf(process.platform !== "linux")(
         const missingRepositoryInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/missing-template-repository",
             "--json",
@@ -675,6 +688,7 @@ describe.skipIf(process.platform !== "linux")(
         const unsupportedUrlResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "https://github.com/deessejs/legacy-template",
             "--dir",
