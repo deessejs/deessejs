@@ -29,7 +29,7 @@ function hasGlobalChange(files) {
 }
 
 function queryAffected(target, base, head, cwd) {
-  const result = spawnSync("/usr/local/bin/npx", ["--yes", `turbo@${TURBO_VERSION}`, "query", "affected", "--base", base, "--head", head, "--tasks", "build", "--packages", target, "--no-update-notifier"], { cwd, encoding: "utf8" })
+  const result = spawnSync(path.join(path.dirname(process.execPath), "npx"), ["--yes", `turbo@${TURBO_VERSION}`, "query", "affected", "--base", base, "--head", head, "--tasks", "build", "--packages", target, "--no-update-notifier"], { cwd, encoding: "utf8" })
   if (result.status !== 0) throw new Error(result.stderr || `Turbo exited with ${result.status}`)
   const response = JSON.parse(result.stdout)
   const items = response?.data?.affectedTasks?.items
