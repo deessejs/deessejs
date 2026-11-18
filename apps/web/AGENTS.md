@@ -6,14 +6,14 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## Service boundary
 
-Use `src/lib/auth-client.ts` for browser authentication and `src/lib/orpc.ts` for API data. Application code must not import runtime APIs from `@workspace/auth` or `@workspace/database`; the browser clients call the server endpoints and the API owns database access. Keep client-visible shapes in `@workspace/contracts`. Product showcase snippets should follow this boundary or clearly label a different server-side template architecture.
+`apps/web` owns its browser clients in `src/lib/auth-client.ts` and `src/lib/orpc.ts`. The `apps/app` wrapper is app-specific and is not imported here. Application code must not import runtime APIs from `@workspace/auth` or `@workspace/database`; the browser clients call the server endpoints and the API owns database access. Keep client-visible shapes in `@workspace/contracts`. Product showcase snippets should follow this boundary or clearly label a different server-side template architecture.
 
 ## Key files
 
 | Path | Owns |
 |---|---|
 | `src/app/(marketing)/` | Home, pricing, stack, ecosystem, customers, CLI pages. |
-| `src/app/(product)/` | Templates catalogue, blocks and components showcase, use cases. |
+| `src/app/(product)/` | Templates catalogue, Sections and components showcase, use cases. |
 | `src/app/(content)/` | Blog, changelog and knowledge base, fed by content collections. |
 | `src/app/(legal)/` | Privacy, terms and cookies. |
 | `src/app/r/registry.json/route.ts` | The catalogue index, in the shadcn registry shape. |

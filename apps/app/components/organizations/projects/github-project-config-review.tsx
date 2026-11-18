@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -12,11 +13,9 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
-import type { ORPCBrowserClient } from "@/lib/orpc-browser"
-
 type ProjectConfigInspection = Awaited<
   ReturnType<
-    ORPCBrowserClient["githubApp"]["repositories"]["inspectConfiguration"]
+    typeof client.rpc["githubApp"]["repositories"]["inspectConfiguration"]
   >
 >
 type InvalidProjectConfig = Extract<

@@ -1,10 +1,10 @@
 "use client"
 
+import { client } from "@/lib/client"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
 import { Separator } from "@workspace/ui/components/separator"
@@ -35,7 +35,7 @@ export function LoginForm({
 			// here is idempotent and keeps the call site
 			// self-contained.
 			const target = safeRedirect(redirectTo, "/home")
-			const { error } = await authClient.signIn.email(value, {
+			const { error } = await client.auth.signIn.email(value, {
 				onSuccess: () => router.push(target),
 			})
 			if (error) {

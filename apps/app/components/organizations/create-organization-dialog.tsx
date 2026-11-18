@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
@@ -15,7 +16,6 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 
-import { orpcBrowser } from "@/lib/orpc-browser"
 import { workspaceHomePath } from "@/lib/workspace-paths"
 
 /**
@@ -96,7 +96,7 @@ export function CreateOrganizationDialog({
     setCreating(true)
     setError(null)
     try {
-      const created = await orpcBrowser.organization.create({ name })
+      const created = await client.rpc.organization.create({ name })
       setName("")
       handleOpenChange(false)
       onCreated?.(created)

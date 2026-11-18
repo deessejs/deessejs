@@ -14,6 +14,11 @@
       "import": "./dist/orpc/index.js",
       "default": "./dist/orpc/index.js"
     },
+    "./client/web": {
+      "types": "./dist/client/web.d.ts",
+      "import": "./dist/client/web.js",
+      "default": "./dist/client/web.js"
+    },
     "./base-path": {
       "types": "./dist/constants/base-path.d.ts",
       "import": "./dist/constants/base-path.js",
@@ -46,6 +51,7 @@
     "@orpc/server": "catalog:",
     "@workspace/auth": "workspace:*",
     "@workspace/contracts": "workspace:*",
+    "@workspace/content": "workspace:*",
     "@workspace/database": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/env": "workspace:*",

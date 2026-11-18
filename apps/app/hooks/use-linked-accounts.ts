@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { queryOptions } from "@tanstack/react-query"
-import { authClient } from "@/lib/auth-client"
 
 const linkedAccountQueryKeys = {
   all: ["settings", "linked-accounts"] as const,
@@ -15,7 +15,7 @@ function linkedAccountQueryOptions(userId: string | undefined) {
     queryKey: linkedAccountQueryKeys.list(userId),
     enabled: userId !== undefined,
     queryFn: async () => {
-      const { data, error } = await authClient.listAccounts()
+      const { data, error } = await client.auth.listAccounts()
       if (error) {
         throw new Error(error.message ?? "Failed to load linked accounts")
       }
@@ -41,7 +41,7 @@ export function useUnlinkAccount(userId: string | undefined) {
 
   return useMutation({
     mutationFn: async (accountId: string) => {
-      const { error } = await authClient.unlinkAccount({ accountId })
+      const { error } = await client.auth.unlinkAccount({ accountId })
       if (error) {
         throw new Error(error.message ?? "Failed to unlink account")
       }

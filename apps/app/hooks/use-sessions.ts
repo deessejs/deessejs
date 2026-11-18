@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import {
   queryOptions,
   useMutation,
@@ -12,7 +13,6 @@ import {
   type CurrentSessionToken,
   type SessionToken,
 } from "@workspace/auth/types"
-import { authClient } from "@/lib/auth-client"
 
 interface AccountSession {
   id: string
@@ -31,8 +31,8 @@ const sessionQueryKeys = {
 
 async function fetchSessions(): Promise<AccountSession[]> {
   const [sessionsResponse, currentSessionResponse] = await Promise.all([
-    authClient.listSessions(),
-    authClient.getSession(),
+    client.auth.listSessions(),
+    client.auth.getSession(),
   ])
 
   if (sessionsResponse.error) {
@@ -81,7 +81,7 @@ export function useRevokeSession(userId: string | undefined) {
 
   return useMutation({
     mutationFn: async (token: SessionToken) => {
-      const { error } = await authClient.revokeSession({ token })
+      const { error } = await client.auth.revokeSession({ token })
       if (error) {
         throw new Error(error.message ?? "Failed to revoke session")
       }
@@ -98,7 +98,7 @@ export function useRevokeOtherSessions(userId: string | undefined) {
 
   return useMutation({
     mutationFn: async () => {
-      const { error } = await authClient.revokeOtherSessions()
+      const { error } = await client.auth.revokeOtherSessions()
       if (error) {
         throw new Error(error.message ?? "Failed to sign out other sessions")
       }

@@ -1,10 +1,10 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-import { orpcBrowser } from "@/lib/orpc-browser"
 import { API_BASE_PATH } from "@workspace/api/base-path"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -156,7 +156,7 @@ export function GitHubAppIntegration({
   async function disconnectGitHubApp() {
     setPending(true)
     try {
-      await orpcBrowser.githubApp.disconnect({ slug })
+      await client.rpc.githubApp.disconnect({ slug })
       toast.success("GitHub App disconnected from this organization")
       router.refresh()
     } catch (error) {

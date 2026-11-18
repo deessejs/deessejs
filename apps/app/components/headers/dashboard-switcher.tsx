@@ -1,16 +1,16 @@
 "use client"
 
+import { client } from "@/lib/client"
 import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
 import { LayoutDashboardIcon, ShieldCheckIcon } from "lucide-react"
-import { authClient } from "@/lib/auth-client"
 
 export function DashboardSwitcher({
   currentSurface,
 }: {
   currentSurface: "admin" | "workspace"
 }) {
-  const { data: session } = authClient.useSession()
+  const { data: session } = client.auth.useSession()
 
   if (session?.user.role !== "admin") return null
 

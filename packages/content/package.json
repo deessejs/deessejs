@@ -1,0 +1,30 @@
+{
+  "name": "@workspace/content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/generate-feeds.mjs && tsc"
+  },
+  "dependencies": {
+    "reading-time": "catalog:"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "exports": {
+    "./registry": {
+      "types": "./dist/shadcn-registry/index.d.ts",
+      "import": "./dist/shadcn-registry/index.js"
+    },
+    "./feeds": {
+      "types": "./dist/generated-feeds.d.ts",
+      "import": "./dist/generated-feeds.js"
+    },
+    "./registry/*": {
+      "types": "./dist/shadcn-registry/*.d.ts",
+      "import": "./dist/shadcn-registry/*.js"
+    }
+  }
+}

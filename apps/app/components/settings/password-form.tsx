@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { PasswordInput } from "@/components/auth/password-input"
 
@@ -27,7 +27,7 @@ export function PasswordForm() {
 		}
 
 		setSubmitting(true)
-		const { error } = await authClient.changePassword({
+		const { error } = await client.auth.changePassword({
 			currentPassword,
 			newPassword,
 		})

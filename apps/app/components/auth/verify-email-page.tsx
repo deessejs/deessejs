@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { MailIcon } from "lucide-react"
 
@@ -23,7 +23,7 @@ function VerifyEmailPageContent() {
     setResending(true)
     const email = searchParams.get("email")
     if (email) {
-      await authClient.sendVerificationEmail({
+      await client.auth.sendVerificationEmail({
         email,
         callbackURL: searchParams.get("redirectTo") ?? "/home",
       })

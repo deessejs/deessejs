@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -7,11 +8,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 
-import { authClient } from "@/lib/auth-client"
 import { workspaceHomePath } from "@/lib/workspace-paths"
 
 type InvitationDetails = NonNullable<
-  Awaited<ReturnType<typeof authClient.organization.getInvitation>>["data"]
+  Awaited<ReturnType<typeof client.auth.organization.getInvitation>>["data"]
 >
 
 function invitationQueryOptions(invitationId: string, userId?: string) {
@@ -19,7 +19,7 @@ function invitationQueryOptions(invitationId: string, userId?: string) {
     queryKey: ["organization-invitation", invitationId, userId],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const { data, error } = await authClient.organization.getInvitation({
+      const { data, error } = await client.auth.organization.getInvitation({
         query: { id: invitationId },
       })
       if (error || !data) {
@@ -32,7 +32,7 @@ function invitationQueryOptions(invitationId: string, userId?: string) {
 
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   const router = useRouter()
-  const session = authClient.useSession()
+  const session = client.auth.useSession()
   const [submitting, setSubmitting] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const invitationPath = `/accept-invitation/${encodeURIComponent(invitationId)}`
@@ -48,7 +48,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
     setSubmitting(true)
     setFailure(null)
     try {
-      const { error } = await authClient.organization.acceptInvitation({
+      const { error } = await client.auth.organization.acceptInvitation({
         invitationId,
       })
       if (error) {
@@ -66,7 +66,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   async function sendVerification() {
     if (!signedInUser) return
     try {
-      const { error } = await authClient.sendVerificationEmail({
+      const { error } = await client.auth.sendVerificationEmail({
         email: signedInUser.email,
         callbackURL: invitationPath,
       })
@@ -83,7 +83,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
 
   async function switchAccount() {
     try {
-      await authClient.signOut()
+      await client.auth.signOut()
       router.refresh()
     } catch {
       setFailure("Could not sign out of this account.")

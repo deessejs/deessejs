@@ -9,22 +9,33 @@ export const listCommand = new Command("list")
   .description("List available templates")
   .option("--category <name>", "filter to a single category")
   .option("--json", "JSON output for scripting")
+  .option("--refresh", "Bypass and refresh the local catalog cache")
+  .option("--verbose", "show human-readable output")
   .action((options: ListCommandOptions) => runListCommand(options))
 
-type ListCommandOptions = { category?: string; json?: boolean }
+type ListCommandOptions = {
+  category?: string
+  json?: boolean
+  verbose?: boolean
+  refresh?: boolean
+}
 type ListSpinner = ReturnType<typeof ora> | null
 
 async function runListCommand(options: ListCommandOptions): Promise<void> {
-  const spinner = options.json ? null : ora("Fetching templates...").start()
+  const json = !options.verbose || !!options.json
+  const spinner = json ? null : ora("Fetching templates...").start()
   try {
-    const all = await fetchTemplates()
+    const all = await fetchTemplates({
+      useLocalCache: true,
+      ...(options.refresh ? { refresh: true } : {}),
+    })
     const filtered = options.category
       ? all.filter((template) => template.category === options.category)
       : all
     spinner?.stop()
-    renderTemplates(filtered, options, spinner)
+    renderTemplates(filtered, { ...options, json }, spinner)
   } catch (error) {
-    reportListError(error, options.json ?? false, spinner)
+    reportListError(error, json, spinner)
   }
 }
 

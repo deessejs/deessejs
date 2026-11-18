@@ -129,6 +129,7 @@ catalog:
   remark-gfm: ^4.0.1
   resend: ^6.33.0
   sharp: ^0.35.5
+  semver: ^7.8.5
   shiki: ^4.3.1
   sonner: ^2.0.7
   storybook: ^10.6.5

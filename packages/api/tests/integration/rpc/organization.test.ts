@@ -30,6 +30,7 @@ import { inject } from "vitest"
 import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
 import {
+  invitation,
   member,
   organization,
   organizationProvisioning,
@@ -408,6 +409,70 @@ describe("organization procedures", () => {
 
       expect(res.status).toBe(401)
       expect(errorOf(res.body).code).toBe("UNAUTHORIZED")
+    })
+
+    it(
+      "lists only pending invitations addressed to the verified caller across organizations",
+      async () => {
+        const recipient = await createActor()
+        const inviter = await createActor()
+        const firstOrg = await createOrganization("First organization")
+        const secondOrg = await createOrganization("Second organization")
+        const now = new Date()
+
+        await db.insert(invitation).values([
+          {
+            id: uniqueId("invitation"),
+            organizationId: firstOrg.id,
+            email: recipient.email.toUpperCase(),
+            role: "member",
+            status: "pending",
+            expiresAt: new Date(now.getTime() + 60_000),
+            inviterId: inviter.id,
+          },
+          {
+            id: uniqueId("invitation"),
+            organizationId: secondOrg.id,
+            email: `${uniqueId("other")}@example.com`,
+            role: "admin",
+            status: "pending",
+            expiresAt: new Date(now.getTime() + 60_000),
+            inviterId: inviter.id,
+          },
+        ])
+
+        const res = await rpc(
+          ["organization", "accountInvitations"],
+          {},
+          recipient.cookie
+        )
+
+        expect(res.status).toBe(200)
+        expect(res.body.json).toMatchObject([
+          {
+            organizationName: "First organization",
+            organizationSlug: firstOrg.slug,
+            inviterName: inviter.id,
+            role: "member",
+            expired: false,
+          },
+        ])
+        expect(
+          (res.body.json as Array<{ organizationName: string }>)
+        ).toHaveLength(1)
+      }
+    )
+
+    it("does not expose invitations to a caller with an unverified email", async () => {
+      const recipient = await createActor(undefined, false)
+      const res = await rpc(
+        ["organization", "accountInvitations"],
+        {},
+        recipient.cookie
+      )
+
+      expect(res.status).toBe(200)
+      expect(res.body.json).toEqual([])
     })
 
     it("returns the organization to a member, with their real role", async () => {

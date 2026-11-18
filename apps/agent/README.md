@@ -31,7 +31,7 @@ schedules, just the mention loop.
 ## Prerequisites
 
 - Node.js 24+ (the agent runtime requires it; the rest of the monorepo
-  stays on Node 22+).
+  uses Node 24 as its development and CI runtime).
 - pnpm 11+ (matches the rest of the monorepo).
 - A MiniMax API key for the `MiniMax-M3` model.
 - A GitHub App you own, with the webhook pointed at the deployed agent.

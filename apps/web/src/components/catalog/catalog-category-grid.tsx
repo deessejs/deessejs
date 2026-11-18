@@ -23,7 +23,7 @@ type Props = {
    * Number of columns at the largest breakpoint. The surface
    * settles on this layout:
    *   - 3: `grid-cols-3` at `lg:` (currently used by `/components`).
-   *   - 4: `grid-cols-4` at `xl:` (currently used by `/blocks`).
+ *   - 4: `grid-cols-4` at `xl:` (currently used by `/sections`).
    */
   columns: ColumnCount
 }
@@ -32,7 +32,7 @@ type Props = {
  * Catalog chrome: category grid.
  *
  * Renders one `<CatalogCard>` per category on the catalogue
- * index pages (`/<surface>`). Both `/components` and `/blocks`
+ * index pages (`/<surface>`). Both `/components` and `/sections`
  * use a 1-card-per-category layout — index pages, not drilldowns.
  *
  * Pre-refactor this was duplicated as

@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { SETTINGS_PATHS, SETTINGS_PREFIX } from "../lib/settings-paths"
+import {
+  ACCOUNT_PATHS,
+  SETTINGS_PATHS,
+  SETTINGS_PREFIX,
+} from "../lib/settings-paths"
 import { ORGANIZATIONS_PATH } from "../lib/workspace-paths"
 import { config, proxy } from "../proxy"
 
@@ -100,6 +104,70 @@ describe("proxy: the account settings are protected", () => {
     const target = locationOf(response)
     expect(target.pathname).toBe("/login")
     expect(target.searchParams.get("redirect")).toBe(SETTINGS_PATHS.profile)
+  })
+})
+
+describe("proxy: account routes are protected", () => {
+  it("bounces a signed-out visitor from support to login", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request(ACCOUNT_PATHS.support))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).searchParams.get("redirect")).toBe(
+      ACCOUNT_PATHS.support,
+    )
+  })
+
+  it("bounces a signed-out visitor from an account route to login", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request("/account/overview"))
+
+    expect(response.status).toBe(307)
+    const target = locationOf(response)
+    expect(target.pathname).toBe("/login")
+    expect(target.searchParams.get("redirect")).toBe("/account/overview")
+  })
+
+  it("sends an unverified visitor from an account route to verify-email", async () => {
+    stubSession({ emailVerified: false })
+    const response = await proxy(request(ACCOUNT_PATHS.invitations))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/verify-email")
+  })
+
+  it("lets a verified visitor access an account route", async () => {
+    stubSession()
+    const response = await proxy(request(ACCOUNT_PATHS.support))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+  })
+
+  it("protects the account root", async () => {
+    stubSession({ signedIn: false })
+    const response = await proxy(request("/account"))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).searchParams.get("redirect")).toBe("/account")
+  })
+
+  it("treats /accounting as a workspace route, not an account prefix", async () => {
+    const fetchMock = stubSession({ signedIn: false })
+    const response = await proxy(request("/accounting"))
+
+    expect(response.status).toBe(307)
+    expect(locationOf(response).pathname).toBe("/login")
+    expect(locationOf(response).searchParams.get("redirect")).toBe("/accounting")
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it("retains the existing file-path exclusion under account", async () => {
+    const fetchMock = stubSession()
+    const response = await proxy(request("/account/avatar.png"))
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

@@ -1,7 +1,7 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import {
@@ -27,7 +27,7 @@ export function DeleteAccountDialog() {
 	async function handleDelete() {
 		if (confirm !== CONFIRM_TEXT) return
 		setDeleting(true)
-		const { error } = await authClient.deleteUser({
+		const { error } = await client.auth.deleteUser({
 			// Validate even though the literal is hardcoded — defense-in-depth.
 			callbackURL: safeRedirect("/login"),
 		})

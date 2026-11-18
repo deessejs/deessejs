@@ -5,14 +5,11 @@ import { join } from "node:path"
 /**
  * On-disk response cache for the CLI.
  *
- * Layout: one file per endpoint under ~/.deessejs/. Each file holds the
- * raw response body plus the ETag the server returned, so we can reissue
- * If-None-Match on the next call and serve the cached body on a 304.
+ * Layout: one versioned response file per catalog or template detail under
+ * ~/.deessejs/.
  *
- * No TTL: the server is the source of truth for freshness. A cache entry
- * is "valid" if either (a) we can revalidate it against the server and
- * the server says 304, or (b) we're in --offline mode and any prior
- * response is better than nothing.
+ * Callers validate the body and its five-minute freshness before using it.
+ * Expired, malformed or contract-invalid entries are misses.
  *
  * Corruption policy: a malformed file is treated as cache-miss. We do
  * not auto-overwrite it — if the user manually edited a cache file, we

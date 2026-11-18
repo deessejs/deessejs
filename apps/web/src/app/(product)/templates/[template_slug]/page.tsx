@@ -2,12 +2,16 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowRight } from "lucide-react"
+import { cache } from "react"
 
 import { liveCache, orpc, staticParamsCache } from "@/lib/orpc"
 import { TemplateDetail } from "@/components/templates/template-detail"
 import { Button } from "@workspace/ui/components/button"
 
 type Params = { template_slug: string }
+const getTemplate = cache((slug: string) =>
+  orpc.templates.detail({ slug }, liveCache)
+)
 
 /**
  * Pre-generate one static page per known slug at build time.
@@ -36,8 +40,7 @@ export const generateMetadata = async ({
 }): Promise<Metadata> => {
   const { template_slug } = await params
   try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    const template = result.templates.find((t) => t.slug === template_slug)
+    const template = await getTemplate(template_slug)
     if (!template) return { title: "Template not found" }
     return {
       title: template.name,
@@ -58,10 +61,6 @@ export const generateMetadata = async ({
 /**
  * Detail page at /templates/[template_slug].
  *
- * Single source of truth: same `orpc.templates.list()` call as the
- * index page. The catalog is tiny, so doing a server-side `.find()`
- * is cheaper than maintaining a second endpoint.
- *
  * Uses `liveCache` (revalidate: 0, tag `templates:live`) so a
  * transient failure cannot poison the Next.js data cache. On a
  * runtime error the request propagates to the segment's `error.tsx`
@@ -73,8 +72,7 @@ const TemplateDetailPage = async ({ params }: { params: Promise<Params> }) => {
   const { template_slug } = await params
   let template
   try {
-    const result = await orpc.templates.list(undefined, liveCache)
-    template = result.templates.find((t) => t.slug === template_slug)
+    template = await getTemplate(template_slug)
   } catch {
     // Build-time fallback: a failed fetch during prerender becomes
     // a 404 (the slug cannot be confirmed). Production runtime

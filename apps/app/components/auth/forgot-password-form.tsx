@@ -1,10 +1,10 @@
 "use client"
 
+import { client } from "@/lib/client"
 import Link from "next/link"
 import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { Field } from "./field"
 import { forgotPasswordSchema } from "@/components/auth/schemas"
@@ -18,7 +18,7 @@ export function ForgotPasswordForm() {
 			onSubmit: forgotPasswordSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await authClient.requestPasswordReset({
+			const { error } = await client.auth.requestPasswordReset({
 				email: value.email,
 				redirectTo: "/reset-password",
 			})

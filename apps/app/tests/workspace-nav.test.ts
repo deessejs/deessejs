@@ -2,7 +2,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { FilesIcon, FolderGit2Icon, HomeIcon } from "lucide-react"
+import { BlocksIcon, FilesIcon, FolderGit2Icon, HomeIcon } from "lucide-react"
 
 import {
   activeWorkspaceHref,
@@ -43,17 +43,20 @@ describe("the workspace navigation", () => {
     expect(workspaceNavEntries("acme").map((entry) => entry.label)).toEqual([
       "Home",
       "Templates",
+      "Blocks",
       "Projects",
       "General",
     ])
     expect(workspaceNavEntries("acme")[1]?.icon).toBe(FilesIcon)
-    expect(workspaceNavEntries("acme")[2]?.icon).toBe(FolderGit2Icon)
+    expect(workspaceNavEntries("acme")[2]?.icon).toBe(BlocksIcon)
+    expect(workspaceNavEntries("acme")[3]?.icon).toBe(FolderGit2Icon)
   })
 
   it("builds every path from the slug", () => {
     expect(workspaceNavEntries("acme").map((entry) => entry.href)).toEqual([
       "/acme/home",
       "/acme/templates",
+      "/acme/blocks",
       "/acme/projects",
       "/acme/settings/organization",
     ])

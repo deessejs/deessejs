@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
@@ -11,7 +12,6 @@ import {
 } from "@workspace/ui/components/input-group"
 import { BoxesIcon, PlusIcon, SearchIcon } from "lucide-react"
 
-import { authClient } from "@/lib/auth-client"
 import { workspaceHomePath } from "@/lib/workspace-paths"
 import { CreateOrganizationDialog } from "./create-organization-dialog"
 
@@ -29,7 +29,7 @@ import { CreateOrganizationDialog } from "./create-organization-dialog"
  */
 export function OrganizationList() {
   const router = useRouter()
-  const organizations = authClient.useListOrganizations()
+  const organizations = client.auth.useListOrganizations()
   const [query, setQuery] = useState("")
   const [failure, setFailure] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -49,7 +49,7 @@ export function OrganizationList() {
   async function choose(organizationId: string, slug: string) {
     setFailure(null)
     try {
-      const { error: refusal } = await authClient.organization.setActive({
+      const { error: refusal } = await client.auth.organization.setActive({
         organizationId,
       })
       if (refusal) {

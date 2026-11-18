@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import {
   queryOptions,
   useMutation,
@@ -7,13 +8,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { z } from "zod"
-import { authClient } from "@/lib/auth-client"
 
 /**
  * Device-flow hooks.
  *
  * `useDeviceClaim` — read the current claim status of a user_code
- *   (useQuery against authClient.device) plus the two mutations
+ *   (useQuery against client.auth.device) plus the two mutations
  *   (approve, deny) that resolve a pending code. The component
  *   consumes the returned state and renders the right panel; all
  *   async state lives in the React Query cache.
@@ -56,7 +56,7 @@ function deviceClaimQueryOptions(userCode: string | null) {
     queryKey: ["device", "claim", userCode],
     queryFn: async (): Promise<DeviceClaim> => {
       if (!userCode) throw new Error("missing user_code")
-      const res = await authClient.device({
+      const res = await client.auth.device({
         query: { user_code: userCode },
       })
       if (res.error) {
@@ -76,7 +76,7 @@ export function useDeviceClaim(userCode: string | null) {
   const approve = useMutation({
     mutationFn: async () => {
       if (!userCode) throw new Error("missing user_code")
-      const res = await authClient.device.approve({
+      const res = await client.auth.device.approve({
         userCode,
       })
       if (res.error) {
@@ -94,7 +94,7 @@ export function useDeviceClaim(userCode: string | null) {
   const deny = useMutation({
     mutationFn: async () => {
       if (!userCode) throw new Error("missing user_code")
-      const res = await authClient.device.deny({
+      const res = await client.auth.device.deny({
         userCode,
       })
       if (res.error) {

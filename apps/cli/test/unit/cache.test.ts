@@ -15,7 +15,7 @@ vi.mock("node:os", async (importOriginal) => {
   }
 })
 
-const { readDiskCache, writeDiskCache } =
+const { readDiskCache, writeDiskCache, clearResponseCache } =
   await import("../../src/cache/index.js")
 const { cacheDir } = await import("../../src/cache/location.js")
 const CACHE_DIR = cacheDir()
@@ -66,5 +66,14 @@ describe("disk cache", () => {
     const entry = readDiskCache<{ v: number }>("templates.json")
     expect(entry?.body).toEqual({ v: 2 })
     expect(entry?.etag).toBe('W/"v2"')
+  })
+
+  it("clears only response cache files and is safe when empty", () => {
+    mkdirSync(CACHE_DIR, { recursive: true })
+    writeDiskCache("response-v1-templates.json", { templates: [] }, null)
+    writeFileSync(join(CACHE_DIR, "auth.json"), "preserve", "utf8")
+    expect(clearResponseCache()).toBe(1)
+    expect(existsSync(join(CACHE_DIR, "auth.json"))).toBe(true)
+    expect(clearResponseCache()).toBe(0)
   })
 })

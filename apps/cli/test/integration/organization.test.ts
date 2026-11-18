@@ -69,6 +69,12 @@ function response(body: unknown, status = 200): Response {
 }
 
 async function runCommand(args: string[]) {
+  const resetOptions = (command: typeof organizationCommand): void => {
+    command.setOptionValue("json", undefined)
+    command.setOptionValue("verbose", undefined)
+    for (const child of command.commands) resetOptions(child as typeof organizationCommand)
+  }
+  resetOptions(organizationCommand)
   await organizationCommand.parseAsync(args, { from: "user" })
 }
 
@@ -114,7 +120,7 @@ describe("organization commands", () => {
       })
     )
 
-    await runCommand(["list", "--json"])
+    await runCommand(["list"])
 
     expect(JSON.parse(stdoutWrites.join(""))).toEqual({ organizations: [] })
     expect(requests).toHaveLength(1)
@@ -185,7 +191,7 @@ describe("organization commands", () => {
       slug: "acme-studio-2",
     })
 
-    await runCommand(["create", "Acme Studio", "--json"])
+    await runCommand(["create", "Acme Studio"])
 
     expect(mockCreate).toHaveBeenCalledWith({
       name: "Acme Studio",
@@ -198,6 +204,29 @@ describe("organization commands", () => {
         slug: "acme-studio-2",
       },
     })
+  })
+
+  it("prints one JSON error and exits nonzero when creation fails", async () => {
+    mockCreate.mockRejectedValue(new Error("simulated API failure"))
+    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw Object.assign(new Error("exit"), { exitCode: code })
+    }) as never)
+    const stderr: string[] = []
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
+      stderr.push(chunk.toString())
+      return true
+    })
+    try {
+      await expect(runCommand(["create", "Acme Studio"])).rejects.toMatchObject({ exitCode: 1 })
+      const parsed = JSON.parse(stdoutWrites.join(""))
+      expect(parsed.ok).toBe(false)
+      expect(parsed.code).toBe("internal")
+      expect(stdoutWrites.join("").trim().split("\n").length).toBeGreaterThan(1)
+      expect(stderr.join("")).toBe("")
+    } finally {
+      exit.mockRestore()
+      stderrSpy.mockRestore()
+    }
   })
 
   it("lists every owned template and shows publication and review states in JSON", async () => {
@@ -307,7 +336,7 @@ describe("organization commands", () => {
     })
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
     try {
-      await runCommand(["template", "info", "acme", "live"])
+      await runCommand(["template", "info", "acme", "live", "--verbose"])
       expect(log.mock.calls.flat().join(" ")).toContain(
         "Organization-owned template"
       )

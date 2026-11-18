@@ -1,102 +1,54 @@
-import type { Metadata } from "next"
-
-import { calculateCatalogCounts } from "@/components/catalog/catalog-counts"
-import { CatalogBrowserShell } from "@/components/catalog/catalog-browser-shell"
-import { CatalogCategoryGrid } from "@/components/catalog/catalog-category-grid"
-import { CatalogSidebar } from "@/components/catalog/catalog-sidebar"
-import { BlockCardPreview } from "@/components/catalog/blocks/card-preview"
-import { BLOCK_CATEGORIES } from "@/components/catalog/blocks/categories"
-import { BLOCK_CATALOGUE } from "@/components/catalog/blocks/catalogue"
-
-export const metadata: Metadata = {
+import Link from "next/link"
+import { orpc } from "@/lib/orpc"
+export const metadata = {
   title: "Blocks",
-  description:
-    "Production-ready marketing sections. Hero, CTA, pricing, FAQ, and more. Drop them into any DeesseJS template.",
+  description: "Discover capability blocks for DeesseJS projects.",
 }
-
-/**
- * Blocks catalogue index at `/blocks`.
- *
- * Two-column layout: nav sidebar on the left, category grid on
- * the right. Each grid card is one category (Hero, CTA, Feature,
- * Pricing, Testimonial, Stats, FAQ, Footer) with a layout-shaped
- * preview.
- *
- * Wrapper + final CTA from `(product)/blocks/layout.tsx`.
- *
- * Inlined from the previously-separate `BlocksBrowser` and
- * `BlocksCategoryGrid` orchestrators. UI is identical.
- */
-export default function BlocksPage() {
-  // Map each category to a representative block.
-  const categoryToBlock = new Map(
-    BLOCK_CATEGORIES.flatMap((category) => {
-      const firstBlock = BLOCK_CATALOGUE.find(
-        (block) => block.category === category.id
-      )
-      return firstBlock ? [[category.id, firstBlock] as const] : []
-    })
-  )
-
-  // Per-category counts.
-  const counts = calculateCatalogCounts(
-    BLOCK_CATALOGUE,
-    (block) => block.category
-  )
-
+export default async function BlocksPage() {
+  let blocks: Awaited<ReturnType<typeof orpc.blocks.list>>["blocks"] = []
+  let failed = false
+  try {
+    blocks = (await orpc.blocks.list()).blocks
+  } catch {
+    failed = true
+  }
   return (
-    <>
-      {/* Hero */}
-      <header className="relative overflow-hidden border-b border-border">
-        <div className="relative z-10 flex flex-col items-center gap-3 px-6 py-16 text-center sm:py-20 lg:py-24">
-          <p className="text-label-13 tracking-wider text-muted-foreground uppercase">
-            Blocks
-          </p>
-          <h1 className="text-heading-40 font-medium tracking-tight text-balance sm:text-heading-48 lg:text-heading-56">
-            Marketing sections, ready to drop in.
-          </h1>
-          <p className="max-w-2xl text-copy-18 leading-7 text-balance text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
-            The marketing sections every DeesseJS template ships with. Browse a
-            category, click any card for the detail page.
-          </p>
-        </div>
-      </header>
-
-      {/* Two-column browser: sidebar + category grid. */}
-      <CatalogBrowserShell
-        ariaLabel="Blocks catalogue"
-        sidebar={
-          <CatalogSidebar
-            heading="Categories"
-            basePath="/blocks"
-            entries={BLOCK_CATEGORIES}
-            counts={counts}
-          />
-        }
-      >
-        <CatalogCategoryGrid
-          columns={4}
-          entries={BLOCK_CATEGORIES.flatMap((category) => {
-            const block = categoryToBlock.get(category.id)
-            if (!block) return []
-            return [
-              {
-                id: category.id,
-                href: `/blocks/${category.slug}`,
-                ariaLabel: `Browse the ${category.name} category`,
-                preview: <BlockCardPreview block={block} />,
-                title: category.name,
-                description: category.description,
-                footer: (
-                  <span className="font-mono text-label-13 text-muted-foreground">
-                    {category.blockNames.split(",")[0]?.trim()}
-                  </span>
-                ),
-              },
-            ]
-          })}
-        />
-      </CatalogBrowserShell>
-    </>
+    <main className="mx-auto max-w-6xl px-6 py-16">
+      <p className="text-sm text-muted-foreground uppercase">
+        DeesseJS capabilities
+      </p>
+      <h1 className="mt-2 text-4xl font-bold">Blocks</h1>
+      <p className="mt-3 max-w-2xl text-muted-foreground">
+        Add capabilities to an existing project with community and official
+        blocks.
+      </p>
+      {failed ? (
+        <p role="alert" className="mt-10">
+          Blocks could not be loaded. Please try again.
+        </p>
+      ) : blocks.length === 0 ? (
+        <p className="mt-10">No published blocks are available yet.</p>
+      ) : (
+        <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {blocks.map((block) => (
+            <li key={block.id} className="rounded-xl border p-5">
+              <p className="text-xs text-muted-foreground uppercase">
+                {block.category}
+              </p>
+              <h2 className="mt-2 text-xl font-semibold">
+                <Link
+                  href={`/blocks/${encodeURIComponent(block.category)}/${encodeURIComponent((block.ownerType === "platform" ? "official" : block.organizationSlug) + "--" + block.slug)}`}
+                >
+                  {block.name}
+                </Link>
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {block.description}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
   )
 }

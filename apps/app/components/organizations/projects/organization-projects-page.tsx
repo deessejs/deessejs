@@ -1,5 +1,6 @@
 "use client"
 
+import { client } from "@/lib/client"
 import Link from "next/link"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
@@ -21,7 +22,6 @@ import {
   workspaceProjectImportPath,
 } from "@/lib/workspace-paths"
 import { organizationProjectsQueryOptions } from "@/lib/github-projects-query"
-import type { ORPCBrowserClient } from "@/lib/orpc-browser"
 
 export type OrganizationProject = {
   id: string
@@ -42,7 +42,7 @@ export type OrganizationProject = {
 }
 
 type OrganizationProjectsResult = Awaited<
-  ReturnType<ORPCBrowserClient["githubApp"]["projects"]["list"]>
+  ReturnType<typeof client.rpc["githubApp"]["projects"]["list"]>
 >
 
 const projectStatus: Record<

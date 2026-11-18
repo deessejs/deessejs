@@ -11,7 +11,7 @@ import { AppHeader } from "@/components/headers/app-header"
 import { SettingsSidebar } from "@/components/sidebars/settings-sidebar"
 
 /**
- * Chrome for the `/account/settings/*` route area.
+ * Chrome for account settings and other account-level pages.
  *
  * The account-scoped sidebar and header live here. The workspace's
  * navigation belongs to a different scope and surface. The sidebar

@@ -62,6 +62,11 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             description: "The full catalog, installable from the CLI",
           },
           {
+            label: "Blocks",
+            href: "/blocks",
+            description: "Discover capability blocks for DeesseJS projects",
+          },
+          {
             label: "CLI",
             href: "/cli",
             description: "deessejs init / list / info",
@@ -180,6 +185,11 @@ const NAV_SECTIONS: ReadonlyArray<NavSection> = [
             label: "Templates",
             href: "/templates",
             description: "The full template catalog",
+          },
+          {
+            label: "Blocks",
+            href: "/blocks",
+            description: "Discover capability blocks for DeesseJS projects",
           },
           {
             label: "Ecosystem",

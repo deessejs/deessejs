@@ -1,5 +1,5 @@
 import type { ORPCError } from "@orpc/server"
-import { and, desc, eq } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
@@ -7,7 +7,7 @@ import {
   slugifyOrganizationName,
 } from "@workspace/auth/organization/policy"
 import { db } from "@workspace/database"
-import { invitation, user } from "@workspace/database/schema"
+import { invitation, organization, user } from "@workspace/database/schema"
 
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
@@ -148,6 +148,7 @@ export const pendingInvitations = base
       context: { ...options.context, organization: org },
     })
   })
+
   .output(z.array(invitationSummary))
   .handler(async ({ context }) => {
     const rows = await db
@@ -174,6 +175,54 @@ export const pendingInvitations = base
       ...row,
       createdAt: row.createdAt.toISOString(),
       expiresAt: row.expiresAt.toISOString(),
+    }))
+  })
+
+/** Incoming invitations for a verified recipient, across organizations. */
+export const accountInvitations = base
+  .use(authGuard)
+  .output(
+    z.array(
+      z.object({
+        id: z.string(),
+        organizationName: z.string(),
+        organizationSlug: z.string(),
+        role: z.string().nullable(),
+        inviterName: z.string(),
+        expiresAt: z.string(),
+        expired: z.boolean(),
+      })
+    )
+  )
+  .handler(async ({ context }) => {
+    if (context.user.emailVerified !== true) return []
+
+    const rows = await db
+      .select({
+        id: invitation.id,
+        organizationName: organization.name,
+        organizationSlug: organization.slug,
+        role: invitation.role,
+        inviterName: user.name,
+        expiresAt: invitation.expiresAt,
+      })
+      .from(invitation)
+      .innerJoin(organization, eq(invitation.organizationId, organization.id))
+      .innerJoin(user, eq(invitation.inviterId, user.id))
+      .where(
+        and(
+          sql`lower(${invitation.email}) = lower(${context.user.email})`,
+          eq(invitation.status, "pending")
+        )
+      )
+      .orderBy(desc(invitation.createdAt))
+      .limit(100)
+
+    const now = new Date()
+    return rows.map((row) => ({
+      ...row,
+      expiresAt: row.expiresAt.toISOString(),
+      expired: row.expiresAt <= now,
     }))
   })
 
@@ -351,6 +400,7 @@ export const organizationRouter = {
   bySlug,
   settings,
   pendingInvitations,
+  accountInvitations,
   active,
   create,
 }

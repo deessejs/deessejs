@@ -66,17 +66,38 @@
       "breakpoints": true
     },
     {
-      "idx": 9,
+      "idx": 10,
       "version": "7",
-      "when": 1793664223279,
-      "tag": "0009_purple_archangel",
+      "when": 1793750400000,
+      "tag": "0010_organization_blocks",
       "breakpoints": true
     },
     {
-      "idx": 10,
+      "idx": 11,
       "version": "7",
-      "when": 1793685006263,
-      "tag": "0010_complete_squadron_sinister",
+      "when": 1793836800000,
+      "tag": "0011_restore_template_image_migration",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793836800001,
+      "tag": "0012_safe_tarot",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793840474796,
+      "tag": "0013_wandering_mercury",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795019124800,
+      "tag": "0014_robust_franklin_storm",
       "breakpoints": true
     }
   ]

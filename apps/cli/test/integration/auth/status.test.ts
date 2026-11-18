@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { statusCommand } from "../../../src/commands/auth/status.js"
 import { cachePath } from "../../../src/cache/location.js"
@@ -30,6 +30,8 @@ const REAL_USERPROFILE = process.env.USERPROFILE
 let fake: FakeAuthServer | undefined
 
 async function runStatus(args: string[]): Promise<void> {
+  statusCommand.setOptionValue("json", undefined)
+  statusCommand.setOptionValue("verbose", undefined)
   await statusCommand.parseAsync(args, { from: "user" })
 }
 
@@ -107,7 +109,45 @@ describe("deesse auth status", () => {
       // cannot easily capture stdout here; the test is
       // that the absence of the file is the "no session"
       // path and the command does not crash.
+      const stdout: string[] = []
+      const write = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+        stdout.push(chunk.toString())
+        return true
+      })
+      await runStatus(["node", "auth", "status"])
+      expect(JSON.parse(stdout.join(""))).toEqual({ ok: false, reason: "no_session" })
+      write.mockRestore()
+    })
+    rmSync(home, { recursive: true, force: true })
+  })
+
+  it("preserves the no-session payload with --json", async () => {
+    const home = join(tmpdir(), `cli-test-${Date.now()}-status-empty-json`)
+    await withHome(home, async () => {
+      const stdout: string[] = []
+      const write = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+        stdout.push(chunk.toString())
+        return true
+      })
       await runStatus(["node", "auth", "status", "--json"])
+      expect(JSON.parse(stdout.join(""))).toEqual({ ok: false, reason: "no_session" })
+      write.mockRestore()
+    })
+    rmSync(home, { recursive: true, force: true })
+  })
+
+  it("keeps the no-session notice on stderr in verbose mode", async () => {
+    const home = join(tmpdir(), `cli-test-${Date.now()}-status-verbose`)
+    await withHome(home, async () => {
+      const stdout: string[] = []
+      const stderr: string[] = []
+      const out = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => { stdout.push(chunk.toString()); return true })
+      const error = vi.spyOn(console, "error").mockImplementation((message) => { stderr.push(String(message)) })
+      await runStatus(["node", "auth", "status", "--verbose"])
+      expect(stdout.join("")).toBe("")
+      expect(stderr.join("")).toContain("no active session")
+      out.mockRestore()
+      error.mockRestore()
     })
     rmSync(home, { recursive: true, force: true })
   })

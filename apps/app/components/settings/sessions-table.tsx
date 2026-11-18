@@ -1,8 +1,8 @@
 "use client"
 
+import { client } from "@/lib/client"
 import { useState } from "react"
 import { toast } from "sonner"
-import { authClient } from "@/lib/auth-client"
 import { Button } from "@workspace/ui/components/button"
 import { RowsSkeleton } from "@/components/loading/page-skeleton"
 import {
@@ -179,7 +179,7 @@ function SessionsList({
 
 export function SessionsTable() {
   const { data: currentUserSession, isPending: sessionPending } =
-    authClient.useSession()
+    client.auth.useSession()
   const userId = currentUserSession?.user.id
   const sessionsQuery = useSessions(userId)
   const revokeSession = useRevokeSession(userId)
