@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useDebouncedValue } from "@/hooks/catalog/use-debounced-value"
 import { Bell, Check, CircleAlert, Plus, Search, X } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -236,11 +237,7 @@ function renderPreview(slug: CatalogueComponent["slug"]) {
 
 function SearchPreview() {
   const [query, setQuery] = useState("")
-  const [debounced, setDebounced] = useState("")
-  useEffect(() => {
-    const id = window.setTimeout(() => setDebounced(query), 250)
-    return () => window.clearTimeout(id)
-  }, [query])
+  const debounced = useDebouncedValue(query, 250)
   return (
     <div className="flex w-full max-w-sm flex-col gap-1">
       <div className="relative">

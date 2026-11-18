@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { PricingCadenceProvider } from "@/components/marketing/pricing-cadence-context"
+import { PricingCadenceProvider } from "@/hooks/marketing/pricing-cadence"
 import { clientEnv } from "@workspace/env/client"
 import { Pricing } from "@/components/pages/pricing"
 

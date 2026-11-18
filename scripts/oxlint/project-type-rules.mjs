@@ -53,6 +53,61 @@ function checkNamedParameterTypes(context, node) {
   }
 }
 
+function importedFromReact(variable) {
+  return variable?.defs?.some((definition) => {
+    const specifier = definition.node
+    return specifier?.type === "ImportSpecifier" &&
+      ["useEffect", "useLayoutEffect"].includes(specifier.imported?.name ?? specifier.imported?.value) &&
+      (definition.parent?.source?.value ?? specifier.parent?.source?.value) === "react"
+  }) ?? false
+}
+
+function resolveVariable(scope, name) {
+  for (let current = scope; current; current = current.upper) {
+    const found = current.set?.get(name)
+    if (found) return found
+  }
+  return undefined
+}
+
+function isWithinHooksDirectory(filename) {
+  return /(?:^|[/\\])apps[/\\](?:app|web)[/\\](?:src[/\\])?hooks[/\\]/.test(filename)
+}
+
+function hasHookCall(node) {
+  let found = false
+  const visit = (current) => {
+    if (!current || found) return
+    if (current.type === "CallExpression") {
+      const callee = current.callee
+      if ((callee.type === "Identifier" && /^use[A-Z0-9]/.test(callee.name)) ||
+        (callee.type === "MemberExpression" && !callee.computed && /^use[A-Z0-9]/.test(callee.property.name))) found = true
+    }
+    for (const [key, value] of Object.entries(current)) {
+      if (["parent", "loc", "range", "tokens", "comments"].includes(key)) continue
+      if (Array.isArray(value)) value.forEach(visit)
+      else if (value && typeof value === "object") visit(value)
+    }
+  }
+  visit(node.body)
+  return found
+}
+
+function isReactEffectCall(context, node) {
+  const scope = context.sourceCode?.getScope?.(node) ?? context.getScope?.()
+  const callee = node.callee
+  if (callee.type === "Identifier") {
+    return importedFromReact(resolveVariable(scope, callee.name))
+  }
+  if (callee.type === "MemberExpression" && !callee.computed && ["useEffect", "useLayoutEffect"].includes(callee.property.name) && callee.object.type === "Identifier") {
+    const variable = resolveVariable(scope, callee.object.name)
+    return variable?.defs?.some((definition) =>
+      definition.node?.type === "ImportNamespaceSpecifier" &&
+      (definition.parent?.source?.value ?? definition.node?.parent?.source?.value) === "react") ?? false
+  }
+  return false
+}
+
 const plugin = {
   meta: { name: "project-type-rules", version: "1.0.0" },
   rules: {
@@ -97,6 +152,28 @@ const plugin = {
           TSMethodSignature: (node) => checkNamedParameterTypes(context, node),
           TSFunctionType: (node) => checkNamedParameterTypes(context, node),
           TSConstructorType: (node) => checkNamedParameterTypes(context, node),
+        }
+      },
+    },
+    "no-raw-react-effects": {
+      meta: { type: "problem", schema: [], messages: { raw: "Move React effect synchronization into a purpose-specific hook under the app hooks directory." } },
+      create(context) {
+        const filename = context.filename ?? context.getFilename?.()
+        if (!/(?:^|[/\\])apps[/\\](?:app|web)[/\\]/.test(filename) || isWithinHooksDirectory(filename)) return {}
+        return { CallExpression(node) { if (isReactEffectCall(context, node)) context.report({ node, messageId: "raw" }) } }
+      },
+    },
+    "hooks-location": {
+      meta: { type: "problem", schema: [], messages: { location: "Project-defined hooks that call hooks must live under the app hooks directory." } },
+      create(context) {
+        const filename = context.filename ?? context.getFilename?.()
+        if (!/(?:^|[/\\])apps[/\\](?:app|web)[/\\]/.test(filename) || isWithinHooksDirectory(filename)) return {}
+        const check = (node, name) => {
+          if (name && /^use[A-Z0-9]/.test(name) && hasHookCall(node)) context.report({ node, messageId: "location" })
+        }
+        return {
+          FunctionDeclaration(node) { check(node, node.id?.name) },
+          VariableDeclarator(node) { if (["ArrowFunctionExpression", "FunctionExpression"].includes(node.init?.type)) check(node.init, node.id?.name) },
         }
       },
     },

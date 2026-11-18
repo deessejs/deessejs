@@ -1,7 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useCyclingDemo } from "@/hooks/marketing/use-cycling-demo"
 import {
   ArrowUp,
   Globe,
@@ -292,22 +293,7 @@ export function CodingAgentsDemo() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [progress, setProgress] = useState(0)
 
-  useEffect(() => {
-    if (reduceMotion) return
-
-    const startedAt = performance.now()
-    const intervalId = window.setInterval(() => {
-      const elapsed = performance.now() - startedAt
-      const next = Math.min(elapsed / CYCLE_MS, 1)
-      setProgress(next)
-      if (next >= 1) {
-        window.clearInterval(intervalId)
-        setActiveIndex((index) => (index + 1) % SCENARIOS.length)
-      }
-    }, 50)
-
-    return () => window.clearInterval(intervalId)
-  }, [activeIndex, reduceMotion])
+  useCyclingDemo(activeIndex, Boolean(reduceMotion), CYCLE_MS, SCENARIOS.length, setActiveIndex, setProgress)
 
   const scenario = SCENARIOS[activeIndex] ?? SCENARIOS.at(0)
   if (!scenario) return null

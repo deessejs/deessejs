@@ -72,6 +72,12 @@ The tests live in `tests/`: `proxy.test.ts` covers the guard, `settings-paths.te
 - The design system comes from `@workspace/ui`. Reference semantic tokens, never raw colors.
 - Redirect targets that come from a query parameter or an OAuth callback go through `safeRedirect` from `@workspace/utils`.
 
+## Hooks and effects
+
+- Project-defined hooks belong under `apps/app/hooks/`, grouped into feature subdirectories when useful. Keep data orchestration and browser subscriptions out of page and component modules.
+- Components and pages must not call React `useEffect` or `useLayoutEffect` directly. Put necessary external synchronization in a purpose-specific hook under `hooks/`, with explicit inputs and symmetric cleanup. Prefer render-time derivation, event handlers, and query/store APIs when they express the behavior directly.
+- Package-owned hooks stay in their owning package. Do not move third-party hooks into this app.
+
 ## Related guides
 
 - [Root guide](../../AGENTS.md)

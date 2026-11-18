@@ -1,10 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { cn } from "@workspace/ui/lib/utils"
+import { useTechStackRotation } from "@/hooks/marketing/use-tech-stack-rotation"
 
 /**
  * Tech stack grid where each slot rotates through the available
@@ -41,15 +42,8 @@ import { cn } from "@workspace/ui/lib/utils"
 
 type Tech = { name: string; logo: string }
 
-const MIN_CYCLE_MS = 7000
-const MAX_CYCLE_MS = 12000
 const TRANSITION_MS = 0.35
 
-function randomCycleMs() {
-  return (
-    MIN_CYCLE_MS + Math.floor(Math.random() * (MAX_CYCLE_MS - MIN_CYCLE_MS))
-  )
-}
 
 function subscribeToReducedMotion(onChange: () => void) {
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -61,36 +55,6 @@ function getReducedMotionSnapshot() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
-/**
- * Pick a random index in `length` that differs from `exclude`.
- * Retries up to 10 times to avoid the same-index collision; falls back
- * to `exclude` if all retries collide (only possible when length < 2,
- * which the caller filters out).
- */
-function pickDifferentIndex(length: number, exclude: number): number {
-  let pick = Math.floor(Math.random() * length)
-  let safety = 0
-  while (pick === exclude && safety < 10) {
-    pick = Math.floor(Math.random() * length)
-    safety++
-  }
-  return pick
-}
-
-/**
- * Swap two distinct positions in an array. Used to mutate the shared
- * order while preserving the uniqueness invariant.
- */
-function swapAt<T>(input: ReadonlyArray<T>, i: number, j: number): T[] {
-  if (i === j) return input.slice()
-  const a = input.slice()
-  const ai = a[i]
-  const aj = a[j]
-  if (ai === undefined || aj === undefined) return a
-  a[i] = aj
-  a[j] = ai
-  return a
-}
 
 export function TechStackGrid({
   techs,
@@ -109,35 +73,7 @@ export function TechStackGrid({
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
   // exactly once at any moment.
-  useEffect(() => {
-    if (reducedMotion || techs.length < 2) return
-    const timeouts: Array<number> = []
-
-    const fireSlot = (slotIdx: number) => {
-      setOrder((prev) => {
-        const otherIdx = pickDifferentIndex(prev.length, slotIdx)
-        return swapAt(prev, slotIdx, otherIdx)
-      })
-    }
-
-    const armSlot = (slotIdx: number) => {
-      const id = window.setTimeout(() => {
-        fireSlot(slotIdx)
-        // Re-arm this slot with a fresh random delay so the rhythm stays
-        // irregular across the lifetime of the page.
-        armSlot(slotIdx)
-      }, randomCycleMs())
-      timeouts.push(id)
-    }
-
-    for (let i = 0; i < techs.length; i++) {
-      armSlot(i)
-    }
-
-    return () => {
-      for (const id of timeouts) window.clearTimeout(id)
-    }
-  }, [techs, reducedMotion])
+  useTechStackRotation(techs, reducedMotion, setOrder)
 
   return (
     <div

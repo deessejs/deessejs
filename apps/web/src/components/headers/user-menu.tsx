@@ -26,7 +26,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { ChevronRight, LayoutDashboardIcon, LogOutIcon } from "lucide-react"
 
-import { useAuthClient } from "./auth-client-provider"
+import { useAuthClient } from "@/hooks/auth/auth-client-provider"
 import { getAvatarUrl, getInitials } from "./user-menu-helpers"
 
 /**

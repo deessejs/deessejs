@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 import { cn } from "@workspace/ui/lib/utils"
+import { useActiveTocItem } from "@/hooks/blog/use-active-toc-item"
 
 interface TocItem {
   id: string
@@ -29,36 +30,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
     () => "[]"
   )
   const items = useMemo(() => parseTocItems(serializedItems), [serializedItems])
-  const [activeId, setActiveId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (items.length === 0) return
-
-    const headings = items
-      .map((i) => document.getElementById(i.id))
-      .filter((el): el is HTMLElement => Boolean(el))
-
-    if (headings.length === 0) return
-
-    const visible = new Set<string>()
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            visible.add(entry.target.id)
-          } else {
-            visible.delete(entry.target.id)
-          }
-        }
-        const ordered = items.map((i) => i.id).filter((id) => visible.has(id))
-        setActiveId(ordered[0] ?? null)
-      },
-      { rootMargin: "-15% 0px -70% 0px", threshold: 0 }
-    )
-
-    headings.forEach((h) => observer.observe(h))
-    return () => observer.disconnect()
-  }, [items, targetId])
+  const activeId = useActiveTocItem(items)
 
   if (items.length === 0) return null
 
