@@ -3,7 +3,10 @@
   "compilerOptions": {
     "types": ["node"],
     "isolatedDeclarations": false,
-    "paths": { "deesse/react": ["./src/react.ts"] }
+    "paths": {
+      "deesse": ["./src/index.ts"],
+      "deesse/react": ["./src/react.ts"]
+    }
   },
   "include": ["src/**/*", "tests/**/*.ts"]
 }

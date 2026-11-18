@@ -3,7 +3,7 @@ import { os } from "@orpc/server"
 import { organization } from "better-auth/plugins"
 import { organizationClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin } from "../src/index.js"
+import { createDeesse, plugin } from "deesse"
 import { createClient } from "deesse/react"
 
 const procedures = os.router({ list: os.output(z.array(z.string())).handler(() => ["ok"] as const) })
@@ -22,7 +22,7 @@ const auth = { baseURL: "https://example.test", plugins: [organization()] } sati
 const orgClient = organizationClient()
 const minimalApp = createDeesse({ database, auth })
 const app = createDeesse({ database, auth, api: {}, plugins: [feature({})] })
-const preservedAuth: typeof auth = app.auth
+void app.auth.api.createOrganization
 const registration = feature({})
 const count: number = registration.args.count
 // @ts-expect-error schema defaults are present in parsed output
@@ -41,4 +41,4 @@ declare module "deesse/react" {
 const client = createClient()
 void client.auth.organization
 void client.api.feature.list
-void [count, missing, portableTransactions, preservedAuth]
+void [count, missing, portableTransactions]

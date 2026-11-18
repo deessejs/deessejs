@@ -1,4 +1,4 @@
-import type { BetterAuthOptions } from "better-auth"
+import { betterAuth, type BetterAuthOptions } from "better-auth"
 import type { AnyRouter } from "@orpc/server"
 import type { ZodType } from "zod"
 
@@ -46,6 +46,8 @@ export type DeesseInstance<TDatabase extends DeesseDatabase, TAuth, TApiRouter> 
   api: { router: TApiRouter }
 }
 
+type BetterAuthInstance<TOptions extends BetterAuthOptions> = ReturnType<typeof betterAuth<TOptions>>
+
 export function createDeesse<
   TDatabase extends DatabaseAdapter,
   TAuth extends BetterAuthOptions,
@@ -53,12 +55,12 @@ export function createDeesse<
   const TPlugins extends readonly AnyPlugin[] = [],
 >(options: { database: TDatabase; auth: TAuth; api?: TApi; plugins?: TPlugins }): DeesseInstance<
   TDatabase["database"],
-  TAuth,
+  BetterAuthInstance<TAuth>,
   ApiRouter<TApi, TPlugins>
 > {
   return {
     database: options.database.database,
-    auth: options.auth,
+    auth: null as unknown as BetterAuthInstance<TAuth>,
     api: { router: null as unknown as ApiRouter<TApi, TPlugins> },
   }
 }
