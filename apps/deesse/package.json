@@ -8,7 +8,7 @@
     "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js", "default": "./dist/react.js" }
   },
   "types": "./dist/index.d.ts",
-  "scripts": { "build": "tsc -p tsconfig.build.json", "typecheck": "tsc --noEmit -p tsconfig.json", "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/deesse --deny-warnings" },
+  "scripts": { "build": "tsc -p tsconfig.build.json && tsc --noEmit -p tsconfig.consumer.json", "typecheck": "tsc --noEmit -p tsconfig.json", "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/deesse --deny-warnings" },
   "dependencies": { "@orpc/server": "catalog:", "better-auth": "catalog:", "zod": "catalog:" },
   "devDependencies": { "@workspace/typescript-config": "workspace:*", "@types/node": "catalog:", "@types/react": "catalog:", "typescript": "catalog:" }
 }
