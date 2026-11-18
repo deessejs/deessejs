@@ -38,6 +38,10 @@ jobs:
         run: pnpm --filter @workspace/registry project-schema:check
       - name: Reject inline lint suppressions
         run: pnpm lint:directives
+      - name: Enforce Next route handler boundary
+        run: pnpm lint:next-routes
+      - name: Test Next route handler boundary
+        run: pnpm test:next-routes
       - name: Lint suppression guard
         run: pnpm lint:guard
       - run: pnpm turbo lint --summarize -- --max-warnings=0

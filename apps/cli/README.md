@@ -24,6 +24,7 @@ Other release channels:
 | `deessejs templates init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
 | `deessejs templates list`                      | List available templates                                        |
 | `deessejs templates info <slug-or-github-url>` | Show validated descriptor details for a template                |
+| `deessejs cache clear`                           | Clear cached template catalog data                              |
 | `deessejs block info <source>`                 | Show a validated block descriptor summary                       |
 | `deessejs block check [source]`                | Validate a block descriptor and its referenced assets           |
 | `deessejs add <source> --target <id>`          | Preview and add a published, GitHub, or local block             |
@@ -39,6 +40,8 @@ deessejs templates list
 deessejs templates list --category saas --json
 deessejs templates info saas-starter --json
 deessejs templates info https://github.com/owner/repository --ref main
+deessejs cache clear
+deessejs templates info saas-starter --refresh
 deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
 deessejs block check ./blocks/upstash-redis
@@ -65,6 +68,8 @@ deessejs organization template add acme --slug starter-kit --name "Starter Kit" 
 If the selected files include a root `deesse.json`, `init` validates it against project config V1 and preserves its contents. If the template does not include one, `init` creates a default config with the project schema URL and `formatVersion: 1`.
 
 `info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
+
+Catalog list and targeted template detail responses used by `list` and `info` are cached locally for five minutes. `--refresh` bypasses and refreshes that cache. `init` always resolves current template details. `deessejs cache clear` removes cached response files under `~/.deessejs/` and preserves authentication state.
 
 `block info` accepts a local block directory, a public HTTPS GitHub repository URL, a shorthand GitHub directory URL such as `https://github.com/owner/repository/block`, or a canonical `/tree/<ref>/<block-path>` URL. It resolves a remote ref to a commit before reading the root `deesse-block.json` and the package manifests declared by its file mappings. It does not modify a project, install dependencies or execute package scripts. `--json` returns the descriptor, package summaries and source identity.
 
@@ -102,3 +107,5 @@ MIT.
 
 - **Uses**: [`@workspace/api`](https://github.com/deessejs/deessejs/blob/staging/packages/api/README.md), [`@workspace/contracts`](https://github.com/deessejs/deessejs/blob/staging/packages/contracts/README.md)
 - **Bundles**: the workspace dependencies into the published package at build time, so nothing is resolved at run time
+
+<!-- Vercel selective-build deployment test: cli-only -->

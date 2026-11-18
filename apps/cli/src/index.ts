@@ -13,6 +13,7 @@ import { infoCommand } from "./commands/info.js"
 import { organizationCommand } from "./commands/organization.js"
 import { updateCommand } from "./commands/update.js"
 import { addCommand } from "./commands/add.js"
+import { cacheCommand } from "./commands/cache.js"
 import { printError } from "./output/index.js"
 import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
@@ -74,6 +75,7 @@ templatesCommand.addCommand(
 program.addCommand(templatesCommand)
 program.addCommand(blockCommand)
 program.addCommand(addCommand)
+program.addCommand(cacheCommand)
 program.addCommand(organizationCommand)
 program.addCommand(updateCommand)
 

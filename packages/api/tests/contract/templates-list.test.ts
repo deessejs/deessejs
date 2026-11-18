@@ -10,8 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
 
 vi.mock("@workspace/database", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@workspace/database")>()
+  const actual = await importOriginal<typeof import("@workspace/database")>()
   return { ...actual, db: { select: selectMock } }
 })
 
@@ -43,7 +42,7 @@ const templateRow = {
   stars: 42,
 }
 
-const mockQuery = (rows: typeof templateRow[]) => {
+const mockQuery = (rows: unknown[]) => {
   const query = {
     from: vi.fn(),
     innerJoin: vi.fn(),
@@ -64,11 +63,14 @@ beforeEach(() => {
 })
 
 describe("templates.list", () => {
-  it("projects the database catalog into the declared V1 wire shape", async () => {
+  it("projects a compact catalog response without README", async () => {
     mockQuery([templateRow])
 
     const result = await call(appRouter.templates.list, undefined, { context })
 
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ readme: expect.anything() })
+    )
     expect(result).toEqual({
       templates: [
         {
@@ -82,7 +84,6 @@ describe("templates.list", () => {
           labels: ["nextjs", "saas", "auth"],
           image: "/ship-your-saas.png",
           cloneUrl: "https://github.com/deessejs/saas-template",
-          readme: "# SaaS Starter",
           updatedAt: "2026-01-02T03:04:05.000Z",
           stars: 42,
         },
@@ -109,6 +110,103 @@ describe("templates.list", () => {
     await expect(
       call(appRouter.templates.list, undefined, { context })
     ).resolves.toEqual({ templates: [] })
+  })
+})
+
+describe("templates.detail", () => {
+  it("returns the requested official template including its README", async () => {
+    mockQuery([templateRow])
+    await expect(
+      call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+    ).resolves.toMatchObject({ slug: "saas-starter", readme: "# SaaS Starter" })
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.objectContaining({ readme: expect.anything() })
+    )
+  })
+
+  it("returns null for a missing official template", async () => {
+    mockQuery([])
+    await expect(
+      call(appRouter.templates.detail, { slug: "missing" }, { context })
+    ).resolves.toBeNull()
+  })
+
+  it("validates returned official details against the V1 contract", async () => {
+    mockQuery([{ ...templateRow, slug: "" }])
+    await expect(
+      call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+    ).rejects.toThrow()
+  })
+})
+
+describe("templates.community public list and detail", () => {
+  const publication = {
+    organizationSlug: "acme",
+    organizationName: "Acme",
+    slug: "starter",
+    name: "Starter",
+    description: "A community starter",
+    owner: "acme",
+    repo: "starter",
+    license: "MIT",
+    category: "saas",
+    labels: ["nextjs"],
+    imageName: null,
+    imageObjectId: null,
+    canonicalUrl: "https://github.com/acme/starter",
+    repositoryUpdatedAt: null,
+    stars: null,
+    sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+    readme: "# Starter",
+  }
+
+  it("maps public list rows without README and detail with README", async () => {
+    mockQuery([publication])
+    const list = await call(
+      appRouter.templates.community.list,
+      undefined,
+      { context }
+    )
+    expect(list.templates[0]).toMatchObject({
+      slug: "@acme/starter",
+      community: true,
+    })
+    expect(list.templates[0]).not.toHaveProperty("readme")
+    expect(selectMock).toHaveBeenCalledWith(
+      expect.not.objectContaining({ readme: expect.anything() })
+    )
+    mockQuery([publication])
+    const detail = await call(
+      appRouter.templates.community.detail,
+      { organizationSlug: "acme", templateSlug: "starter" },
+      { context }
+    )
+    expect(detail).toMatchObject({ slug: "@acme/starter", readme: "# Starter" })
+  })
+
+  it("does not return pending or unpublished rows", async () => {
+    mockQuery([])
+    await expect(
+      call(
+        appRouter.templates.community.detail,
+        { organizationSlug: "acme", templateSlug: "hidden" },
+        { context }
+      )
+    ).resolves.toBeNull()
+    await expect(
+      call(appRouter.templates.community.list, undefined, { context })
+    ).resolves.toEqual({ templates: [] })
+  })
+
+  it("validates returned community details against the V1 contract", async () => {
+    mockQuery([{ ...publication, sourceCommit: "not-a-commit" }])
+    await expect(
+      call(
+        appRouter.templates.community.detail,
+        { organizationSlug: "acme", templateSlug: "starter" },
+        { context }
+      )
+    ).rejects.toThrow()
   })
 })
 
