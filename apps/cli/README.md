@@ -102,3 +102,5 @@ MIT.
 
 - **Uses**: [`@workspace/api`](https://github.com/deessejs/deessejs/blob/staging/packages/api/README.md), [`@workspace/contracts`](https://github.com/deessejs/deessejs/blob/staging/packages/contracts/README.md)
 - **Bundles**: the workspace dependencies into the published package at build time, so nothing is resolved at run time
+
+<!-- Vercel selective-build deployment test: cli-only -->
