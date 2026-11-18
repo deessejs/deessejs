@@ -1,0 +1,14 @@
+{
+  "name": "deesse",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js", "default": "./dist/react.js" }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/deesse --deny-warnings" },
+  "dependencies": { "@orpc/server": "catalog:", "better-auth": "catalog:", "zod": "catalog:" },
+  "devDependencies": { "@workspace/typescript-config": "workspace:*", "@types/node": "catalog:", "@types/react": "catalog:", "typescript": "catalog:" }
+}
