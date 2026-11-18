@@ -3,12 +3,11 @@ import { z } from "zod"
 /**
  * TemplateV1 — single source of truth for the templates registry payload.
  *
- * Consumed by:
- *   - packages/api  (server, builds the response from the hand-curated list)
- *   - apps/cli      (types what it reads from `/api/v1/templates`)
- *   - apps/web      (renders /templates and /templates/[template_slug])
+ * Consumed by the API detail procedures, CLI info/init commands, and web
+ * template detail pages.
  *
- * Wire format is the JSON shape returned by GET /api/v1/templates.
+ * This is the full public detail shape. Catalog list procedures use the
+ * compact `TemplateSummaryV1` projection.
  *
  * These schemas use the default Zod object mode, which strips unknown keys
  * instead of rejecting them. A client that validates a response against
@@ -22,9 +21,9 @@ import { z } from "zod"
  * unknown keys the default mode strips, and would make every new field
  * breaking for the clients that validate with it.
  *
- * Note the current state of the enforcement: the oRPC procedure types its
- * response with this schema rather than attaching it as a runtime output
- * schema, so the guarantee today is a compile-time one on both sides.
+ * oRPC procedures that attach this schema as an output contract also validate
+ * their responses at runtime. Procedures that only annotate their handler
+ * return type rely on compile-time checking instead.
  */
 export const TemplateV1 = z.object({
   slug: z.string().min(1),
@@ -43,9 +42,8 @@ export const TemplateV1 = z.object({
   cloneUrl: z.string().optional(),
   /**
    * Optional raw README markdown for the template. Sourced from GitHub's
-   * `/repos/{owner}/{repo}/readme` endpoint. Clients that do not know
-   * about this field (older CLI versions) continue to parse the response
-   * without change.
+   * `/repos/{owner}/{repo}/readme` endpoint and returned by targeted detail
+   * procedures when available. Catalog list responses omit this field.
    */
   readme: z.string().optional(),
   /**

@@ -1,7 +1,8 @@
 import {
+  fetchTemplateByAddress,
   fetchTemplates,
-  resolveTemplateBySlug,
   type Template,
+  type TemplateSummary,
 } from "../api/index.js"
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
@@ -17,7 +18,7 @@ export type ResolvedTemplateSource = {
   directRepository: ReturnType<typeof parseGitHubRepositoryUrl>
 }
 
-async function fetchTemplatesForInfo(): Promise<Template[]> {
+async function fetchTemplatesForInfo(): Promise<TemplateSummary[]> {
   try {
     return await fetchTemplates({ skipVersionCheck: true })
   } catch (error) {
@@ -56,16 +57,9 @@ export async function resolveTemplateSource(
   }
 
   let template: TemplateSource | undefined
-  if (options.fastCatalogLookup && !slugOrUrl.startsWith("@")) {
-    let catalogTemplates: Template[] | undefined
-    try {
-      template = (await resolveTemplateBySlug(slugOrUrl)) ?? undefined
-    } catch {
-      // Older deployed API versions do not yet expose templates.resolve.
-      // Fall back to the existing list route until that API deploys.
-      catalogTemplates = await fetchTemplatesForInfo()
-      template = catalogTemplates.find((item) => item.slug === slugOrUrl)
-    }
+  if (options.fastCatalogLookup !== false) {
+    let catalogTemplates: TemplateSummary[] | undefined
+    template = (await fetchTemplateByAddress(slugOrUrl)) ?? undefined
     if (!template) {
       catalogTemplates ??= await fetchTemplatesForInfo()
       throw notFound(

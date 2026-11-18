@@ -1,12 +1,18 @@
 import { toORPCError } from "@orpc/client"
 import { fromAsyncThrowable } from "@deessejs/fp"
-import type { CommunityTemplateV1, TemplateV1 } from "@workspace/contracts/v1"
+import type {
+  CommunityTemplateSummaryV1,
+  CommunityTemplateV1,
+  TemplateSummaryV1,
+  TemplateV1,
+} from "@workspace/contracts/v1"
 
 import { networkError } from "../errors/index.js"
 import { maybeWarnAboutOutdatedCli } from "../version/check.js"
 import { orpc } from "./client.js"
 
 export type Template = TemplateV1 | CommunityTemplateV1
+export type TemplateSummary = TemplateSummaryV1 | CommunityTemplateSummaryV1
 
 export type FetchOptions = {
   /** Skip the version probe. Used by info and by the version probe itself. */
@@ -45,7 +51,7 @@ export const normaliseError = (e: unknown): Error => {
  * Flow:
  *   1. (If not skipVersionCheck) probe /version and warn if outdated.
  *      Failure here is silent — version check is best-effort.
- *   2. Call templates.list on the shared typed client. Retry on
+ *   2. Call the compact official and community list procedures. Retry on
  *      5xx and 429 is handled by the official oRPC plugins configured
  *      in ./client.ts.
  *   3. Surface typed errors via `normaliseError`.
@@ -61,7 +67,7 @@ export const normaliseError = (e: unknown): Error => {
  */
 export const fetchTemplates = async (
   options: FetchOptions = {}
-): Promise<Template[]> => {
+): Promise<TemplateSummary[]> => {
   if (!options.skipVersionCheck) {
     await maybeWarnAboutOutdatedCli()
   }
@@ -83,6 +89,26 @@ export const resolveTemplateBySlug = async (
 ): Promise<Pick<Template, "slug" | "owner" | "repo"> | null> => {
   try {
     return await orpc.templates.resolve({ slug })
+  } catch (e) {
+    throw normaliseError(e)
+  }
+}
+
+/** Fetch one currently public template, without reading either catalog. */
+export const fetchTemplateByAddress = async (
+  address: string
+): Promise<Template | null> => {
+  try {
+    if (address.startsWith("@")) {
+      const [, organizationSlug, templateSlug] =
+        /^@([^/]+)\/(.+)$/.exec(address) ?? []
+      if (!organizationSlug || !templateSlug) return null
+      return await orpc.templates.community.detail({
+        organizationSlug,
+        templateSlug,
+      })
+    }
+    return await orpc.templates.detail({ slug: address })
   } catch (e) {
     throw normaliseError(e)
   }
