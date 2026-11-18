@@ -1,7 +1,7 @@
 import type { AnyRouter, BetterAuthOptions, DeesseConfig, ZodInput, ZodType } from "./types.js"
 import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DatabaseAdapter, DeesseFetchHandler, DeesseInstance, PluginContribution, PluginDefinition, PluginRegistration } from "./types.js"
 
-export type { BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOptions, DatabaseAdapter, DeesseApiOptions, DeesseBetterAuthOptions, DeesseConfig, DeesseDatabase, DeesseDatabaseAdapter, DeesseDatabaseService, DeesseFetchHandler, DeesseInstance, PluginContribution, PluginExtension } from "./types.js"
+export type { BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOptions, DatabaseAdapter, DeesseApiOptions, DeesseBetterAuthOptions, DeesseConfig, DeesseDatabase, DeesseDatabaseAdapter, DeesseDatabaseService, DeesseFetchHandler, DeesseInstance, DeessePluginContributionRegistry, PluginContribution, PluginExtension } from "./types.js"
 
 type Definition<TSchema extends ZodType, TContribution extends PluginContribution, TRequires extends readonly string[], TPoints extends Readonly<Record<string, unknown>>> =
   PluginDefinition<TSchema, TContribution, TRequires, TPoints>

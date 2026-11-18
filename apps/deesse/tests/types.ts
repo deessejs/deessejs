@@ -5,7 +5,7 @@ import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient 
 import { organization, username } from "better-auth/plugins"
 import { inferAdditionalFields, organizationClient, usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type DeesseConfig, type DeesseDatabaseService, type DeesseInstance, type PluginExtension } from "deesse"
+import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type DeesseConfig, type DeesseDatabaseService, type DeesseInstance, type DeessePluginContributionRegistry, type PluginExtension } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
@@ -20,7 +20,10 @@ const appRouter = os.router({
 const feature = plugin({
   id: "feature",
   args: z.object({ count: z.number().default(3) }),
-  extensionPoints: { dashboardWidget: z.object({ title: z.string(), href: z.string() }) },
+  extensionPoints: {
+    dashboardWidget: z.object({ title: z.string(), href: z.string() }),
+    dashboardMetric: z.object({ label: z.string() }),
+  },
   handler: (args) => {
     const count: number = args.count
     // @ts-expect-error plugin handlers receive only parsed args
@@ -41,6 +44,15 @@ const usernameFeature = plugin({
     extensions: { feature: { dashboardWidget: { title: args.prefix, href: "/users" } satisfies PluginExtension<typeof feature, "dashboardWidget"> } },
   }),
 })
+const auditFeature = plugin({
+  id: "audit",
+  args: z.object({}),
+  requires: ["feature"] as const,
+  handler: () => ({
+    database: { schema: { auditEvents: { fields: { action: { type: "string" } } } } },
+    extensions: { feature: { dashboardMetric: { label: "Audit events" } satisfies PluginExtension<typeof feature, "dashboardMetric"> } },
+  }),
+})
 const database = { database: { capabilities: { transactions: true as const } }, authAdapter: { adapter: true } }
 const auth = {
   baseURL: "https://example.test",
@@ -50,22 +62,32 @@ const auth = {
 const orgClient = organizationClient()
 const additionalFieldsClient = inferAdditionalFields<typeof auth>()
 const minimalApp = createDeesse({ database, auth })
-const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>
+const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>
 const app = createDeesse(config)
 type ExpectedAuthOptions = ComposedBetterAuthOptions<typeof auth, typeof config.plugins>
 type ExpectedAuthInstance = ReturnType<typeof betterAuth<ExpectedAuthOptions>>
 type ExpectedRouter = typeof appRouter & { feature: typeof procedures; username: typeof appRouter }
 type ExpectedDeesseInstance = DeesseInstance<typeof database, ExpectedAuthInstance, ExpectedRouter>
+type PluginContributions = DeessePluginContributionRegistry<typeof config.plugins>
 type ConfigDatabaseExact = Assert<Equal<typeof config.database, typeof database>>
 type ConfigAuthExact = Assert<Equal<typeof config.auth, typeof auth>>
 type ConfigApiExact = Assert<Equal<typeof config.api.router, typeof appRouter>>
-type ConfigPluginsExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>>
+type ConfigPluginsExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>>
 type DatabaseExact = Assert<Equal<typeof app.database, DeesseDatabaseService<CapabilitiesOf<typeof database>>>>
 type AuthExact = Assert<Equal<typeof app.auth, ExpectedAuthInstance>>
 type RouterExact = Assert<Equal<typeof app.api.router, ExpectedRouter>>
 type InstanceExact = Assert<Equal<typeof app, ExpectedDeesseInstance>>
 type HandlerExact = Assert<Equal<typeof app.handler, (request: Request) => Promise<Response>>>
-type PluginTupleExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>]>>
+type PluginTupleExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>>
+type PluginRouterRegistryKeysExact = Assert<Equal<keyof PluginContributions["api"], "feature" | "username">>
+type PluginDatabaseRegistryKeysExact = Assert<Equal<keyof PluginContributions["database"], "usernames" | "auditEvents">>
+type PluginExtensionRegistryKeysExact = Assert<Equal<keyof PluginContributions["extensions"]["feature"], "dashboardWidget" | "dashboardMetric">>
+type RegistryUsernameSchemaExact = Assert<Equal<PluginContributions["database"]["usernames"], typeof usernameContribution.database.schema.usernames>>
+type RegistryAuditSchemaExact = Assert<Equal<PluginContributions["database"]["auditEvents"], typeof auditContribution.database.schema.auditEvents>>
+type RegistryWidgetExact = Assert<Equal<PluginContributions["extensions"]["feature"]["dashboardWidget"], typeof usernameContribution.extensions.feature.dashboardWidget>>
+type RegistryMetricExact = Assert<Equal<PluginContributions["extensions"]["feature"]["dashboardMetric"], typeof auditContribution.extensions.feature.dashboardMetric>>
+type PluginServerRegistryExact = Assert<Equal<PluginContributions["auth"]["serverPlugins"][number], typeof contributedUsernameServer>>
+type PluginClientRegistryExact = Assert<Equal<PluginContributions["auth"]["clientPlugins"][number], typeof contributedUsernameClient>>
 type ApiInputExact = Assert<Equal<InferRouterInputs<typeof app.api.router>["ping"], { count: number }>>
 type ApiOutputExact = Assert<Equal<InferRouterOutputs<typeof app.api.router>["feature"]["get"], { title: string }>>
 type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
@@ -76,7 +98,9 @@ type ParsedArgsExact = Assert<Equal<typeof registration.args, { count: number }>
 type RawArgsExact = Assert<Equal<Parameters<typeof feature>[0], { count?: number | undefined }>>
 type HandlerContributionExact = Assert<Equal<ReturnType<typeof registration.definition.handler>, { api: { router: typeof procedures }; count: number }>>
 type RequiresExact = Assert<Equal<NonNullable<typeof usernameFeature.definition.requires>, readonly ["feature"]>>
+type AuditRequiresExact = Assert<Equal<NonNullable<typeof auditFeature.definition.requires>, readonly ["feature"]>>
 const usernameContribution = usernameFeature.definition.handler({ prefix: "member" })
+const auditContribution = auditFeature.definition.handler({})
 type ExpectedUsernameDatabase = {
   schema: {
     usernames: {
@@ -91,6 +115,8 @@ type UsernameApiContributionExact = Assert<Equal<typeof usernameContribution.api
 type UsernameServerPluginExact = Assert<Equal<typeof usernameContribution.auth.serverPlugins, readonly [typeof contributedUsernameServer]>>
 type UsernameClientPluginExact = Assert<Equal<typeof usernameContribution.auth.clientPlugins, readonly [typeof contributedUsernameClient]>>
 type ExtensionContributionExact = Assert<Equal<typeof usernameContribution.extensions.feature.dashboardWidget, { title: string; href: string }>>
+// @ts-expect-error the provider's extension point requires a string label
+const incompatibleDashboardMetric: PluginExtension<typeof feature, "dashboardMetric"> = { label: 42 }
 const count: number = registration.args.count
 // @ts-expect-error raw plugin args reject non-number counts
 feature({ count: "wrong" })
@@ -102,6 +128,8 @@ void app.database.authAdapter
 void minimalApp.api.router
 // @ts-expect-error empty router exposes no procedure keys
 void minimalApp.api.router.missing
+// @ts-expect-error a plugin without an API contribution is absent from the composed router
+void app.api.router.audit
 
 declare module "deesse/react" {
   interface DeesseReactRegistry {
@@ -132,6 +160,8 @@ client.api.ping({ count: "four" })
 const wrongOutput: Promise<number> = client.api.feature.get({ id: "article-1" })
 // @ts-expect-error unknown router keys are rejected
 void client.api.feature.missing
+// @ts-expect-error a plugin without an API contribution has no client namespace
+void client.api.audit
 type UsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">
 type UsernameClientInputExact = Assert<Equal<UsernameClientInput, { username: string }>>
 const usernameArgs: Parameters<typeof client.auth.isUsernameAvailable>[0] = { username: "ada" }
@@ -145,5 +175,5 @@ const clientUsername: ReturnType<typeof client.auth.useSession> = client.auth.us
 const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "admin" })
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
-void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, HandlerExact, PluginTupleExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
+void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])

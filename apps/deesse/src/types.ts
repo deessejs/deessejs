@@ -72,9 +72,28 @@ export type ContributionOf<TPlugins extends readonly AnyPlugin[]> = TPlugins[num
   ? TPlugin extends { definition: { handler: (...args: never[]) => infer TContribution } } ? TContribution : never
   : never
 
+type UnionToIntersection<TUnion> = (TUnion extends unknown ? (value: TUnion) => void : never) extends (value: infer TIntersection) => void
+  ? TIntersection
+  : never
+
+type MergeContributionObjects<TObjects> = [TObjects] extends [never]
+  ? Record<never, never>
+  : { [TKey in keyof UnionToIntersection<TObjects>]: UnionToIntersection<TObjects>[TKey] }
+
+type DatabaseSchemaContribution<TContribution> = TContribution extends { database: { schema: infer TSchema extends object } }
+  ? TSchema
+  : never
+
+type ExtensionContribution<TContribution> = TContribution extends { extensions: infer TExtensions extends object }
+  ? TExtensions
+  : never
+
 export type AppAuthPlugin<TAuth extends BetterAuthOptions> = NonNullable<TAuth["plugins"]>[number]
 export type PluginAuthServerPlugin<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
-  ? TContribution extends { auth?: { serverPlugins?: readonly (infer TPlugin)[] } } ? Extract<TPlugin, BetterAuthPlugin> : never
+  ? TContribution extends { auth: { serverPlugins: readonly (infer TPlugin)[] } } ? Extract<TPlugin, BetterAuthPlugin> : never
+  : never
+export type PluginAuthClientPlugin<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
+  ? TContribution extends { auth: { clientPlugins: readonly (infer TPlugin)[] } } ? Extract<TPlugin, BetterAuthClientPlugin> : never
   : never
 export type ComposedBetterAuthOptions<TAuth extends BetterAuthOptions, TPlugins extends readonly AnyPlugin[]> =
   Omit<TAuth, "plugins"> & { plugins: Array<AppAuthPlugin<TAuth> | PluginAuthServerPlugin<TPlugins>> }
@@ -93,8 +112,22 @@ export type DeesseConfig<
   plugins?: TPlugins
 }
 
+type PluginRouter<TPlugin> = TPlugin extends { definition: { handler: (...args: never[]) => infer TContribution } }
+  ? TContribution extends { api: { router: infer TRouter extends AnyRouter } } ? TRouter : never
+  : never
+
 export type PluginRouters<TPlugins extends readonly AnyPlugin[]> = {
-  [TPlugin in TPlugins[number] as TPlugin["id"]]: ReturnType<TPlugin["definition"]["handler"]> extends { api: { router: infer TRouter } } ? TRouter : never
+  [TPlugin in TPlugins[number] as [PluginRouter<TPlugin>] extends [never] ? never : TPlugin["id"]]: PluginRouter<TPlugin>
+}
+
+export type DeessePluginContributionRegistry<TPlugins extends readonly AnyPlugin[]> = {
+  readonly database: MergeContributionObjects<DatabaseSchemaContribution<ContributionOf<TPlugins>>>
+  readonly auth: {
+    readonly serverPlugins: readonly PluginAuthServerPlugin<TPlugins>[]
+    readonly clientPlugins: readonly PluginAuthClientPlugin<TPlugins>[]
+  }
+  readonly api: PluginRouters<TPlugins>
+  readonly extensions: MergeContributionObjects<ExtensionContribution<ContributionOf<TPlugins>>>
 }
 
 export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
