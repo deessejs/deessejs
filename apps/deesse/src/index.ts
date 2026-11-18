@@ -1,6 +1,6 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth"
 import type { AnyRouter } from "@orpc/server"
-import type { ZodType } from "zod"
+import type { input as ZodInput, infer as ZodOutput, ZodType } from "zod"
 
 export interface DeesseDatabase {
   readonly capabilities: { readonly transactions: boolean }
@@ -18,13 +18,13 @@ export type PluginContribution<TRouter extends AnyRouter = AnyRouter> = {
 type PluginDefinition<TSchema extends ZodType, TContribution extends PluginContribution> = {
   id: string
   args: TSchema
-  handler: (args: import("zod").infer<TSchema>) => TContribution
+  handler: (args: ZodOutput<TSchema>) => TContribution
 }
 
 export function plugin<const TId extends string, TSchema extends ZodType, TContribution extends PluginContribution>(
   definition: PluginDefinition<TSchema, TContribution> & { id: TId },
 ) {
-  return (args: import("zod").input<TSchema>) => ({
+  return (args: ZodInput<TSchema>) => ({
     id: definition.id,
     args: definition.args.parse(args),
     definition,
