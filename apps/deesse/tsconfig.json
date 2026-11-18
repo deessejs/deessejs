@@ -1,5 +1,9 @@
 {
   "extends": "@workspace/typescript-config/base.json",
-  "compilerOptions": { "types": ["node"], "isolatedDeclarations": false },
+  "compilerOptions": {
+    "types": ["node"],
+    "isolatedDeclarations": false,
+    "paths": { "deesse/react": ["./src/react.ts"] }
+  },
   "include": ["src/**/*", "tests/**/*.ts"]
 }
