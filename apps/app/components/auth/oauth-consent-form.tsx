@@ -1,7 +1,6 @@
 "use client"
 
 import { Suspense } from "react"
-import type { FormEvent } from "react"
 import { useSearchParams } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
@@ -62,14 +61,6 @@ function OAuthConsentFormContent() {
       }
     },
   })
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const submitter = (event.nativeEvent as SubmitEvent).submitter
-    if (!(submitter instanceof HTMLButtonElement)) return
-    form.setFieldValue("accept", submitter.value === "approve")
-    void form.handleSubmit()
-  }
 
   if (error)
     return (
@@ -178,7 +169,16 @@ function OAuthConsentFormContent() {
         )}
       </p>
 
-      <form onSubmit={handleSubmit} className="flex gap-3">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          const submitter = (event.nativeEvent as SubmitEvent).submitter
+          if (!(submitter instanceof HTMLButtonElement)) return
+          form.setFieldValue("accept", submitter.value === "approve")
+          void form.handleSubmit()
+        }}
+        className="flex gap-3"
+      >
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(submitting) => (
             <>

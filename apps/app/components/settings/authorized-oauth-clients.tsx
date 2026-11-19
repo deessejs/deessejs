@@ -25,7 +25,7 @@ function safeHttpsUrl(value: string | undefined): string | undefined {
 
 function formatDate(value: Date | string): string {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString()
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10)
 }
 
 export function AuthorizedOAuthClients() {
