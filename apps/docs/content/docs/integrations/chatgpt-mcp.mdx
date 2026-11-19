@@ -1,18 +1,18 @@
 ---
-title: Connect DeesseJS to ChatGPT
+title: Connect to ChatGPT
 description: Connect the DeesseJS template catalog as an OAuth-protected Model Context Protocol server.
 ---
 
-# Connect DeesseJS to ChatGPT
+# Connect to ChatGPT
 
-DeesseJS provides a remote Model Context Protocol (MCP) server at MCP_RESOURCE_URL. It exposes one read-only tool named list_templates, backed by the public product template catalog. Sign in through DeesseJS OAuth to use the server, even though the catalog data is public.
+DeesseJS provides a remote Model Context Protocol (MCP) server at `MCP_RESOURCE_URL`. It exposes one read-only tool named `list_templates`, backed by the public product template catalog. DeesseJS OAuth sign-in is required to use the server. The catalog data remains public.
 
 ## Operator configuration
 
-Set MCP_RESOURCE_URL in the API deployment to the canonical HTTPS URL for the MCP endpoint, including its path. For example, use https://api.example.com/api/v1/mcp. The value must not end with a slash. Local development may use http://localhost:3001/api/v1/mcp. Better Auth serves OAuth issuer and discovery endpoints at BETTER_AUTH_URL with the /api/v1/auth base path. Apply the committed database migration through the usual deployment migration process before enabling the endpoint.
+Set `MCP_RESOURCE_URL` in the API deployment to the canonical HTTPS endpoint URL, including its path. For example, use `https://example.com/api/v1/mcp`. The value must not end with a slash. Local development may use `http://localhost:3001/api/v1/mcp`. Better Auth serves OAuth issuer and discovery endpoints at `BETTER_AUTH_URL` with the `/api/v1/auth` base path. Apply the committed database migration through the usual deployment migration process before enabling the endpoint.
 
-## Connect In ChatGPT
+## Connect in ChatGPT
 
-In ChatGPT, add a custom remote MCP connector and enter the exact MCP_RESOURCE_URL. Complete DeesseJS sign-in and consent when prompted. Custom MCP connectors require a supported ChatGPT plan and workspace administrator access. Availability depends on the user's plan and workspace settings.
+In ChatGPT, add a custom remote MCP connector and enter the exact `MCP_RESOURCE_URL`. Complete DeesseJS sign-in and consent when prompted. Custom MCP connectors require a supported ChatGPT plan and workspace administrator access. Availability depends on the user's plan and workspace settings.
 
 The Storybook documentation MCP is separate from this product endpoint.
