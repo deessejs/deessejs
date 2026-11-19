@@ -6,19 +6,19 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 
 ## Commands
 
-| Command                              | What it does                                                      |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `deessejs list`                      | Lists the registry templates. Accepts `--category`, `--json`.     |
-| `deessejs info <slug-or-github-url>` | Validated descriptor details for a template.                      |
-| `deessejs block info <source>`       | Read-only summary for a local or GitHub block.                    |
-| `deessejs block check [source]`      | Validates a block descriptor and its source assets.               |
-| `deessejs init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository. |
-| `deessejs auth login`                | Runs the device-authorization flow against the server.            |
-| `deessejs auth status`               | Prints the identity stored on this machine.                       |
-| `deessejs auth logout`               | Signs out and clears the stored token.                            |
-| `deessejs organization list`         | Lists the signed-in user's organizations.                         |
-| `deessejs organization info <slug>`  | Shows details for one of the user's organizations.                 |
-| `deessejs organization create <name>` | Creates an organization through the authenticated provisioning API. |
+| Command                                        | What it does                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `deessejs templates list`                      | Lists the registry templates. Accepts `--category`, `--json`.       |
+| `deessejs templates info <slug-or-github-url>` | Validated descriptor details for a template.                        |
+| `deessejs block info <source>`                 | Read-only summary for a local or GitHub block.                      |
+| `deessejs block check [source]`                | Validates a block descriptor and its source assets.                 |
+| `deessejs templates init <slug-or-github-url>` | Creates a project from a catalog template or a GitHub repository.   |
+| `deessejs auth login`                          | Runs the device-authorization flow against the server.              |
+| `deessejs auth status`                         | Prints the identity stored on this machine.                         |
+| `deessejs auth logout`                         | Signs out and clears the stored token.                              |
+| `deessejs organization list`                   | Lists the signed-in user's organizations.                           |
+| `deessejs organization info <slug>`            | Shows details for one of the user's organizations.                  |
+| `deessejs organization create <name>`          | Creates an organization through the authenticated provisioning API. |
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms require a valid root `deesse-template.json` and use it to select files. There is no Git clone fallback. `--force` permits an existing empty target directory and never deletes existing files.
 

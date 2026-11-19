@@ -64,7 +64,7 @@ export const infoCommand = new Command("info")
           : resolved.template.slug
         const refOption =
           opts.ref && !resolved.template.community ? ` --ref ${opts.ref}` : ""
-        const installCommand = `deessejs init ${installSource}${refOption}`
+        const installCommand = `deessejs templates init ${installSource}${refOption}`
 
         if (json) {
           printJson({
