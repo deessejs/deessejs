@@ -63,7 +63,7 @@ export function createRuntime(options: RuntimeOptions): {
     const session = await getSession({ headers: context.req.raw.headers })
     const result = await rpc.handle(context.req.raw, {
       prefix: DEESSE_RPC_PATH,
-      context: { headers: context.req.raw.headers, session: session?.session ?? null, user: session?.user ?? null },
+      context: { database: options.database.database, request: context.req.raw, headers: context.req.raw.headers, session: session?.session ?? null, user: session?.user ?? null },
     })
     return result.matched ? result.response : context.notFound()
   })

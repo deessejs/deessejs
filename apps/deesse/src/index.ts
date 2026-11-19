@@ -1,9 +1,9 @@
 import type { AnyRouter, BetterAuthOptions, DeesseConfig, ZodInput, ZodType } from "./types.js"
-import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DatabaseAdapter, DeesseInstance, PluginContribution, PluginDefinition, PluginRegistration } from "./types.js"
+import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DeesseDatabaseAdapterContract, DeesseInstance, PluginContribution, PluginDefinition, PluginRegistration } from "./types.js"
 import { createRuntime } from "./runtime.js"
 import type { RuntimeOptions } from "./runtime-types.js"
 
-export type { BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOptions, DatabaseAdapter, DeesseApiOptions, DeesseBetterAuthOptions, DeesseConfig, DeesseDatabase, DeesseDatabaseAdapter, DeesseDatabaseService, DeesseFetchHandler, DeesseInstance, DeessePluginContributionRegistry, PluginContribution, PluginExtension } from "./types.js"
+export type { BoundedLimit, BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOptions, ComposedDatabaseSchema, DatabaseAdapter, DeesseApiOptions, DeesseAuthAdapter, DeesseAuthSchema, DeesseBetterAuthOptions, DeesseConfig, DeesseDatabase, DeesseDatabaseAdapter, DeesseDatabaseAdapterContract, DeesseDatabaseCapabilities, DeesseDatabaseFailure, DeesseDatabaseSchema, DeesseDatabaseService, DeesseFetchHandler, DeesseFieldDefinition, DeesseFieldType, DeesseFindManyOptions, DeesseIndexDefinition, DeesseInsert, DeesseInstance, DeesseJsonValue, DeesseModelDefinition, DeesseModelResult, DeesseModelRow, DeesseNotFound, DeessePatch, DeessePluginContributionRegistry, DeesseRequestContext, DeesseResult, DeesseTransactionService, PluginContribution, PluginExtension } from "./types.js"
 
 type Definition<TSchema extends ZodType, TContribution extends PluginContribution, TRequires extends readonly string[], TPoints extends Readonly<Record<string, unknown>>> =
   PluginDefinition<TSchema, TContribution, TRequires, TPoints>
@@ -25,16 +25,17 @@ export function plugin(definition: { id: string; args?: ZodType; handler: ((args
 }
 
 export function createDeesse<
-  TDatabase extends DatabaseAdapter,
+  TDatabase extends DeesseDatabaseAdapterContract,
   TAuth extends BetterAuthOptions,
   TApi extends { router?: AnyRouter } = Record<never, never>,
   const TPlugins extends readonly AnyPlugin[] = readonly [],
 >(options: DeesseConfig<TDatabase, TAuth, TApi, TPlugins>): DeesseInstance<
-  TDatabase, BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>, ApiRouter<TApi, TPlugins>
+  TDatabase, BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>, ApiRouter<TApi, TPlugins>, TPlugins
 > {
   return createRuntime(options as unknown as RuntimeOptions) as unknown as DeesseInstance<
     TDatabase,
     BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>,
-    ApiRouter<TApi, TPlugins>
+    ApiRouter<TApi, TPlugins>,
+    TPlugins
   >
 }

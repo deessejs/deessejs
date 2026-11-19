@@ -4,14 +4,20 @@ import { RPCLink } from "@orpc/client/fetch"
 import { os, type RouterClient } from "@orpc/server"
 import { describe, expect, it, vi } from "vitest"
 import { createDeesse, plugin } from "../src/index.js"
+import type { DatabaseAdapter, DeesseDatabaseCapabilities, DeesseDatabaseService, DeesseRequestContext } from "../src/types.js"
 import { toNextJsHandler } from "../src/next.js"
 
-type RequestContext = { headers: Headers; session: object | null; user: { id: string } | null }
+type RequestContext = DeesseRequestContext<never, DeesseDatabaseCapabilities, { id: string }>
 const base = os.$context<RequestContext>()
 
 describe("Deesse runtime composition", () => {
   it("runs plugin handlers once and serves public and authenticated oRPC calls through Hono", async () => {
-    const identity = base.handler(({ context }) => context.user?.id ?? "anonymous")
+    const identity = base.handler(({ context }) => {
+      const transactions: true = context.database.capabilities.transactions
+      const method: string = context.request.method
+      void [transactions, method]
+      return context.user?.id ?? "anonymous"
+    })
     const handler = vi.fn(() => ({ api: { router: { identity } } }))
     const feature = plugin({ id: "feature", handler })
     const authOptions = {
@@ -19,11 +25,12 @@ describe("Deesse runtime composition", () => {
       secret: "deesse-runtime-test-secret-which-is-long-enough",
       emailAndPassword: { enabled: true },
     }
+    const database = {
+      database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
+      authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    } satisfies DatabaseAdapter
     const app = createDeesse({
-      database: {
-        database: { capabilities: { transactions: true as const } },
-        authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
-      },
+      database,
       auth: authOptions,
       plugins: [feature()],
     })

@@ -4,23 +4,91 @@ import type { BetterAuthClientPlugin } from "better-auth/client"
 import type { AnyRouter } from "@orpc/server"
 import type { input as ZodInput, infer as ZodOutput, ZodType } from "zod"
 
-export interface DeesseDatabaseService<TCapabilities extends object = Record<never, never>> {
-  readonly capabilities: TCapabilities
+export type DeesseFieldType = "string" | "text" | "integer" | "boolean" | "timestamp" | "date" | "json"
+export type DeesseJsonValue = string | number | boolean | null | DeesseJsonValue[] | { [key: string]: DeesseJsonValue }
+export type DeesseFieldDefinition = {
+  required?: boolean
+  nullable?: boolean
+  unique?: boolean
+  columnName?: string
+} & (
+  | { type: "string" | "text"; default?: string | null }
+  | { type: "integer"; default?: number | null }
+  | { type: "boolean"; default?: boolean | null }
+  | { type: "timestamp" | "date"; default?: Date | null }
+  | { type: "json"; default?: DeesseJsonValue }
+)
+export type DeesseIndexDefinition = { name?: string; fields: readonly string[]; unique?: boolean }
+export type DeesseModelDefinition = { fields: Record<string, DeesseFieldDefinition>; indexes?: readonly DeesseIndexDefinition[] }
+export type DeesseDatabaseSchema = Record<string, DeesseModelDefinition>
+
+type FieldValue<TField extends DeesseFieldDefinition> =
+  [DeesseFieldType] extends [TField["type"]] ? unknown
+    : TField["type"] extends "string" | "text" ? string
+    : TField["type"] extends "integer" ? number
+      : TField["type"] extends "boolean" ? boolean
+        : TField["type"] extends "timestamp" | "date" ? Date
+          : DeesseJsonValue
+type RowFieldValue<TField extends DeesseFieldDefinition> = TField["nullable"] extends true
+  ? FieldValue<TField> | null
+  : TField["required"] extends false ? FieldValue<TField> | null : FieldValue<TField>
+export type DeesseModelRow<TModel extends DeesseModelDefinition> = { id: string } & {
+  [TKey in keyof TModel["fields"]]: RowFieldValue<TModel["fields"][TKey]>
 }
-
-export interface DeesseDatabaseAdapter<
-  TDatabase extends DeesseDatabaseService = DeesseDatabaseService,
-  TAuthAdapter = unknown,
-> {
-  readonly database: TDatabase
-  readonly authAdapter: TAuthAdapter
+type InsertRequiredKeys<TModel extends DeesseModelDefinition> = {
+  [TKey in keyof TModel["fields"]]-?: TModel["fields"][TKey] extends { required: true }
+    ? TModel["fields"][TKey] extends { default: unknown } ? never : TKey
+    : never
+}[keyof TModel["fields"]]
+export type DeesseInsert<TModel extends DeesseModelDefinition> =
+  Pick<{ [TKey in keyof TModel["fields"]]: FieldValue<TModel["fields"][TKey]> | (TModel["fields"][TKey]["nullable"] extends true ? null : never) }, InsertRequiredKeys<TModel>> &
+  Partial<Omit<{ [TKey in keyof TModel["fields"]]: FieldValue<TModel["fields"][TKey]> | (TModel["fields"][TKey]["nullable"] extends true ? null : never) }, InsertRequiredKeys<TModel>>>
+export type DeessePatch<TModel extends DeesseModelDefinition> = Partial<Omit<DeesseModelRow<TModel>, "id">>
+type FilterValue<TValue> = TValue | { in: readonly TValue[] }
+export type DeesseFindManyOptions<TRow extends object> = {
+  where?: { [TKey in keyof TRow]?: FilterValue<TRow[TKey]> }
+  orderBy?: Partial<Record<keyof TRow, "asc" | "desc">>
+  limit: BoundedLimit
 }
+type BuildNumericRange<TEnd extends number, TValues extends number[] = []> =
+  TValues["length"] extends TEnd ? TValues[number] : BuildNumericRange<TEnd, [...TValues, TValues["length"]]>
+export type BoundedLimit = Exclude<BuildNumericRange<101>, 0>
 
-export type DeesseDatabase = DeesseDatabaseService
-export type DatabaseAdapter<TDatabase extends DeesseDatabaseService = DeesseDatabaseService, TAuthAdapter = unknown> =
-  DeesseDatabaseAdapter<TDatabase, TAuthAdapter>
-
-export type CapabilitiesOf<TAdapter extends DeesseDatabaseAdapter> = TAdapter["database"]["capabilities"]
+export type DeesseDatabaseFailure = { code: "CONFLICT" | "UNSUPPORTED_CAPABILITY" | "INFRASTRUCTURE"; cause?: unknown }
+export type DeesseNotFound<TModel extends string = string> = { code: "NOT_FOUND"; model: TModel; id: string }
+export type DeesseResult<TValue, TError = DeesseDatabaseFailure> = { ok: true; value: TValue } | { ok: false; error: TError }
+export type DeesseModelResult<TModel extends string, TValue> = DeesseResult<TValue, DeesseDatabaseFailure | DeesseNotFound<TModel>>
+export type DeesseDatabaseCapabilities = { transactions: true }
+export type DeesseDatabaseOperations<TSchema extends DeesseDatabaseSchema> = {
+  findById<TModel extends keyof TSchema & string>(model: TModel, id: string): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
+  findMany<TModel extends keyof TSchema & string>(model: TModel, options: DeesseFindManyOptions<DeesseModelRow<TSchema[TModel]>>): Promise<DeesseResult<DeesseModelRow<TSchema[TModel]>[]>>
+  insert<TModel extends keyof TSchema & string>(model: TModel, values: DeesseInsert<TSchema[TModel]>): Promise<DeesseResult<DeesseModelRow<TSchema[TModel]>>>
+  updateById<TModel extends keyof TSchema & string>(model: TModel, id: string, patch: DeessePatch<TSchema[TModel]>): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
+  deleteById<TModel extends keyof TSchema & string>(model: TModel, id: string): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
+}
+export type DeesseTransactionService<TSchema extends DeesseDatabaseSchema, TCapabilities extends object> =
+  DeesseDatabaseOperations<TSchema> & { readonly capabilities: TCapabilities }
+export type DeesseDatabaseService<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities> =
+  DeesseDatabaseOperations<TSchema> & {
+    readonly capabilities: TCapabilities
+    transaction<TValue>(callback: (transaction: DeesseTransactionService<TSchema, TCapabilities>) => Promise<TValue>): Promise<DeesseResult<TValue>>
+  }
+export type DeesseDatabase = DeesseDatabaseService<never, DeesseDatabaseCapabilities>
+export type DeesseAuthAdapter = NonNullable<BetterAuthOptions["database"]>
+export type DeesseDatabaseAdapter<
+  TSchema extends DeesseDatabaseSchema = never,
+  TCapabilities extends object = DeesseDatabaseCapabilities,
+> = {
+  readonly database: DeesseDatabaseService<TSchema, TCapabilities>
+  readonly authAdapter: DeesseAuthAdapter
+}
+export type DeesseDatabaseAdapterContract = {
+  readonly database: DeesseDatabaseService<never, object>
+  readonly authAdapter: DeesseAuthAdapter
+}
+export type DatabaseAdapter<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities> =
+  DeesseDatabaseAdapter<TSchema, TCapabilities>
+export type CapabilitiesOf<TAdapter extends DeesseDatabaseAdapterContract> = TAdapter["database"]["capabilities"]
 
 export type DeesseBetterAuthOptions = BetterAuthOptions
 export type BetterAuthServerInstance = {
@@ -32,10 +100,11 @@ export type BetterAuthServerInstance = {
 }
 
 export type PluginContribution = {
-  database?: { schema: unknown }
+  database?: { schema: DeesseDatabaseSchema }
   auth?: {
     serverPlugins?: readonly BetterAuthPlugin[]
     clientPlugins?: readonly BetterAuthClientPlugin[]
+    schema?: BetterAuthPlugin["schema"]
   }
   api?: { router: AnyRouter }
   extensions?: Readonly<Record<string, unknown>>
@@ -94,13 +163,17 @@ export type PluginAuthServerPlugin<TPlugins extends readonly AnyPlugin[]> = Cont
 export type PluginAuthClientPlugin<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
   ? TContribution extends { auth: { clientPlugins: readonly (infer TPlugin)[] } } ? Extract<TPlugin, BetterAuthClientPlugin> : never
   : never
+export type PluginAuthSchema<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
+  ? TContribution extends { auth: { schema: infer TSchema extends object } } ? TSchema : never
+  : never
+export type DeesseAuthSchema<TPlugins extends readonly AnyPlugin[]> = MergeContributionObjects<PluginAuthSchema<TPlugins>>
 export type ComposedBetterAuthOptions<TAuth extends BetterAuthOptions, TPlugins extends readonly AnyPlugin[]> =
   Omit<TAuth, "plugins"> & { plugins: Array<AppAuthPlugin<TAuth> | PluginAuthServerPlugin<TPlugins>> }
 
 export type DeesseApiOptions = { router?: AnyRouter; [key: string]: unknown }
 
 export type DeesseConfig<
-  TDatabaseAdapter extends DeesseDatabaseAdapter,
+  TDatabaseAdapter extends DeesseDatabaseAdapterContract,
   TAuthOptions extends DeesseBetterAuthOptions,
   TApiOptions extends DeesseApiOptions = DeesseApiOptions,
   TPlugins extends readonly AnyPlugin[] = readonly [],
@@ -124,6 +197,7 @@ export type DeessePluginContributionRegistry<TPlugins extends readonly AnyPlugin
   readonly auth: {
     readonly serverPlugins: readonly PluginAuthServerPlugin<TPlugins>[]
     readonly clientPlugins: readonly PluginAuthClientPlugin<TPlugins>[]
+    readonly schema: DeesseAuthSchema<TPlugins>
   }
   readonly api: PluginRouters<TPlugins>
   readonly extensions: MergeContributionObjects<ExtensionContribution<ContributionOf<TPlugins>>>
@@ -133,17 +207,34 @@ export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
   (TApi extends { router: infer TRouter extends AnyRouter } ? TRouter : Record<never, never>) & PluginRouters<TPlugins>
 
 export type DeesseFetchHandler = (request: Request) => Promise<Response>
+export type DeesseRequestContext<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities, TUser = object | null, TSession = object | null> = {
+  readonly database: DeesseDatabaseService<TSchema, TCapabilities>
+  readonly request: Request
+  readonly headers: Headers
+  readonly user: TUser
+  readonly session: TSession
+}
 
 export type DeesseInstance<
-  TAdapter extends DeesseDatabaseAdapter,
+  TAdapter extends DeesseDatabaseAdapterContract,
   TAuth extends BetterAuthServerInstance,
   TApiRouter,
+  TPlugins extends readonly AnyPlugin[] = readonly [],
 > = {
-  readonly database: DeesseDatabaseService<CapabilitiesOf<TAdapter>>
+  readonly database: DeesseDatabaseService<ComposedDatabaseSchema<TAdapter, TPlugins>, CapabilitiesOf<TAdapter>>
   readonly auth: TAuth
   readonly api: { readonly router: TApiRouter }
   readonly handler: DeesseFetchHandler
 }
+
+type AdapterSchema<TAdapter extends DeesseDatabaseAdapterContract> = TAdapter["database"] extends DeesseDatabaseService<infer TSchema, object> ? TSchema : never
+type PluginDatabaseSchema<TPlugins extends readonly AnyPlugin[]> = ContributionOf<TPlugins> extends infer TContribution
+  ? TContribution extends { database: { schema: infer TSchema extends DeesseDatabaseSchema } } ? TSchema : never
+  : never
+export type ComposedDatabaseSchema<TAdapter extends DeesseDatabaseAdapterContract, TPlugins extends readonly AnyPlugin[]> =
+  MergeContributionObjects<AdapterSchema<TAdapter> | PluginDatabaseSchema<TPlugins>> extends infer TSchema
+    ? { [TModel in keyof TSchema]: TSchema[TModel] extends DeesseModelDefinition ? TSchema[TModel] : never }
+    : never
 
 export type BetterAuthInstance<TOptions extends BetterAuthOptions> = ReturnType<typeof betterAuth<TOptions>>
 export type { AnyRouter, BetterAuthOptions, ZodInput, ZodType }

@@ -5,11 +5,14 @@ import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient 
 import { organization, username } from "better-auth/plugins"
 import { inferAdditionalFields, organizationClient, usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type DeesseConfig, type DeesseDatabaseService, type DeesseInstance, type DeessePluginContributionRegistry, type PluginExtension } from "deesse"
+import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseAuthAdapter, type DeesseConfig, type DeesseDatabaseAdapter, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseFieldDefinition, type DeesseInstance, type DeesseJsonValue, type DeesseModelResult, type DeesseModelRow, type DeesseNotFound, type DeessePluginContributionRegistry, type DeesseRequestContext, type DeesseResult, type PluginExtension } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
 type Assert<T extends true> = T
+
+// @ts-expect-error defaults must match the declared field type
+const invalidFieldDefault: DeesseFieldDefinition = { type: "string", default: 42 }
 
 const procedures = os.router({
   get: os.input(z.object({ id: z.string() })).output(z.object({ title: z.string() })).handler(({ input }) => ({ title: input.id })),
@@ -38,8 +41,8 @@ const usernameFeature = plugin({
   args: z.object({ prefix: z.string().default("user") }),
   requires: ["feature"] as const,
   handler: (args) => ({
-    database: { schema: { usernames: { fields: { value: { type: "string" } } } } },
-    auth: { serverPlugins: [contributedUsernameServer] as const, clientPlugins: [contributedUsernameClient] as const },
+    database: { schema: { usernames: { fields: { value: { type: "string", required: true } } } } as const satisfies DeesseDatabaseSchema },
+    auth: { serverPlugins: [contributedUsernameServer] as const, clientPlugins: [contributedUsernameClient] as const, schema: contributedUsernameServer.schema },
     api: { router: appRouter },
     extensions: { feature: { dashboardWidget: { title: args.prefix, href: "/users" } satisfies PluginExtension<typeof feature, "dashboardWidget"> } },
   }),
@@ -49,7 +52,7 @@ const auditFeature = plugin({
   args: z.object({}),
   requires: ["feature"] as const,
   handler: () => ({
-    database: { schema: { auditEvents: { fields: { action: { type: "string" } } } } },
+    database: { schema: { auditEvents: { fields: { action: { type: "string", required: true } } } } as const satisfies DeesseDatabaseSchema },
     extensions: { feature: { dashboardMetric: { label: "Audit events" } satisfies PluginExtension<typeof feature, "dashboardMetric"> } },
   }),
 })
@@ -57,9 +60,15 @@ const noConfigPlugin = plugin({
   id: "no-config",
   requires: ["feature"] as const,
   extensionPoints: { card: z.object({ title: z.string() }) },
-  handler: () => ({ api: { router: procedures }, database: { schema: { noConfig: { enabled: true } } } }),
+  handler: () => ({
+    api: { router: procedures },
+    database: { schema: { noConfig: { fields: { enabled: { type: "boolean", required: true } } } } as const satisfies DeesseDatabaseSchema },
+  }),
 })
-const database = { database: { capabilities: { transactions: true as const } }, authAdapter: { adapter: true } }
+const adapterSchema = {
+  article: { fields: { title: { type: "string", required: true }, status: { type: "string", required: true }, summary: { type: "text", nullable: true }, publishedAt: { type: "timestamp" }, views: { type: "integer", default: 0 }, metadata: { type: "json", nullable: true } } },
+} as const satisfies DeesseDatabaseSchema
+declare const database: DatabaseAdapter<typeof adapterSchema>
 const auth = {
   baseURL: "https://example.test",
   plugins: [organization()],
@@ -68,6 +77,17 @@ const auth = {
 const orgClient = organizationClient()
 const additionalFieldsClient = inferAdditionalFields<typeof auth>()
 const minimalApp = createDeesse({ database, auth })
+const contextualOs = os.$context<DeesseRequestContext<typeof adapterSchema>>()
+const contextualRouter = contextualOs.router({
+  articleById: contextualOs.handler(({ context }) => {
+    const service: DeesseDatabaseService<typeof adapterSchema> = context.database
+    const request: Request = context.request
+    const contextContract: DeesseRequestContext<typeof adapterSchema> = context
+    void [request, contextContract]
+    return service.findById("article", "article-1")
+  }),
+})
+const contextualApp = createDeesse({ database, auth, api: { router: contextualRouter } })
 const noConfigRegistration = noConfigPlugin()
 const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>
 const app = createDeesse(config)
@@ -75,20 +95,27 @@ const directApp = createDeesse({ database, auth, api: { router: appRouter }, plu
 type ExpectedAuthOptions = ComposedBetterAuthOptions<typeof auth, typeof config.plugins>
 type ExpectedAuthInstance = ReturnType<typeof betterAuth<ExpectedAuthOptions>>
 type ExpectedRouter = typeof appRouter & { feature: typeof procedures; username: typeof appRouter }
-type ExpectedDeesseInstance = DeesseInstance<typeof database, ExpectedAuthInstance, ExpectedRouter>
+type ExpectedDeesseInstance = DeesseInstance<typeof database, ExpectedAuthInstance, ExpectedRouter, typeof config.plugins>
 type PluginContributions = DeessePluginContributionRegistry<typeof config.plugins>
 type ConfigDatabaseExact = Assert<Equal<typeof config.database, typeof database>>
 type ConfigAuthExact = Assert<Equal<typeof config.auth, typeof auth>>
 type ConfigApiExact = Assert<Equal<typeof config.api.router, typeof appRouter>>
 type ConfigPluginsExact = Assert<Equal<typeof config.plugins, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>>
-type DatabaseExact = Assert<Equal<typeof app.database, DeesseDatabaseService<CapabilitiesOf<typeof database>>>>
+type DatabaseExact = Assert<Equal<typeof app.database, DeesseDatabaseService<ComposedDatabaseSchema<typeof database, typeof config.plugins>, CapabilitiesOf<typeof database>>>>
 type AuthExact = Assert<Equal<typeof app.auth, ExpectedAuthInstance>>
 type RouterExact = Assert<Equal<typeof app.api.router, ExpectedRouter>>
 type InstanceExact = Assert<Equal<typeof app, ExpectedDeesseInstance>>
 type DirectRouterExact = Assert<Equal<typeof directApp.api.router, ExpectedRouter>>
 type DirectAuthExact = Assert<Equal<typeof directApp.auth, ExpectedAuthInstance>>
+type ComposedDatabaseKeysExact = Assert<Equal<keyof ComposedDatabaseSchema<typeof database, typeof config.plugins>, "article" | "usernames" | "auditEvents">>
+type InstanceDatabaseSchema = typeof app.database extends DeesseDatabaseService<infer TSchema, object> ? TSchema : never
+type ComposedInstanceDatabaseKeysExact = Assert<Equal<keyof InstanceDatabaseSchema, "article" | "usernames" | "auditEvents">>
+type AuthAdapterExact = Assert<Equal<typeof database.authAdapter, DeesseAuthAdapter>>
+type DatabaseAdapterShapeExact = Assert<Equal<keyof DeesseDatabaseAdapter<typeof adapterSchema>, "database" | "authAdapter">>
+type ContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
+type ContextualRouterKeysExact = Assert<Equal<keyof typeof contextualApp.api.router, "articleById">>
 type NoConfigArgsOmitted = Assert<Equal<keyof typeof noConfigRegistration, "id" | "definition">>
-type NoConfigContributionExact = Assert<Equal<ReturnType<typeof noConfigRegistration.definition.handler>, { api: { router: typeof procedures }; database: { schema: { noConfig: { enabled: boolean } } } }>>
+type NoConfigContributionExact = Assert<Equal<keyof ReturnType<typeof noConfigRegistration.definition.handler>["database"]["schema"], "noConfig">>
 type NoConfigRequiresExact = Assert<Equal<typeof noConfigRegistration.definition.requires, readonly ["feature"]>>
 type NoConfigExtensionKeysExact = Assert<Equal<keyof typeof noConfigRegistration.definition.extensionPoints, "card">>
 type HandlerExact = Assert<Equal<typeof app.handler, (request: Request) => Promise<Response>>>
@@ -102,6 +129,12 @@ type RegistryWidgetExact = Assert<Equal<PluginContributions["extensions"]["featu
 type RegistryMetricExact = Assert<Equal<PluginContributions["extensions"]["feature"]["dashboardMetric"], typeof auditContribution.extensions.feature.dashboardMetric>>
 type PluginServerRegistryExact = Assert<Equal<PluginContributions["auth"]["serverPlugins"][number], typeof contributedUsernameServer>>
 type PluginClientRegistryExact = Assert<Equal<PluginContributions["auth"]["clientPlugins"][number], typeof contributedUsernameClient>>
+type PluginAuthSchemaExact = Assert<Equal<PluginContributions["auth"]["schema"], typeof contributedUsernameServer.schema>>
+type ArticleIdExact = Assert<Equal<DeesseModelRow<typeof adapterSchema.article>["id"], string>>
+type ArticleSummaryExact = Assert<Equal<DeesseModelRow<typeof adapterSchema.article>["summary"], string | null>>
+type ArticlePublishedAtExact = Assert<Equal<DeesseModelRow<typeof adapterSchema.article>["publishedAt"], Date>>
+type ArticleJsonExact = Assert<Equal<DeesseModelRow<typeof adapterSchema.article>["metadata"], DeesseJsonValue | null>>
+type RequestContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
 type ApiInputExact = Assert<Equal<InferRouterInputs<typeof app.api.router>["ping"], { count: number }>>
 type ApiOutputExact = Assert<Equal<InferRouterOutputs<typeof app.api.router>["feature"]["get"], { title: string }>>
 type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
@@ -115,16 +148,8 @@ type RequiresExact = Assert<Equal<NonNullable<typeof usernameFeature.definition.
 type AuditRequiresExact = Assert<Equal<NonNullable<typeof auditFeature.definition.requires>, readonly ["feature"]>>
 const usernameContribution = usernameFeature.definition.handler({ prefix: "member" })
 const auditContribution = auditFeature.definition.handler({})
-type ExpectedUsernameDatabase = {
-  schema: {
-    usernames: {
-      fields: {
-        value: { type: string }
-      }
-    }
-  }
-}
-type UsernameDatabaseExact = Assert<Equal<typeof usernameContribution.database, ExpectedUsernameDatabase>>
+type UsernameSchemaKeysExact = Assert<Equal<keyof typeof usernameContribution.database.schema, "usernames">>
+type UsernameFieldTypeExact = Assert<Equal<typeof usernameContribution.database.schema.usernames.fields.value.type, "string">>
 type UsernameApiContributionExact = Assert<Equal<typeof usernameContribution.api.router, typeof appRouter>>
 type UsernameServerPluginExact = Assert<Equal<typeof usernameContribution.auth.serverPlugins, readonly [typeof contributedUsernameServer]>>
 type UsernameClientPluginExact = Assert<Equal<typeof usernameContribution.auth.clientPlugins, readonly [typeof contributedUsernameClient]>>
@@ -137,8 +162,55 @@ feature({ count: "wrong" })
 // @ts-expect-error schema defaults are present in parsed output
 const missing: undefined = registration.args.count
 const portableTransactions: true = app.database.capabilities.transactions
+const articleResult = app.database.findById("article", "article-id")
+const usernameResult = app.database.findById("usernames", "user-1")
+const auditEvents = app.database.findMany("auditEvents", { where: { action: { in: ["create", "delete"] } }, limit: 10 })
+const articlePage = app.database.findMany("article", { where: { status: { in: ["draft", "published"] }, summary: null }, orderBy: { publishedAt: "desc" }, limit: 25 })
+const insertedArticle = app.database.insert("article", { title: "Typed", status: "draft" })
+const updatedArticle = app.database.updateById("article", "article-id", { views: 4 })
+const deletedArticle = app.database.deleteById("article", "article-id")
+const transactionResult = app.database.transaction(async (transaction) => transaction.insert("article", { title: "Inside transaction", status: "draft" }))
+type ArticleDatabaseResult = DeesseModelResult<"article", DeesseModelRow<typeof adapterSchema.article>>
+type ArticleRowResult = DeesseResult<DeesseModelRow<typeof adapterSchema.article>>
+type ArticleResultExact = Assert<Equal<typeof articleResult, Promise<ArticleDatabaseResult>>>
+type ArticleNotFoundOutcomeExact = Assert<Equal<Extract<Extract<ArticleDatabaseResult, { ok: false }>["error"], { code: "NOT_FOUND" }>, DeesseNotFound<"article">>>
+type ArticleInsertExact = Assert<Equal<typeof insertedArticle, Promise<ArticleRowResult>>>
+type ArticleUpdateExact = Assert<Equal<typeof updatedArticle, Promise<ArticleDatabaseResult>>>
+type ArticleDeleteExact = Assert<Equal<typeof deletedArticle, Promise<ArticleDatabaseResult>>>
+type UsernameModelRowKeysExact = Assert<Equal<keyof DeesseModelRow<InstanceDatabaseSchema["usernames"]>, "id" | "value">>
+type UsernameModelRowFieldsExact = Assert<Equal<DeesseModelRow<InstanceDatabaseSchema["usernames"]>["id" | "value"], string>>
+type AuditModelRowKeysExact = Assert<Equal<keyof DeesseModelRow<InstanceDatabaseSchema["auditEvents"]>, "id" | "action">>
+type AuditModelRowFieldsExact = Assert<Equal<DeesseModelRow<InstanceDatabaseSchema["auditEvents"]>["id" | "action"], string>>
+type UsernameRowExact = Assert<Equal<typeof usernameResult, Promise<DeesseModelResult<"usernames", DeesseModelRow<InstanceDatabaseSchema["usernames"]>>>>>
+type AuditRowsExact = Assert<Equal<typeof auditEvents, Promise<DeesseResult<DeesseModelRow<InstanceDatabaseSchema["auditEvents"]>[]>>>>
+type ArticlePageExact = Assert<Equal<typeof articlePage, Promise<DeesseResult<DeesseModelRow<typeof adapterSchema.article>[]>>>>
+type TransactionResultExact = Assert<Equal<typeof transactionResult, Promise<DeesseResult<ArticleRowResult>>>>
+// @ts-expect-error unknown model names are rejected
+app.database.findById("missing", "id")
+// @ts-expect-error plugin-contributed models are composed, but unknown models remain invalid
+app.database.findById("comment", "id")
+// @ts-expect-error unknown model fields are rejected in filters
+app.database.findMany("article", { where: { unknownField: "value" }, limit: 10 })
+// @ts-expect-error `in` values must match the selected field type
+app.database.findMany("article", { where: { status: { in: [1, 2] } }, limit: 10 })
+// @ts-expect-error query limits are restricted to 1 through 100
+app.database.findMany("article", { limit: 101 })
+// @ts-expect-error required fields are required on insert
+app.database.insert("article", { status: "draft" })
+// @ts-expect-error undeclared fields are rejected on insert
+app.database.insert("article", { title: "Typed", status: "draft", unknownField: "value" })
+// @ts-expect-error JSON fields reject non-JSON values
+app.database.insert("article", { title: "Typed", status: "draft", metadata: new Date() })
+// @ts-expect-error updates cannot change the generated id
+app.database.updateById("article", "id", { id: "new-id" })
+app.database.transaction(async (transaction) => {
+  // @ts-expect-error nested transactions are not part of the callback service
+  transaction.transaction(async () => undefined)
+})
 // @ts-expect-error provider adapter internals are not exposed on the instance
 void app.database.authAdapter
+// @ts-expect-error the portable service does not expose a provider client
+void app.database.client
 void minimalApp.api.router
 // @ts-expect-error empty router exposes no procedure keys
 void minimalApp.api.router.missing
@@ -191,5 +263,5 @@ const clientUsername: ReturnType<typeof client.auth.useSession> = client.auth.us
 const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "admin" })
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
-void [count, missing, portableTransactions, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameDatabaseExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
+void [count, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundOutcomeExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
