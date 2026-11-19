@@ -1,9 +1,11 @@
 const TEMPLATE_COMMANDS = new Set(["list", "info", "init"])
 
-/** Maps the templates namespace onto the existing command handlers. */
+/** Maps the template namespace and its legacy alias onto existing handlers. */
 export function normalizeTemplateCommandArgs(args: string[]): string[] {
   const commandIndex = 2
-  if (args[commandIndex] !== "templates") return args
+  if (args[commandIndex] !== "template" && args[commandIndex] !== "templates") {
+    return args
+  }
 
   const templateCommand = args[commandIndex + 1]
   if (!templateCommand) return [...args.slice(0, commandIndex), "--help"]
@@ -12,8 +14,5 @@ export function normalizeTemplateCommandArgs(args: string[]): string[] {
   }
   if (!TEMPLATE_COMMANDS.has(templateCommand)) return args
 
-  return [
-    ...args.slice(0, commandIndex),
-    ...args.slice(commandIndex + 2),
-  ]
+  return [...args.slice(0, commandIndex), ...args.slice(commandIndex + 2)]
 }

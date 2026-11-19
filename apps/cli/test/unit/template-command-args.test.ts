@@ -3,13 +3,13 @@ import { normalizeTemplateCommandArgs } from "../../src/template-command-args.js
 
 describe("template command namespace", () => {
   it.each(["list", "info", "init"])(
-    "dispatches templates %s to the shared handler",
+    "dispatches template %s to the shared handler",
     (command) => {
       expect(
         normalizeTemplateCommandArgs([
           "node",
           "deessejs",
-          "templates",
+          "template",
           command,
           "value",
           "--json",
@@ -26,13 +26,25 @@ describe("template command namespace", () => {
 
   it("shows help for the empty namespace", () => {
     expect(
-      normalizeTemplateCommandArgs(["node", "deessejs", "templates"])
+      normalizeTemplateCommandArgs(["node", "deessejs", "template"])
     ).toEqual(["node", "deessejs", "--help"])
   })
 
-  it("shows the preferred namespace in templates help", () => {
+  it("shows help for the legacy namespace alias", () => {
     expect(
       normalizeTemplateCommandArgs(["node", "deessejs", "templates", "--help"])
     ).toEqual(["node", "deessejs", "--help"])
+  })
+
+  it("dispatches the legacy templates alias to the shared handler", () => {
+    expect(
+      normalizeTemplateCommandArgs([
+        "node",
+        "deessejs",
+        "templates",
+        "list",
+        "--json",
+      ])
+    ).toEqual(["node", "deessejs", "--json"])
   })
 })

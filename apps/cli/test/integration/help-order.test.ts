@@ -18,7 +18,7 @@ const commandEntries = (help: string, names: string[]): string[] => {
 }
 
 describe("CLI help command ordering", () => {
-  it("sorts root commands alphabetically and retains aliases", async () => {
+  it("sorts root commands alphabetically and shows canonical names", async () => {
     const { stdout } = await execFileAsync(process.execPath, [cliPath, "help"])
 
     const expected = [
@@ -28,10 +28,12 @@ describe("CLI help command ordering", () => {
       "cache",
       "help",
       "organization",
-      "templates",
-      "update|upgrade",
+      "template",
+      "update",
     ]
     expect(commandEntries(stdout, expected)).toEqual(expected)
+    expect(stdout).toContain("template")
+    expect(commandEntries(stdout, ["template"])).toEqual(["template"])
   })
 
   it("sorts nested command help alphabetically", async () => {
@@ -40,17 +42,22 @@ describe("CLI help command ordering", () => {
       "auth",
       "--help",
     ])
-    const { stdout: templatesHelp } = await execFileAsync(process.execPath, [
+    const { stdout: templateHelp } = await execFileAsync(process.execPath, [
       cliPath,
-      "templates",
+      "template",
       "--help",
     ])
+    const { stdout: legacyTemplatesHelp } = await execFileAsync(
+      process.execPath,
+      [cliPath, "templates", "--help"]
+    )
 
     const authExpected = ["help", "login", "logout", "status"]
-    const templatesExpected = ["help", "info", "init", "list"]
+    const templateExpected = ["help", "info", "init", "list"]
     expect(commandEntries(authHelp, authExpected)).toEqual(authExpected)
-    expect(commandEntries(templatesHelp, templatesExpected)).toEqual(
-      templatesExpected
+    expect(commandEntries(templateHelp, templateExpected)).toEqual(
+      templateExpected
     )
+    expect(legacyTemplatesHelp).toContain("Usage: deessejs template")
   })
 })
