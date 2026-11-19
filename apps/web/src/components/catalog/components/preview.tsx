@@ -272,8 +272,17 @@ function SearchPreview() {
   )
 }
 
+const OTP_CELL_KEYS = [
+  "digit-one",
+  "digit-two",
+  "digit-three",
+  "digit-four",
+  "digit-five",
+  "digit-six",
+]
+
 function OtpPreview() {
-  const CELLS = 6
+  const CELLS = OTP_CELL_KEYS.length
   // useRef<Array<HTMLInputElement | null>>([]) infers as
   // RefObject<Array<HTMLInputElement | null>> in TS 6, which
   // does not allow numeric index access on .current. Cast
@@ -283,8 +292,8 @@ function OtpPreview() {
     current: (HTMLInputElement | null)[]
     [k: number]: HTMLInputElement | null
   } = { current: [] }
-  const [values, setValues] = useState<string[]>(
-    Array.from({ length: CELLS }).map(() => "")
+  const [values, setValues] = useState<string[]>(() =>
+    Array.from({ length: CELLS }, () => "")
   )
 
   const focusNext = (i: number) => {
@@ -294,9 +303,9 @@ function OtpPreview() {
 
   return (
     <div className="flex gap-2">
-      {values.map((value, i) => (
+      {OTP_CELL_KEYS.map((cellKey, i) => (
         <Input
-          key={i}
+          key={cellKey}
           ref={(el: HTMLInputElement | null) => {
             refs[i] = el
             return undefined
@@ -305,7 +314,7 @@ function OtpPreview() {
           maxLength={1}
           aria-label={`Digit ${i + 1} of ${CELLS}`}
           className="h-12 w-12 text-center text-xl"
-          value={value}
+          value={values[i] ?? ""}
           onChange={(e) => {
             const next = values.slice()
             next[i] = e.target.value

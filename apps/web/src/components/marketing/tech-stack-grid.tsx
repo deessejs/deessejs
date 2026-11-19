@@ -2,7 +2,8 @@
 
 import Image from "next/image"
 import { useSyncExternalStore } from "react"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, LazyMotion, domAnimation } from "motion/react"
+import * as m from "motion/react-m"
 
 import { cn } from "@workspace/ui/lib/utils"
 import {
@@ -63,7 +64,6 @@ function TechStackRotationTimer({
   return null
 }
 
-
 function subscribeToReducedMotion(onChange: () => void) {
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
   mediaQuery.addEventListener("change", onChange)
@@ -73,7 +73,6 @@ function subscribeToReducedMotion(onChange: () => void) {
 function getReducedMotionSnapshot() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
-
 
 export function TechStackGrid({
   techs,
@@ -91,54 +90,58 @@ export function TechStackGrid({
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
   // exactly once at any moment.
-  const { order: animatedOrder, rotateSlot } = useTechStackRotation(techs.length)
+  const { order: animatedOrder, rotateSlot } = useTechStackRotation(
+    techs.length
+  )
 
   return (
-    <div
-      className={cn(
-        "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
-        className
-      )}
-    >
-      {techs.map((slot, slotIdx) => {
-        const tech = techs[animatedOrder[slotIdx] ?? slotIdx] ?? slot
-        return (
-          <div
-            key={slotIdx}
-            className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
-          >
-            <TechStackRotationTimer
-              slot={slotIdx}
-              techCount={techs.length}
-              reducedMotion={reducedMotion}
-              rotateSlot={rotateSlot}
-            />
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={tech.name}
-                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                {...(reducedMotion ? {} : { exit: { opacity: 0, y: -8 } })}
-                transition={{
-                  duration: TRANSITION_MS,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className="flex items-center justify-center gap-2"
-              >
-                <Image
-                  src={`/logos/${tech.logo}.svg`}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="size-5 shrink-0 dark:invert"
-                  aria-hidden
-                />
-                <span className="font-medium">{tech.name}</span>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )
-      })}
-    </div>
+    <LazyMotion features={domAnimation}>
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
+          className
+        )}
+      >
+        {techs.map((slot, slotIdx) => {
+          const tech = techs[animatedOrder[slotIdx] ?? slotIdx] ?? slot
+          return (
+            <div
+              key={slotIdx}
+              className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
+            >
+              <TechStackRotationTimer
+                slot={slotIdx}
+                techCount={techs.length}
+                reducedMotion={reducedMotion}
+                rotateSlot={rotateSlot}
+              />
+              <AnimatePresence mode="wait" initial={false}>
+                <m.div
+                  key={tech.name}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  {...(reducedMotion ? {} : { exit: { opacity: 0, y: -8 } })}
+                  transition={{
+                    duration: TRANSITION_MS,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Image
+                    src={`/logos/${tech.logo}.svg`}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="size-5 shrink-0 dark:invert"
+                    aria-hidden
+                  />
+                  <span className="font-medium">{tech.name}</span>
+                </m.div>
+              </AnimatePresence>
+            </div>
+          )
+        })}
+      </div>
+    </LazyMotion>
   )
 }

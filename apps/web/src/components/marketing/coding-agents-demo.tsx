@@ -11,7 +11,13 @@ import {
   Plus,
   Telescope,
 } from "lucide-react"
-import { AnimatePresence, motion, useReducedMotion } from "motion/react"
+import {
+  AnimatePresence,
+  LazyMotion,
+  domAnimation,
+  useReducedMotion,
+} from "motion/react"
+import * as m from "motion/react-m"
 import { MessageScroller } from "@shadcn/react/message-scroller"
 
 import {
@@ -293,7 +299,14 @@ export function CodingAgentsDemo() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [progress, setProgress] = useState(0)
 
-  useCyclingDemo(activeIndex, Boolean(reduceMotion), CYCLE_MS, SCENARIOS.length, setActiveIndex, setProgress)
+  useCyclingDemo(
+    activeIndex,
+    Boolean(reduceMotion),
+    CYCLE_MS,
+    SCENARIOS.length,
+    setActiveIndex,
+    setProgress
+  )
 
   const scenario = SCENARIOS[activeIndex] ?? SCENARIOS.at(0)
   if (!scenario) return null
@@ -314,24 +327,28 @@ export function CodingAgentsDemo() {
           <MessageScroller.Root className="relative flex flex-1 flex-col">
             <MessageScroller.Viewport className="flex flex-1 flex-col overflow-y-auto">
               <MessageScroller.Content className="flex flex-1 flex-col gap-4">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={scenario.id}
-                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
-                    transition={{ duration: 0.25 }}
-                    className="flex flex-col gap-4"
-                  >
-                    {scenario.turns.map((turn) =>
-                      turn.kind === "cli" ? (
-                        <CliCard key={turn.id} turn={turn} />
-                      ) : (
-                        <ChatMessage key={turn.id} turn={turn} />
-                      )
-                    )}
-                  </motion.div>
-                </AnimatePresence>
+                <LazyMotion features={domAnimation}>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <m.div
+                      key={scenario.id}
+                      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={
+                        reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }
+                      }
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col gap-4"
+                    >
+                      {scenario.turns.map((turn) =>
+                        turn.kind === "cli" ? (
+                          <CliCard key={turn.id} turn={turn} />
+                        ) : (
+                          <ChatMessage key={turn.id} turn={turn} />
+                        )
+                      )}
+                    </m.div>
+                  </AnimatePresence>
+                </LazyMotion>
               </MessageScroller.Content>
             </MessageScroller.Viewport>
             <MessageScroller.Button className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2 rounded-full border bg-background px-3 py-1 text-sm font-medium inert:opacity-0">
