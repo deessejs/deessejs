@@ -10,19 +10,20 @@ import { GitHubIcon } from "./icons/github-icon"
 
 interface OAuthButtonsProps {
 	callbackURL?: string
+	continueOAuthFlow?: boolean
 }
 
-export function OAuthButtons({ callbackURL = "/home" }: OAuthButtonsProps) {
+export function OAuthButtons({ callbackURL = "/home", continueOAuthFlow = false }: OAuthButtonsProps) {
 	const [loading, setLoading] = useState<string | null>(null)
 
 	async function handleOAuth(provider: "google" | "github") {
 		setLoading(provider)
 		// Validate callbackURL to defeat open-redirect via protocol-relative URLs
 		// (//evil.com) and backslash bypass (/\\evil.com). See CVE-2025-27143.
-		const safeCallback = safeRedirect(callbackURL)
+		const safeCallback = continueOAuthFlow ? undefined : safeRedirect(callbackURL)
 		const { error } = await client.auth.signIn.social({
 			provider,
-			callbackURL: safeCallback,
+			...(safeCallback ? { callbackURL: safeCallback } : {}),
 		})
 		setLoading(null)
 

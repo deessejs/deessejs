@@ -293,8 +293,9 @@ const authConfig: BetterAuthOptions = {
     jwt({ disableSettingJwtHeader: true }),
     mcp({
       resource: serverEnv.MCP_RESOURCE_URL,
-      loginPage: "/login",
-      consentPage: "/consent",
+      loginPage: "/oauth/login",
+      consentPage: "/oauth/consent",
+      allowPublicClientPrelogin: true,
       scopes: ["openid", "profile", "offline_access", "templates:read"],
       refreshTokenReuseInterval: 0,
     }),

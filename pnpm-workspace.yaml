@@ -29,6 +29,7 @@ catalog:
   "@better-auth/stripe": 1.7.7
   "@better-auth/mcp": ^1.7.25
   "@better-auth/cimd": ^1.7.25
+  "@better-auth/oauth-provider": ^1.7.25
   "@modelcontextprotocol/server": ^2.4.0
   "@changesets/changelog-git": ^0.2.1
   "@changesets/cli": ^2.31.0
