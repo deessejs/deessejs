@@ -1,32 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense } from "react"
+import type { FormEvent } from "react"
+import { useSearchParams } from "next/navigation"
+import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { client } from "@/lib/client"
+import { useOAuthConsentRequest } from "@/hooks/use-oauth-consent-request"
 
-type OAuthClientDisplay = {
-  client_name?: string
-  client_uri?: string
-  tos_uri?: string
-  policy_uri?: string
-}
-
-type ConsentRequest = {
-  clientId: string
-  redirectHost: string
-  resource: string
-  scopes: string[]
-}
-
-const SCOPE_DESCRIPTIONS: Record<string, string> = {
+const CONSENT_SCOPE_DESCRIPTIONS: Record<string, string> = {
   openid: "Confirm your DeesseJS account identity.",
   profile: "Share basic profile details with this app.",
   offline_access: "Keep the connection active between visits.",
   "templates:read": "Read the public DeesseJS template catalog.",
 }
 
-function safeHttpsUrl(value: string | undefined): string | undefined {
+function safeHttpsUrl(value: string | undefined) {
   if (!value) return undefined
   try {
     const url = new URL(value)
@@ -39,82 +29,58 @@ function safeHttpsUrl(value: string | undefined): string | undefined {
 }
 
 export function OAuthConsentForm() {
-  const [request, setRequest] = useState<ConsentRequest | null>(null)
-  const [oauthClient, setOAuthClient] = useState<OAuthClientDisplay | null>(
-    null
+  return (
+    <Suspense
+      fallback={
+        <p className="text-sm text-muted-foreground">
+          Verifying the connection request…
+        </p>
+      }
+    >
+      <OAuthConsentFormContent />
+    </Suspense>
   )
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+}
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const signedNames = new Set(params.getAll("ba_param"))
-    const clientId = params.get("client_id")
-    const redirectUri = params.get("redirect_uri")
-    const resource = params.get("resource")
-    const scopes = (params.get("scope") ?? "").split(/\s+/).filter(Boolean)
-
-    if (
-      !clientId ||
-      !redirectUri ||
-      !resource ||
-      !signedNames.has("client_id") ||
-      !signedNames.has("redirect_uri") ||
-      !signedNames.has("resource") ||
-      (params.has("scope") && !signedNames.has("scope"))
-    ) {
-      setError(
-        "This authorization request is incomplete. Start the connection again from your app."
-      )
-      return
-    }
-
-    let redirectHost: string
-    try {
-      redirectHost = new URL(redirectUri).host
-    } catch {
-      setError("This authorization request has an invalid return address.")
-      return
-    }
-
-    void client.auth.oauth2
-      .publicClientPrelogin({ client_id: clientId })
-      .then(({ data, error: lookupError }) => {
-        if (lookupError || !data) {
-          setError(
-            "We could not verify the requesting app. Restart the connection from your app."
-          )
-          return
+function OAuthConsentFormContent() {
+  const searchParams = useSearchParams()
+  const { request, oauthClient, error, isLoading } = useOAuthConsentRequest(
+    searchParams.toString()
+  )
+  const form = useForm({
+    defaultValues: { accept: false },
+    onSubmit: async ({ value }) => {
+      try {
+        const { error: consentError } = await client.auth.oauth2.consent({
+          accept: value.accept,
+        })
+        if (consentError) {
+          toast.error(consentError.message ?? "Could not save your decision")
         }
-        setOAuthClient(data)
-        setRequest({ clientId, redirectHost, resource, scopes })
-      })
-      .catch(() =>
-        setError(
-          "We could not verify the requesting app. Restart the connection from your app."
-        )
-      )
-  }, [])
+      } catch {
+        toast.error("Could not save your decision")
+      }
+    },
+  })
 
-  async function decide(accept: boolean) {
-    setSubmitting(true)
-    try {
-      const { error: consentError } = await client.auth.oauth2.consent({
-        accept,
-      })
-      if (consentError)
-        toast.error(consentError.message ?? "Could not save your decision")
-    } catch {
-      toast.error("Could not save your decision")
-    } finally {
-      setSubmitting(false)
-    }
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const submitter = (event.nativeEvent as SubmitEvent).submitter
+    if (!(submitter instanceof HTMLButtonElement)) return
+    form.setFieldValue("accept", submitter.value === "approve")
+    void form.handleSubmit()
   }
 
   if (error)
     return (
       <p role="alert" className="text-sm text-destructive">
         {error}
+      </p>
+    )
+  if (isLoading)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Verifying the connection request…
       </p>
     )
   if (!request || !oauthClient)
@@ -163,7 +129,7 @@ export function OAuthConsentForm() {
               <li key={scope} className="rounded-md bg-muted px-3 py-2">
                 <p className="text-sm font-medium">{scope}</p>
                 <p className="text-sm text-muted-foreground">
-                  {SCOPE_DESCRIPTIONS[scope] ??
+                  {CONSENT_SCOPE_DESCRIPTIONS[scope] ??
                     "This app requests the listed account permission."}
                 </p>
               </li>
@@ -212,23 +178,31 @@ export function OAuthConsentForm() {
         )}
       </p>
 
-      <div className="flex gap-3">
-        <Button
-          className="flex-1"
-          variant="outline"
-          disabled={submitting}
-          onClick={() => void decide(false)}
-        >
-          Deny
-        </Button>
-        <Button
-          className="flex-1"
-          disabled={submitting}
-          onClick={() => void decide(true)}
-        >
-          {submitting ? "Saving…" : "Approve"}
-        </Button>
-      </div>
+      <form onSubmit={handleSubmit} className="flex gap-3">
+        <form.Subscribe selector={(state) => state.isSubmitting}>
+          {(submitting) => (
+            <>
+              <Button
+                className="flex-1"
+                variant="outline"
+                type="submit"
+                value="deny"
+                disabled={submitting}
+              >
+                Deny
+              </Button>
+              <Button
+                className="flex-1"
+                type="submit"
+                value="approve"
+                disabled={submitting}
+              >
+                {submitting ? "Saving…" : "Approve"}
+              </Button>
+            </>
+          )}
+        </form.Subscribe>
+      </form>
     </div>
   )
 }

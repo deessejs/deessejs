@@ -1,27 +1,14 @@
-"use client"
-
-import { useCallback, useEffect, useState } from "react"
-import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
-import { client } from "@/lib/client"
+import {
+  useAuthorizedOAuthClients,
+  useRevokeOAuthConsent,
+} from "@/hooks/use-authorized-oauth-clients"
 
-type OAuthConsentView = {
-  id: string
-  clientId: string
-  resources?: string[]
-  scopes: string[]
-  createdAt: Date | string
-  updatedAt: Date | string
-}
-
-type OAuthClientView = {
-  client_name?: string
-  client_uri?: string
-}
-
-type AuthorizedClient = {
-  consent: OAuthConsentView
-  client: OAuthClientView | null
+const SCOPE_DESCRIPTIONS: Record<string, string> = {
+  "templates:read": "Read the public template catalog",
+  openid: "Confirm your account identity",
+  profile: "Share basic profile details",
+  offline_access: "Keep the connection active between visits",
 }
 
 function safeHttpsUrl(value: string | undefined): string | undefined {
@@ -42,73 +29,23 @@ function formatDate(value: Date | string): string {
 }
 
 export function AuthorizedOAuthClients() {
-  const [items, setItems] = useState<AuthorizedClient[]>([])
-  const [loading, setLoading] = useState(true)
-  const [revokingId, setRevokingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { query, isSessionPending } = useAuthorizedOAuthClients()
+  const revoke = useRevokeOAuthConsent()
+  const items = query.data ?? []
 
-  const loadConsents = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const { data, error: loadError } = await client.auth.oauth2.getConsents()
-      if (loadError || !data) {
-        setError(loadError?.message ?? "Could not load connected apps.")
-        return
-      }
-
-      const entries = await Promise.all(
-        (data as OAuthConsentView[]).map(async (consent) => {
-          try {
-            const { data: clientData } = await client.auth.oauth2.publicClient({
-              query: { client_id: consent.clientId },
-            })
-            return { consent, client: clientData ?? null }
-          } catch {
-            return { consent, client: null }
-          }
-        })
-      )
-      setItems(entries)
-    } catch {
-      setError("Could not load connected apps.")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    void loadConsents()
-  }, [loadConsents])
-
-  async function revoke(consentId: string) {
-    setRevokingId(consentId)
-    try {
-      const { error: revokeError } = await client.auth.oauth2.deleteConsent({
-        id: consentId,
-      })
-      if (revokeError) {
-        toast.error(revokeError.message ?? "Could not revoke access")
-        return
-      }
-      toast.success("App access revoked")
-      await loadConsents()
-    } catch {
-      toast.error("Could not revoke access")
-    } finally {
-      setRevokingId(null)
-    }
-  }
-
-  if (loading)
+  if (isSessionPending || query.isLoading)
     return (
       <p className="text-sm text-muted-foreground">Loading authorized apps…</p>
     )
-  if (error) {
+  if (query.error) {
     return (
       <div role="alert" className="flex items-center justify-between gap-3">
-        <p className="text-sm text-destructive">{error}</p>
-        <Button variant="outline" size="sm" onClick={() => void loadConsents()}>
+        <p className="text-sm text-destructive">{query.error.message}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => query.refetch().catch(() => undefined)}
+        >
           Retry
         </Button>
       </div>
@@ -158,10 +95,12 @@ export function AuthorizedOAuthClients() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={revokingId === consent.id}
-                onClick={() => void revoke(consent.id)}
+                disabled={revoke.isPending}
+                onClick={() => revoke.mutate(consent.id)}
               >
-                {revokingId === consent.id ? "Revoking…" : "Revoke access"}
+                {revoke.isPending && revoke.variables === consent.id
+                  ? "Revoking…"
+                  : "Revoke access"}
               </Button>
             </div>
             <div className="mt-3 flex flex-col gap-2 text-sm">
@@ -169,17 +108,7 @@ export function AuthorizedOAuthClients() {
                 <p className="font-medium">Granted access</p>
                 <p className="text-muted-foreground">
                   {consent.scopes
-                    .map((scope) =>
-                      scope === "templates:read"
-                        ? "Read the public template catalog"
-                        : scope === "openid"
-                          ? "Confirm your account identity"
-                          : scope === "profile"
-                            ? "Share basic profile details"
-                            : scope === "offline_access"
-                              ? "Keep the connection active between visits"
-                              : scope
-                    )
+                    .map((scope) => SCOPE_DESCRIPTIONS[scope] ?? scope)
                     .join(" · ")}
                 </p>
               </div>
