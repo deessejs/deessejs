@@ -34,6 +34,7 @@ describe("the browser oRPC link", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.stubGlobal("window", { location: { origin: ORIGIN } })
+    vi.stubGlobal("location", { origin: ORIGIN })
   })
 
   afterEach(() => {
@@ -83,6 +84,7 @@ describe("the browser oRPC link", () => {
 
     // The page moved to another origin, which happens on a preview.
     vi.stubGlobal("window", { location: { origin: "https://preview.example" } })
+    vi.stubGlobal("location", { origin: "https://preview.example" })
     await orpcBrowser.organization.create({ name: "Acme" })
 
     const request = requestOf(fetchMock.mock.calls[0]?.[0])

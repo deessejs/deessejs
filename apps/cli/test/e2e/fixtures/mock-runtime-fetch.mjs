@@ -82,7 +82,20 @@ const githubResponse = (pathname) => {
   })
 }
 
-function appResponse(requestUrl, method) {
+function templateDetailResponse(body) {
+  const parsed = JSON.parse(String(body ?? "{}"))
+  const slug = parsed.json?.slug ?? parsed.slug
+  return jsonResponse({
+    json:
+      slug === template.slug
+        ? template
+        : slug === legacyCatalogTemplate.slug
+          ? legacyCatalogTemplate
+          : null,
+  })
+}
+
+function appResponse(requestUrl, method, body) {
   if (requestUrl.hostname !== "app.deessejs.com") return null
   if (requestUrl.pathname === "/api/v1/version") {
     return jsonResponse({ version: "2.1.0", minSupported: "1.0.0" })
@@ -92,6 +105,18 @@ function appResponse(requestUrl, method) {
     method === "POST"
   ) {
     return new globalThis.Response(null, { status: 404 })
+  }
+  if (
+    requestUrl.pathname === "/api/v1/rpc/templates/detail" &&
+    method === "POST"
+  ) {
+    return templateDetailResponse(body)
+  }
+  if (
+    requestUrl.pathname === "/api/v1/rpc/templates/community/detail" &&
+    method === "POST"
+  ) {
+    return jsonResponse({ json: null })
   }
   if (
     requestUrl.pathname === "/api/v1/rpc/templates/list" &&
@@ -145,10 +170,13 @@ globalThis.fetch = async (input, init) => {
   )
   const method =
     init?.method ?? (input instanceof globalThis.Request ? input.method : "GET")
+  const body =
+    init?.body ??
+    (input instanceof globalThis.Request ? await input.clone().text() : "")
   appendFileSync(tracePath, `${method.toUpperCase()} ${requestUrl.href}\n`)
 
   const response =
-    appResponse(requestUrl, method) ?? githubApiResponse(requestUrl)
+    appResponse(requestUrl, method, body) ?? githubApiResponse(requestUrl)
   if (response) return response
   throw new Error(
     `Unexpected network request from the CLI init E2E test: ${method} ${requestUrl.href}`

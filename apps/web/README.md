@@ -136,3 +136,5 @@ All three share `@workspace/ui` for components and styling. App-specific config 
 
 - **Uses**: [`@workspace/api`](../../packages/api/README.md), [`@workspace/contracts`](../../packages/contracts/README.md), [`@workspace/env`](../../packages/env/README.md), [`@workspace/ui`](../../packages/ui/README.md), [`@workspace/cookies`](../../packages/cookies/README.md)
 - **Authenticates against**: [`@workspace/auth`](../../packages/auth/README.md), whose endpoints the API exposes under `/api/v1/auth`
+
+<!-- Vercel selective-build deployment test: web-only -->

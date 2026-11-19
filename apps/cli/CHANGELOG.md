@@ -1,5 +1,15 @@
 # @deessejs/cli
 
+## 3.1.0
+
+### Minor Changes
+
+- Add `deessejs add` to plan and install block sources into an explicitly selected package target.
+- Cache validated template catalog responses for repeated CLI list commands.
+- Move template listing, inspection, and initialization under the `deessejs templates` command namespace.
+- Fetch catalog template details directly for `info` and successful `init` resolution.
+- Add `-v` as a short alias for `--version`.
+
 ## 3.0.0
 
 ### Major Changes

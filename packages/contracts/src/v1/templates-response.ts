@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { TemplateV1 } from "./template.js"
+import { TemplateSummaryV1 } from "./template-summary.js"
 
 /**
  * TemplatesListResponseV1 — the response shape of GET /api/v1/templates.
@@ -9,7 +9,7 @@ import { TemplateV1 } from "./template.js"
  * and apps/web already consume.
  */
 export const TemplatesListResponseV1 = z.object({
-  templates: z.array(TemplateV1),
+  templates: z.array(TemplateSummaryV1),
 })
 
 export type TemplatesListResponseV1 = z.infer<typeof TemplatesListResponseV1>

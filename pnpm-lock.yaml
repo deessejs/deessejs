@@ -216,6 +216,9 @@ catalogs:
     resend:
       specifier: ^6.33.0
       version: 6.34.1
+    semver:
+      specifier: ^7.8.5
+      version: 7.8.5
     sharp:
       specifier: ^0.35.5
       version: 0.35.5
@@ -487,6 +490,9 @@ importers:
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      semver:
+        specifier: 'catalog:'
+        version: 7.8.5
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -719,6 +725,9 @@ importers:
       '@workspace/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@workspace/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -892,6 +901,9 @@ importers:
       '@workspace/auth':
         specifier: workspace:*
         version: link:../auth
+      '@workspace/content':
+        specifier: workspace:*
+        version: link:../content
       '@workspace/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -1003,6 +1015,18 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.3.5(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.1))
 
+  packages/content:
+    dependencies:
+      reading-time:
+        specifier: 'catalog:'
+        version: 1.5.0
+    devDependencies:
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
   packages/contracts:
     dependencies:
       zod:
