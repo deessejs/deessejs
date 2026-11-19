@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { cn } from "@workspace/ui/lib/utils"
+import { useFlickeringCanvas } from "@/hooks/marketing/use-flickering-canvas"
 
 interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement> {
   squareSize?: number
@@ -109,77 +110,7 @@ export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
     [memoizedColor, squareSize, gridGap]
   )
 
-  React.useEffect(() => {
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    const ctx = canvas?.getContext("2d") ?? null
-    let animationFrameId: number | null = null
-    let resizeObserver: ResizeObserver | null = null
-    let intersectionObserver: IntersectionObserver | null = null
-    let gridParams: ReturnType<typeof setupCanvas> | null = null
-
-    if (canvas && container && ctx) {
-      const updateCanvasSize = () => {
-        const newWidth = width || container.clientWidth
-        const newHeight = height || container.clientHeight
-        setCanvasSize({ width: newWidth, height: newHeight })
-        gridParams = setupCanvas(canvas, newWidth, newHeight)
-      }
-
-      updateCanvasSize()
-
-      let lastTime = 0
-      const animate = (time: number) => {
-        if (!isInView || !gridParams) return
-
-        const deltaTime = (time - lastTime) / 1000
-        lastTime = time
-
-        updateSquares(gridParams.squares, deltaTime)
-        drawGrid(
-          ctx,
-          canvas.width,
-          canvas.height,
-          gridParams.cols,
-          gridParams.rows,
-          gridParams.squares,
-          gridParams.dpr
-        )
-        animationFrameId = requestAnimationFrame(animate)
-      }
-
-      resizeObserver = new ResizeObserver(() => {
-        updateCanvasSize()
-      })
-      resizeObserver.observe(container)
-
-      intersectionObserver = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]) {
-            setIsInView(entries[0].isIntersecting)
-          }
-        },
-        { threshold: 0 }
-      )
-      intersectionObserver.observe(canvas)
-
-      if (isInView) {
-        animationFrameId = requestAnimationFrame(animate)
-      }
-    }
-
-    return () => {
-      if (animationFrameId !== null) {
-        cancelAnimationFrame(animationFrameId)
-      }
-      if (resizeObserver) {
-        resizeObserver.disconnect()
-      }
-      if (intersectionObserver) {
-        intersectionObserver.disconnect()
-      }
-    }
-  }, [setupCanvas, updateSquares, drawGrid, width, height, isInView])
+  useFlickeringCanvas({ canvasRef, containerRef, width, height, isInView, setIsInView, setCanvasSize, setupCanvas, updateSquares, drawGrid })
 
   return (
     <div

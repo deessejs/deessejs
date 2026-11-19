@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
 import { useSearchDialogStore } from "@/lib/search/store"
+import { useSearchShortcuts } from "@/hooks/search/use-search-shortcuts"
 
 /**
  * Global keyboard shortcut for the search dialog.
@@ -14,18 +14,7 @@ export function GlobalSearchShortcut() {
   const toggle = useSearchDialogStore((s) => s.toggle)
   const close = useSearchDialogStore((s) => s.close)
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault()
-        toggle()
-      } else if (e.key === "Escape") {
-        close()
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [toggle, close])
+  useSearchShortcuts(toggle, close)
 
   return null
 }
