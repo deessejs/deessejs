@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "catalog:",
+    "@better-auth/mcp": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",

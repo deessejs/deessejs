@@ -6,6 +6,7 @@ import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
 import { appRouter } from "../../orpc/index.js"
 import type { ApiEnv } from "../env.js"
+import { z } from "zod"
 
 const resource = serverEnv.MCP_RESOURCE_URL
 const mcpHandler = createMcpHandler(() => {
@@ -14,7 +15,7 @@ const mcpHandler = createMcpHandler(() => {
     "list_templates",
     {
       description: "List public DeesseJS product templates.",
-      inputSchema: {},
+      inputSchema: z.object({}),
     },
     async () => {
       const result = await call(appRouter.templates.list, undefined, {
@@ -25,7 +26,10 @@ const mcpHandler = createMcpHandler(() => {
           requestId: crypto.randomUUID(),
         },
       })
-      return { content: [{ type: "text", text: JSON.stringify(result) }] }
+      return {
+        resultType: "content",
+        content: [{ type: "text", text: JSON.stringify(result) }],
+      }
     }
   )
   return server

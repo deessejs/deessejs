@@ -3,16 +3,16 @@ title: Connect to ChatGPT
 description: Connect the DeesseJS template catalog as an OAuth-protected Model Context Protocol server.
 ---
 
-# Connect to ChatGPT
+# DeesseJS Template Catalog for ChatGPT
 
 DeesseJS provides a remote Model Context Protocol (MCP) server at `MCP_RESOURCE_URL`. It exposes one read-only tool named `list_templates`, backed by the public product template catalog. DeesseJS OAuth sign-in is required to use the server. The catalog data remains public.
 
-## Operator configuration
+**Operator setup**
 
-Set `MCP_RESOURCE_URL` in the API deployment to the canonical HTTPS endpoint URL, including its path. For example, use `https://example.com/api/v1/mcp`. The value must not end with a slash. Local development may use `http://localhost:3001/api/v1/mcp`. Better Auth serves OAuth issuer and discovery endpoints at `BETTER_AUTH_URL` with the `/api/v1/auth` base path. Apply the committed database migration through the usual deployment migration process before enabling the endpoint.
+Configure `MCP_RESOURCE_URL` in the API deployment with the canonical secure endpoint address and path, such as `https://example.com/api/v1/mcp`. Omit the trailing slash. For local development, use `http://localhost:3001/api/v1/mcp`. Better Auth publishes OAuth issuer and discovery endpoints at `BETTER_AUTH_URL` under `/api/v1/auth`. Apply the committed database migration through the usual deployment process before enabling the endpoint.
 
-## Connect in ChatGPT
+**ChatGPT connection**
 
-In ChatGPT, add a custom remote MCP connector and enter the exact `MCP_RESOURCE_URL`. Complete DeesseJS sign-in and consent when prompted. Custom MCP connectors require a supported ChatGPT plan and workspace administrator access. Availability depends on the user's plan and workspace settings.
+Add a custom remote MCP connector in ChatGPT and enter the exact `MCP_RESOURCE_URL`. Complete DeesseJS sign-in and consent when prompted. A supported ChatGPT plan and workspace administrator access enable custom MCP connectors. Plan and workspace settings determine availability.
 
 The Storybook documentation MCP is separate from this product endpoint.
