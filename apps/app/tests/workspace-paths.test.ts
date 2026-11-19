@@ -9,6 +9,7 @@ import {
   ORGANIZATIONS_PATH,
   organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceBillingSettingsPath,
   workspaceOrganizationSettingsPath,
   workspacePath,
   workspaceSettingsPath,
@@ -66,8 +67,9 @@ describe("the workspace paths", () => {
   it("builds the organization's settings", () => {
     expect(workspaceSettingsPath("acme")).toBe("/acme/settings")
     expect(workspaceOrganizationSettingsPath("acme")).toBe(
-      "/acme/settings/organization",
+      "/acme/settings/organization"
     )
+    expect(workspaceBillingSettingsPath("acme")).toBe("/acme/settings/billing")
   })
 })
 
@@ -75,7 +77,7 @@ describe("the slug in a pathname", () => {
   it("reads the first segment of a workspace path", () => {
     expect(organizationSlugFromPathname("/acme/home")).toBe("acme")
     expect(organizationSlugFromPathname("/acme/settings/organization")).toBe(
-      "acme",
+      "acme"
     )
   })
 
@@ -135,8 +137,18 @@ describe("the application route tree", () => {
     const page = fileURLToPath(
       new URL(
         "../app/(protected)/(workspace)/[organization_slug]/settings/organization/page.tsx",
-        import.meta.url,
-      ),
+        import.meta.url
+      )
+    )
+    expect(existsSync(page)).toBe(true)
+  })
+
+  it("serves billing under the organization settings route", () => {
+    const page = fileURLToPath(
+      new URL(
+        "../app/(protected)/(workspace)/[organization_slug]/settings/billing/page.tsx",
+        import.meta.url
+      )
     )
     expect(existsSync(page)).toBe(true)
   })

@@ -14,6 +14,7 @@
   "dependencies": {
     "@nanostores/react": "^1.0.0",
     "@hookform/resolvers": "catalog:",
+    "@better-auth/stripe": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",

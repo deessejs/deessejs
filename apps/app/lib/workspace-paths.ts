@@ -75,6 +75,10 @@ export const workspaceSettingsPath = (slug: string): string =>
 export const workspaceOrganizationSettingsPath = (slug: string): string =>
   `/${slug}/settings/organization`
 
+/** The billing settings page for an organization. */
+export const workspaceBillingSettingsPath = (slug: string): string =>
+  `/${slug}/settings/billing`
+
 /** The organization's member and invitation management page. */
 export const workspaceMembersPath = (slug: string): string =>
   `/${slug}/settings/members`
