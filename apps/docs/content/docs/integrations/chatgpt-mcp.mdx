@@ -1,0 +1,18 @@
+---
+title: Connect DeesseJS to ChatGPT
+description: Connect the DeesseJS template catalog as an OAuth protected MCP server.
+---
+
+# Connect DeesseJS to ChatGPT
+
+DeesseJS provides a remote MCP server at `MCP_RESOURCE_URL`. It exposes one read-only tool, `list_templates`, backed by the public product template catalog. OAuth through DeesseJS is required even though the catalog data is public.
+
+## Operator configuration
+
+Set `MCP_RESOURCE_URL` in the API deployment to the canonical HTTPS URL for the MCP endpoint, including its path (for example, `https://api.example.com/api/v1/mcp`). Do not include a trailing slash. Local development may use `http://localhost:3001/api/v1/mcp`. The OAuth issuer and discovery endpoints are served by Better Auth at the configured `BETTER_AUTH_URL` and `/api/v1/auth` base path. Apply the committed database migration through the normal deployment migration process before enabling the endpoint.
+
+## Connect in ChatGPT
+
+In ChatGPT, add a custom remote MCP connector and enter the exact `MCP_RESOURCE_URL`. Complete the DeesseJS OAuth sign-in and consent flow when prompted. The connector requires a ChatGPT plan and workspace with custom MCP connectors enabled; availability depends on the ChatGPT plan and workspace administrator settings.
+
+The separate Storybook documentation MCP remains at Storybook and is not this product endpoint.

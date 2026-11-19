@@ -77,6 +77,14 @@ export const serverInputShape = {
   DATABASE_URL: z.string().url().optional(),
   TEST_DATABASE_URL: z.string().url().optional(),
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+  MCP_RESOURCE_URL: z
+    .string()
+    .url()
+    .default("http://localhost:3001/api/v1/mcp")
+    .refine(
+      (value) => !value.endsWith("/"),
+      "MCP_RESOURCE_URL must not end with a slash"
+    ),
   // Optional. In production, better-auth throws if unset.
   // In dev/test, better-auth uses a built-in default secret.
   // We only validate length when the value is present (prevents crash in test).
@@ -245,6 +253,19 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       })
     }
 
+    const mcpResource = new URL(data.MCP_RESOURCE_URL)
+    if (
+      mcpResource.protocol !== "https:" &&
+      mcpResource.hostname !== "localhost"
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "MCP_RESOURCE_URL must use HTTPS, except for localhost development",
+        path: ["MCP_RESOURCE_URL"],
+      })
+    }
+
     // Production-only invariants. Skipped in dev/test so contributors don't
     // need a full .env to start the app. Enforced in prod because each of these
     // silently degrades to a stub (e.g. dummy `{}` DB, default localhost URL,
@@ -257,6 +278,14 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "DATABASE_URL is required in production (was optional in dev to keep onboarding simple)",
         path: ["DATABASE_URL"],
+      })
+    }
+
+    if (mcpResource.protocol !== "https:") {
+      ctx.addIssue({
+        code: "custom",
+        message: "MCP_RESOURCE_URL must use HTTPS in production",
+        path: ["MCP_RESOURCE_URL"],
       })
     }
 
