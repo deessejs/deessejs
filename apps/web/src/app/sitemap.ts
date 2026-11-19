@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 import { WEB_URL } from "@/lib/app-config"
-import { orpc, staticParamsCache } from "@/lib/orpc"
+import { getCommunityTemplateCatalog } from "@/lib/template-catalog-cache"
 import {
   allPosts,
   allReleases,
@@ -216,10 +216,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let communityTemplatePages: MetadataRoute.Sitemap = []
   try {
-    const { templates } = await orpc.templates.community.list(
-      undefined,
-      staticParamsCache
-    )
+    const { templates } = await getCommunityTemplateCatalog()
     communityTemplatePages = templates.map((template) => ({
       url: `${WEB_URL}/templates/community/${encodeURIComponent(template.organizationSlug)}/${encodeURIComponent(template.templateSlug)}`,
       lastModified: template.updatedAt
