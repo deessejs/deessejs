@@ -71,3 +71,5 @@ There is no test script: the primitives are exercised through the applications t
 - **Used by**: [`@workspace/cookies`](../cookies/README.md), [`apps/app`](../../apps/app/README.md), [`apps/docs`](../../apps/docs/README.md), [`apps/web`](../../apps/web/README.md)
 
 The conventions of this package are in [AGENTS.md](AGENTS.md).
+
+<!-- Vercel selective-build deployment test: ui-shared -->

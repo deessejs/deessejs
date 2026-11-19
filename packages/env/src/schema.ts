@@ -146,6 +146,14 @@ export const serverInputShape = {
     .regex(/^[A-Za-z0-9+/]{43}=$/)
     .optional(),
 
+  // Stripe subscriptions are optional until the operator provisions the
+  // Stripe account, webhook endpoint, and Pro prices. The server schema
+  // below accepts either no Stripe values or the complete configuration.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_PRO_MONTHLY_PRICE_ID: z.string().min(1).optional(),
+  STRIPE_PRO_ANNUAL_PRICE_ID: z.string().min(1).optional(),
+
   // Inter-app URL configuration. Server-side mirrors of the
   // NEXT_PUBLIC_* fields on clientSchema. Used by server-side
   // fetchers (apps/app's proxy, apps/cli's RPCLink, RSC fetches in
@@ -216,6 +224,24 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "GitHub App client ID, client secret, slug, and token encryption key must be configured together.",
         path: ["GITHUB_APP_CLIENT_ID"],
+      })
+    }
+
+    const stripeConfiguration = [
+      data.STRIPE_SECRET_KEY,
+      data.STRIPE_WEBHOOK_SECRET,
+      data.STRIPE_PRO_MONTHLY_PRICE_ID,
+      data.STRIPE_PRO_ANNUAL_PRICE_ID,
+    ]
+    if (
+      stripeConfiguration.some(Boolean) &&
+      !stripeConfiguration.every(Boolean)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Stripe billing is optional, but when configured it requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_MONTHLY_PRICE_ID, and STRIPE_PRO_ANNUAL_PRICE_ID together.",
+        path: ["STRIPE_SECRET_KEY"],
       })
     }
 
