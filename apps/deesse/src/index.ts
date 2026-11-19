@@ -1,5 +1,7 @@
 import type { AnyRouter, BetterAuthOptions, DeesseConfig, ZodInput, ZodType } from "./types.js"
-import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DatabaseAdapter, DeesseFetchHandler, DeesseInstance, PluginContribution, PluginDefinition, PluginRegistration } from "./types.js"
+import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DatabaseAdapter, DeesseInstance, PluginContribution, PluginDefinition, PluginRegistration } from "./types.js"
+import { createRuntime } from "./runtime.js"
+import type { RuntimeOptions } from "./runtime-types.js"
 
 export type { BetterAuthServerInstance, CapabilitiesOf, ComposedBetterAuthOptions, DatabaseAdapter, DeesseApiOptions, DeesseBetterAuthOptions, DeesseConfig, DeesseDatabase, DeesseDatabaseAdapter, DeesseDatabaseService, DeesseFetchHandler, DeesseInstance, DeessePluginContributionRegistry, PluginContribution, PluginExtension } from "./types.js"
 
@@ -30,10 +32,9 @@ export function createDeesse<
 >(options: DeesseConfig<TDatabase, TAuth, TApi, TPlugins>): DeesseInstance<
   TDatabase, BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>, ApiRouter<TApi, TPlugins>
 > {
-  return {
-    database: options.database.database,
-    auth: null as unknown as BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>,
-    api: { router: null as unknown as ApiRouter<TApi, TPlugins> },
-    handler: null as unknown as DeesseFetchHandler,
-  }
+  return createRuntime(options as unknown as RuntimeOptions) as unknown as DeesseInstance<
+    TDatabase,
+    BetterAuthInstance<ComposedBetterAuthOptions<TAuth, TPlugins>>,
+    ApiRouter<TApi, TPlugins>
+  >
 }

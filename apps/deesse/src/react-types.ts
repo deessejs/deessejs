@@ -13,3 +13,7 @@ type RegisteredRouter = RouterFrom<RegistryEntry>
 
 export type DeesseReactAuthOptions = [RegisteredAuthOptions] extends [never] ? BetterAuthClientOptions : RegisteredAuthOptions
 export type DeesseReactRouter = [RegisteredRouter] extends [never] ? AnyRouter : RegisteredRouter
+export type DeesseClientOptions = {
+  baseURL?: string
+  fetch?: typeof globalThis.fetch
+}

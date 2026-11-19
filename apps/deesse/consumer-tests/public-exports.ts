@@ -5,6 +5,7 @@ import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type DeesseConfig, type DeesseDatabaseService, type DeesseInstance } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
+import { toNextJsHandler } from "deesse/next"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
 type Assert<T extends true> = T
@@ -32,6 +33,7 @@ const config = {
   plugins: [feature({})],
 } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof router }, readonly [ReturnType<typeof feature>]>
 const app = createDeesse(config)
+const nextHandler = toNextJsHandler(app)
 type ExpectedAuth = ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>>
 type ExpectedRouter = typeof router & { feature: typeof router }
 type ExpectedInstance = DeesseInstance<typeof database, ExpectedAuth, ExpectedRouter>
@@ -56,5 +58,5 @@ type PublicReactRegistryExact = Assert<Equal<DeesseReactAuthOptions, DeesseReact
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
-void [parsedPrefix, apiResult, usernameAvailable]
+void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
 void (null as unknown as [PublicInstanceExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact])
