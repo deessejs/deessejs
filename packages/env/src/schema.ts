@@ -253,18 +253,7 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       })
     }
 
-    const mcpResource = new URL(data.MCP_RESOURCE_URL)
-    if (
-      mcpResource.protocol !== "https:" &&
-      mcpResource.hostname !== "localhost"
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        message:
-          "MCP_RESOURCE_URL must use HTTPS, except for localhost development",
-        path: ["MCP_RESOURCE_URL"],
-      })
-    }
+    validateMcpResourceUrl(data.MCP_RESOURCE_URL, data.NODE_ENV, ctx)
 
     // Production-only invariants. Skipped in dev/test so contributors don't
     // need a full .env to start the app. Enforced in prod because each of these
@@ -278,14 +267,6 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "DATABASE_URL is required in production (was optional in dev to keep onboarding simple)",
         path: ["DATABASE_URL"],
-      })
-    }
-
-    if (mcpResource.protocol !== "https:") {
-      ctx.addIssue({
-        code: "custom",
-        message: "MCP_RESOURCE_URL must use HTTPS in production",
-        path: ["MCP_RESOURCE_URL"],
       })
     }
 
@@ -334,6 +315,30 @@ export const serverSchema = z.object(serverInputShape).superRefine(
     }
   }
 )
+
+function validateMcpResourceUrl(
+  resourceUrl: string,
+  nodeEnv: "development" | "test" | "production",
+  ctx: z.RefinementCtx
+): void {
+  const resource = new URL(resourceUrl)
+  if (resource.protocol !== "https:" && resource.hostname !== "localhost") {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "MCP_RESOURCE_URL must use HTTPS, except for localhost development",
+      path: ["MCP_RESOURCE_URL"],
+    })
+  }
+
+  if (nodeEnv === "production" && resource.protocol !== "https:") {
+    ctx.addIssue({
+      code: "custom",
+      message: "MCP_RESOURCE_URL must use HTTPS in production",
+      path: ["MCP_RESOURCE_URL"],
+    })
+  }
+}
 
 /**
  * Client-side env contract. Only NEXT_PUBLIC_* values, safe to bundle to the
