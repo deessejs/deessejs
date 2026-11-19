@@ -5,6 +5,17 @@ import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
+function getSupportedImageContentType(contentType: string) {
+  switch (contentType) {
+    case "image/jpeg":
+    case "image/png":
+    case "image/webp":
+      return contentType
+    default:
+      return null
+  }
+}
+
 function getUploadErrorMessage(cause: unknown, step: string) {
   const message = cause instanceof Error ? cause.message : ""
   if (message === "storage-network")
@@ -48,12 +59,11 @@ export function TemplateImageUpload({
           let step: "requesting upload" | "uploading to storage" | "validating upload" =
             "requesting upload"
           try {
+            const contentType = getSupportedImageContentType(file.type)
+            if (!contentType) throw new Error("unsupported-image-type")
             const input = {
               templateId,
-              contentType: file.type as
-                | "image/jpeg"
-                | "image/png"
-                | "image/webp",
+              contentType,
               byteSize: file.size,
             }
             const upload = organizationSlug

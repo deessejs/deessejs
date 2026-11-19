@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useReducer, useState, type Dispatch } from "react"
 
 function randomCycleMs() { return 7000 + Math.floor(Math.random() * 5000) }
 function swapAt<T>(input: ReadonlyArray<T>, i: number, j: number): T[] {
@@ -21,32 +21,46 @@ function pickDifferentIndex(length: number, exclude: number) {
   }
   return pick
 }
-function slotUpdater(slot: number, techCount: number): (current: ReadonlyArray<number>) => ReadonlyArray<number> {
-  return (current) => {
-    const slots = current.length === techCount
-      ? current
-      : Array.from({ length: techCount }, (_, index) => index)
-    return swapAt(slots, slot, pickDifferentIndex(slots.length, slot))
+type RotationAction = { slot: number; techCount: number }
+
+function reduceRotationOrder(
+  current: ReadonlyArray<number>,
+  { slot, techCount }: RotationAction,
+): ReadonlyArray<number> {
+  const slots = current.length === techCount
+    ? current
+    : Array.from({ length: techCount }, (_, index) => index)
+  return swapAt(slots, slot, pickDifferentIndex(slots.length, slot))
+}
+
+export type RotateTechStackSlot = Dispatch<RotationAction>
+
+export function useTechStackRotation(techCount: number) {
+  const initialOrder: ReadonlyArray<number> = []
+  const [order, rotateSlot] = useReducer(reduceRotationOrder, initialOrder)
+
+  return {
+    order: order.length === techCount
+      ? order
+      : Array.from({ length: techCount }, (_, index) => index),
+    rotateSlot,
   }
 }
-export function useTechStackRotation(techCount: number, reducedMotion: boolean) {
-  const [order, setOrder] = useState<ReadonlyArray<number>>([])
+
+export function useTechStackRotationTimer(
+  slot: number,
+  techCount: number,
+  reducedMotion: boolean,
+  rotateSlot: RotateTechStackSlot,
+) {
+  const [cycle, setCycle] = useState(0)
+
   useEffect(() => {
     if (reducedMotion || techCount < 2) return
-    const timers = new Map<number, number>()
-    const armSlot = (slot: number) => {
-      const id = window.setTimeout(() => {
-        timers.delete(slot)
-        setOrder(slotUpdater(slot, techCount))
-        armSlot(slot)
-      }, randomCycleMs())
-      timers.set(slot, id)
-    }
-    for (let slot = 0; slot < techCount; slot++) armSlot(slot)
-    return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [techCount, reducedMotion])
-
-  return order.length === techCount
-    ? order
-    : Array.from({ length: techCount }, (_, index) => index)
+    const timer = setTimeout(() => {
+      rotateSlot({ slot, techCount })
+      setCycle((current) => current + 1)
+    }, randomCycleMs())
+    return () => clearTimeout(timer)
+  }, [cycle, reducedMotion, rotateSlot, slot, techCount])
 }

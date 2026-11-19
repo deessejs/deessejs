@@ -5,7 +5,11 @@ import { useSyncExternalStore } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { cn } from "@workspace/ui/lib/utils"
-import { useTechStackRotation } from "@/hooks/marketing/use-tech-stack-rotation"
+import {
+  useTechStackRotation,
+  useTechStackRotationTimer,
+  type RotateTechStackSlot,
+} from "@/hooks/marketing/use-tech-stack-rotation"
 
 /**
  * Tech stack grid where each slot rotates through the available
@@ -44,6 +48,21 @@ type Tech = { name: string; logo: string }
 
 const TRANSITION_MS = 0.35
 
+function TechStackRotationTimer({
+  slot,
+  techCount,
+  reducedMotion,
+  rotateSlot,
+}: {
+  slot: number
+  techCount: number
+  reducedMotion: boolean
+  rotateSlot: RotateTechStackSlot
+}) {
+  useTechStackRotationTimer(slot, techCount, reducedMotion, rotateSlot)
+  return null
+}
+
 
 function subscribeToReducedMotion(onChange: () => void) {
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -72,7 +91,7 @@ export function TechStackGrid({
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
   // exactly once at any moment.
-  const animatedOrder = useTechStackRotation(techs.length, reducedMotion)
+  const { order: animatedOrder, rotateSlot } = useTechStackRotation(techs.length)
 
   return (
     <div
@@ -88,6 +107,12 @@ export function TechStackGrid({
             key={slotIdx}
             className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
           >
+            <TechStackRotationTimer
+              slot={slotIdx}
+              techCount={techs.length}
+              reducedMotion={reducedMotion}
+              rotateSlot={rotateSlot}
+            />
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={tech.name}
