@@ -32,6 +32,11 @@ type BillingOrganization = {
   role: string
 }
 
+const billingDateFormatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+})
+
 export function OrganizationBilling({
   organization,
   billingReturn,
@@ -170,7 +175,7 @@ export function OrganizationBilling({
                       ? " · Cancels at period end"
                       : ""}
                     {subscription.periodEnd
-                      ? ` · Period ends ${subscription.periodEnd.toLocaleDateString()}`
+                      ? ` · Period ends ${billingDateFormatter.format(subscription.periodEnd)}`
                       : ""}
                   </p>
                 </div>
