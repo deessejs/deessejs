@@ -19,6 +19,8 @@ import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
 
 const program = new Command()
+program.configureHelp({ sortSubcommands: true })
+
 const runNamespacedCommand = (command: Command): Promise<void> =>
   command.parseAsync(normalizeTemplateCommandArgs(process.argv)).then(() => {})
 
@@ -36,6 +38,7 @@ program.on("option:v", () => {
 const templatesCommand = new Command("templates").description(
   "Browse and create projects from templates"
 )
+templatesCommand.configureHelp({ sortSubcommands: true })
 templatesCommand.addCommand(
   new Command("list")
     .description("List available templates")
@@ -91,6 +94,7 @@ program.addCommand(updateCommand)
 const authCommand = new Command("auth").description(
   "Authenticate this machine against the DeesseJS server"
 )
+authCommand.configureHelp({ sortSubcommands: true })
 authCommand.addCommand(loginCommand)
 authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)
