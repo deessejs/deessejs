@@ -16,6 +16,7 @@ import {
 export const blockCommand = new Command("block").description(
   "Inspect DeesseJS blocks"
 )
+blockCommand.configureHelp({ sortSubcommands: true })
 
 const blockInfoCommand = new Command("info")
   .description("Show details for one block")

@@ -2,6 +2,7 @@ import { Command } from "commander"
 import { clearResponseCache } from "../cache/index.js"
 
 export const cacheCommand = new Command("cache").description("Manage local CLI response cache")
+cacheCommand.configureHelp({ sortSubcommands: true })
 cacheCommand.addCommand(
   new Command("clear")
     .description("Clear cached template catalog responses (authentication is preserved)")

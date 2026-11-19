@@ -449,6 +449,7 @@ function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
 
 export const organizationCommand = new Command("organization")
   .description("Manage your organizations")
+  .configureHelp({ sortSubcommands: true })
   .addCommand(organizationListCommand)
   .addCommand(organizationInfoCommand)
   .addCommand(organizationCreateCommand)
