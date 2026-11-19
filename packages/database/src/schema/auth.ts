@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm"
+import { relations } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -7,7 +7,7 @@ import {
   integer,
   index,
   uniqueIndex,
-} from "drizzle-orm/pg-core"
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -25,7 +25,7 @@ export const user = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   stripeCustomerId: text("stripe_customer_id"),
-})
+});
 
 export const session = pgTable(
   "session",
@@ -45,8 +45,8 @@ export const session = pgTable(
     impersonatedBy: text("impersonated_by"),
     activeOrganizationId: text("active_organization_id"),
   },
-  (table) => [index("session_userId_idx").on(table.userId)]
-)
+  (table) => [index("session_userId_idx").on(table.userId)],
+);
 
 export const account = pgTable(
   "account",
@@ -69,8 +69,8 @@ export const account = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)]
-)
+  (table) => [index("account_userId_idx").on(table.userId)],
+);
 
 export const verification = pgTable(
   "verification",
@@ -85,8 +85,8 @@ export const verification = pgTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)]
-)
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
 
 export const deviceCode = pgTable(
   "device_code",
@@ -105,8 +105,8 @@ export const deviceCode = pgTable(
   (table) => [
     uniqueIndex("deviceCode_deviceCode_uidx").on(table.deviceCode),
     uniqueIndex("deviceCode_userCode_uidx").on(table.userCode),
-  ]
-)
+  ],
+);
 
 export const organization = pgTable("organization", {
   id: text("id").primaryKey(),
@@ -116,7 +116,7 @@ export const organization = pgTable("organization", {
   createdAt: timestamp("created_at").notNull(),
   metadata: text("metadata"),
   stripeCustomerId: text("stripe_customer_id"),
-})
+});
 
 export const member = pgTable(
   "member",
@@ -134,8 +134,8 @@ export const member = pgTable(
   (table) => [
     index("member_organizationId_idx").on(table.organizationId),
     index("member_userId_idx").on(table.userId),
-  ]
-)
+  ],
+);
 
 export const invitation = pgTable(
   "invitation",
@@ -156,8 +156,8 @@ export const invitation = pgTable(
   (table) => [
     index("invitation_organizationId_idx").on(table.organizationId),
     index("invitation_email_idx").on(table.email),
-  ]
-)
+  ],
+);
 
 export const subscription = pgTable("subscription", {
   id: text("id").primaryKey(),
@@ -177,33 +177,33 @@ export const subscription = pgTable("subscription", {
   seats: integer("seats"),
   billingInterval: text("billing_interval"),
   stripeScheduleId: text("stripe_schedule_id"),
-})
+});
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   members: many(member),
   invitations: many(invitation),
-}))
+}));
 
 export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, {
     fields: [session.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, {
     fields: [account.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const organizationRelations = relations(organization, ({ many }) => ({
   members: many(member),
   invitations: many(invitation),
-}))
+}));
 
 export const memberRelations = relations(member, ({ one }) => ({
   organization: one(organization, {
@@ -214,7 +214,7 @@ export const memberRelations = relations(member, ({ one }) => ({
     fields: [member.userId],
     references: [user.id],
   }),
-}))
+}));
 
 export const invitationRelations = relations(invitation, ({ one }) => ({
   organization: one(organization, {
@@ -225,4 +225,4 @@ export const invitationRelations = relations(invitation, ({ one }) => ({
     fields: [invitation.inviterId],
     references: [user.id],
   }),
-}))
+}));
