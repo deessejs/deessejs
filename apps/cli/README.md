@@ -19,29 +19,31 @@ Other release channels:
 
 ## Commands
 
-| Command                                        | Role                                                            |
-| ---------------------------------------------- | --------------------------------------------------------------- |
-| `deessejs templates init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
-| `deessejs templates list`                      | List available templates                                        |
-| `deessejs templates info <slug-or-github-url>` | Show validated descriptor details for a template                |
-| `deessejs cache clear`                           | Clear cached template catalog data                              |
-| `deessejs block info <source>`                 | Show a validated block descriptor summary                       |
-| `deessejs block check [source]`                | Validate a block descriptor and its referenced assets           |
-| `deessejs add <source> --target <id>`          | Preview and add a published, GitHub, or local block             |
-| `deessejs organization list`                   | List organizations the signed-in user belongs to                |
-| `deessejs organization info <slug>`            | Show one of the signed-in user's organizations                  |
-| `deessejs organization create <name>`          | Create an organization                                          |
-| `deessejs update` / `deessejs upgrade`         | Check for and install a CLI update                              |
+| Command                                       | Role                                                            |
+| --------------------------------------------- | --------------------------------------------------------------- |
+| `deessejs template init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
+| `deessejs template list`                      | List available templates                                        |
+| `deessejs template info <slug-or-github-url>` | Show validated descriptor details for a template                |
+| `deessejs cache clear`                        | Clear cached template catalog data                              |
+| `deessejs block info <source>`                | Show a validated block descriptor summary                       |
+| `deessejs block check [source]`               | Validate a block descriptor and its referenced assets           |
+| `deessejs add <source> --target <id>`         | Preview and add a published, GitHub, or local block             |
+| `deessejs organization list`                  | List organizations the signed-in user belongs to                |
+| `deessejs organization info <slug>`           | Show one of the signed-in user's organizations                  |
+| `deessejs organization create <name>`         | Create an organization                                          |
+| `deessejs update` / `deessejs upgrade`        | Check for and install a CLI update                              |
 
 ## Examples
 
+`template` is the canonical command group. The previous `templates` spelling remains available as an alias.
+
 ```bash
-deessejs templates list
-deessejs templates list --category saas --json
-deessejs templates info saas-starter --json
-deessejs templates info https://github.com/owner/repository --ref main
+deessejs template list
+deessejs template list --category saas --json
+deessejs template info saas-starter --json
+deessejs template info https://github.com/owner/repository --ref main
 deessejs cache clear
-deessejs templates info saas-starter --refresh
+deessejs template info saas-starter --refresh
 deessejs block info ./blocks/upstash-redis
 deessejs block info https://github.com/deessejs/blocks/tree/main/upstash-redis --json
 deessejs block check ./blocks/upstash-redis
@@ -49,10 +51,10 @@ deessejs block check https://github.com/deessejs/blocks/upstash-redis --json
 deessejs add upstash-redis --target web --dry-run
 deessejs add ./blocks/upstash-redis --target web
 deessejs add https://github.com/acme/blocks/tree/main/cache --target web --ref main
-deessejs templates init saas-starter
-deessejs templates init saas-starter --ref develop --no-install
-deessejs templates init https://github.com/owner/repository
-deessejs templates init saas-starter --verbose
+deessejs template init saas-starter
+deessejs template init saas-starter --ref develop --no-install
+deessejs template init https://github.com/owner/repository
+deessejs template init saas-starter --verbose
 deessejs auth login
 deessejs organization list
 deessejs organization info acme
