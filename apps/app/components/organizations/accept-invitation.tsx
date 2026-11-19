@@ -1,94 +1,64 @@
 "use client"
 
 import { client } from "@/lib/client"
-import { useState } from "react"
+import {
+  type InvitationDetails,
+  useInvitationDetails,
+  useRespondToInvitation,
+  useSendVerificationEmail,
+  useSignOut,
+} from "@/hooks/use-account-actions"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { queryOptions, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 
 import { workspaceHomePath } from "@/lib/workspace-paths"
 
-type InvitationDetails = NonNullable<
-  Awaited<ReturnType<typeof client.auth.organization.getInvitation>>["data"]
->
-
-function invitationQueryOptions(invitationId: string, userId?: string) {
-  return queryOptions({
-    queryKey: ["organization-invitation", invitationId, userId],
-    enabled: Boolean(userId),
-    queryFn: async () => {
-      const { data, error } = await client.auth.organization.getInvitation({
-        query: { id: invitationId },
-      })
-      if (error || !data) {
-        throw new Error(error?.message ?? "This invitation is unavailable.")
-      }
-      return data
-    },
-  })
-}
-
 export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   const router = useRouter()
   const session = client.auth.useSession()
-  const [submitting, setSubmitting] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
   const invitationPath = `/accept-invitation/${encodeURIComponent(invitationId)}`
   const signedInUser = session.data?.user
-  const invitationQuery = useQuery(
-    invitationQueryOptions(invitationId, signedInUser?.id)
-  )
+  const invitationQuery = useInvitationDetails(invitationId, signedInUser?.id)
+  const respond = useRespondToInvitation()
+  const sendVerificationMutation = useSendVerificationEmail()
+  const signOut = useSignOut()
   const invitation = invitationQuery.data ?? null
   const loading = Boolean(signedInUser) && invitationQuery.isPending
-  const displayedFailure = failure ?? invitationQuery.error?.message ?? null
+  const displayedFailure = [
+    invitationQuery.error?.message,
+    respond.error?.message,
+    sendVerificationMutation.error?.message,
+    signOut.error?.message,
+  ].find(Boolean) ?? null
 
   async function accept() {
-    setSubmitting(true)
-    setFailure(null)
     try {
-      const { error } = await client.auth.organization.acceptInvitation({
-        invitationId,
-      })
-      if (error) {
-        setFailure(error.message ?? "The invitation could not be accepted.")
-        return
-      }
+      await respond.mutateAsync({ invitationId, action: "accept" })
       if (invitation) router.replace(workspaceHomePath(invitation.organizationSlug))
-    } catch {
-      setFailure("The invitation could not be accepted.")
-    } finally {
-      setSubmitting(false)
-    }
+    } catch { /* Mutation error is rendered below. */ }
   }
 
   async function sendVerification() {
     if (!signedInUser) return
     try {
-      const { error } = await client.auth.sendVerificationEmail({
+      await sendVerificationMutation.mutateAsync({
         email: signedInUser.email,
         callbackURL: invitationPath,
       })
-      if (error) {
-        setFailure(error.message ?? "The verification email could not be sent.")
-      } else {
-        setFailure(null)
-        toast.success("Verification email sent. Check your inbox.")
-      }
-    } catch {
-      setFailure("The verification email could not be sent.")
-    }
+      toast.success("Verification email sent. Check your inbox.")
+    } catch { /* Mutation error is rendered below. */ }
   }
 
   async function switchAccount() {
     try {
-      await client.auth.signOut()
+      await signOut.mutateAsync()
       router.refresh()
-    } catch {
-      setFailure("Could not sign out of this account.")
-    }
+    } catch { /* Mutation error is rendered below. */ }
   }
+
+  const submitting = respond.isPending
 
   return (
     <InvitationPresentation
@@ -102,6 +72,8 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
       onAccept={() => void accept()}
       onSendVerification={() => void sendVerification()}
       onSwitchAccount={() => void switchAccount()}
+      sendingVerification={sendVerificationMutation.isPending}
+      switchingAccount={signOut.isPending}
     />
   )
 }
@@ -117,6 +89,8 @@ function InvitationPresentation({
   onAccept,
   onSendVerification,
   onSwitchAccount,
+  sendingVerification,
+  switchingAccount,
 }: {
   invitationId: string
   invitationPath: string
@@ -128,6 +102,8 @@ function InvitationPresentation({
   onAccept: () => void
   onSendVerification: () => void
   onSwitchAccount: () => void
+  sendingVerification: boolean
+  switchingAccount: boolean
 }) {
   const authLink = (path: "/login" | "/signup") =>
     `${path}?redirect=${encodeURIComponent(invitationPath)}`
@@ -151,6 +127,8 @@ function InvitationPresentation({
         onAccept={onAccept}
         onSendVerification={onSendVerification}
         onSwitchAccount={onSwitchAccount}
+        sendingVerification={sendingVerification}
+        switchingAccount={switchingAccount}
       />
     </div>
   )
@@ -166,6 +144,8 @@ function InvitationBody({
   onAccept,
   onSendVerification,
   onSwitchAccount,
+  sendingVerification,
+  switchingAccount,
 }: {
   invitationId: string
   authLink: (path: "/login" | "/signup") => string
@@ -176,6 +156,8 @@ function InvitationBody({
   onAccept: () => void
   onSendVerification: () => void
   onSwitchAccount: () => void
+  sendingVerification: boolean
+  switchingAccount: boolean
 }) {
   if (!user) {
     return (
@@ -210,6 +192,8 @@ function InvitationBody({
         onAccept={onAccept}
         onSendVerification={onSendVerification}
         onSwitchAccount={onSwitchAccount}
+        sendingVerification={sendingVerification}
+        switchingAccount={switchingAccount}
       />
     </div>
   )
@@ -222,6 +206,8 @@ function InvitationActions({
   onAccept,
   onSendVerification,
   onSwitchAccount,
+  sendingVerification,
+  switchingAccount,
 }: {
   user: { email: string; emailVerified: boolean }
   invitation: InvitationDetails
@@ -229,6 +215,8 @@ function InvitationActions({
   onAccept: () => void
   onSendVerification: () => void
   onSwitchAccount: () => void
+  sendingVerification: boolean
+  switchingAccount: boolean
 }) {
   if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
     return (
@@ -236,7 +224,9 @@ function InvitationActions({
         <p className="text-sm text-destructive">
           You are signed in as {user.email}. Sign in with the invited email to continue.
         </p>
-        <Button variant="outline" onClick={onSwitchAccount}>Switch account</Button>
+        <Button variant="outline" onClick={onSwitchAccount} disabled={switchingAccount} aria-busy={switchingAccount}>
+          {switchingAccount ? "Signing out…" : "Switch account"}
+        </Button>
       </div>
     )
   }
@@ -246,7 +236,14 @@ function InvitationActions({
         <p className="text-sm text-muted-foreground">
           Verify your email address before accepting this invitation.
         </p>
-        <Button variant="outline" onClick={onSendVerification}>Send verification email</Button>
+        <Button
+          variant="outline"
+          onClick={onSendVerification}
+          disabled={sendingVerification}
+          aria-busy={sendingVerification}
+        >
+          {sendingVerification ? "Sending…" : "Send verification email"}
+        </Button>
       </div>
     )
   }

@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { client } from "@/lib/client"
+import { useAdminBlockPublicationDecision } from "@/hooks/use-admin-review-mutations"
 
 export function AdminBlockSubmissionsPage({
   submissions,
@@ -20,30 +20,14 @@ export function AdminBlockSubmissionsPage({
 }) {
   const router = useRouter()
   const [reason, setReason] = useState("")
-  const [error, setError] = useState("")
-  async function decide(id: string, approve: boolean) {
-    setError("")
-    try {
-      if (approve) {
-        await client.rpc.admin.templates.blockPublications.approve({
-          publicationId: id,
-          reason: reason || null,
-        })
-      } else {
-        await client.rpc.admin.templates.blockPublications.reject({
-          publicationId: id,
-          reason,
-        })
-      }
-      router.refresh()
-    } catch {
-      setError("Review decision failed. Refresh and retry.")
-    }
+  const decision = useAdminBlockPublicationDecision()
+  function decide(id: string, approve: boolean) {
+    decision.mutate({ publicationId: id, approve, reason }, { onSuccess: () => router.refresh() })
   }
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <h1 className="text-3xl font-bold">Block submissions</h1>
-      {error && <p role="alert">{error}</p>}
+      {decision.error && <p role="alert">Review decision failed. Refresh and retry.</p>}
       {submissions.length === 0 ? (
         <p>No block submissions are waiting for review.</p>
       ) : (
@@ -70,13 +54,13 @@ export function AdminBlockSubmissionsPage({
               onChange={(e) => setReason(e.target.value)}
             />
             <div className="flex gap-2">
-              <Button onClick={() => void decide(item.id, true)}>
+              <Button disabled={decision.isPending} onClick={() => decide(item.id, true)}>
                 Approve
               </Button>
               <Button
                 variant="destructive"
-                disabled={!reason.trim()}
-                onClick={() => void decide(item.id, false)}
+                disabled={!reason.trim() || decision.isPending}
+                onClick={() => decide(item.id, false)}
               >
                 Reject
               </Button>

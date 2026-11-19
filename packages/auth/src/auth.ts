@@ -2,6 +2,11 @@ import { betterAuth } from "better-auth"
 import type { BetterAuthOptions } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { nextCookies } from "better-auth/next-js"
+import { stripe } from "@better-auth/stripe"
+import Stripe from "stripe"
+import { and, eq } from "drizzle-orm"
+import { member } from "@workspace/database/schema"
+import { organizationSubscription } from "@workspace/database/schema"
 import { admin, bearer, deviceAuthorization } from "better-auth/plugins"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
@@ -9,6 +14,7 @@ import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
 import { organizationPlugin } from "./organization/plugin.js"
+import { canAccessOrganizationBilling } from "./organization/billing-authorization.js"
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -303,6 +309,70 @@ const authConfig: BetterAuthOptions = {
     // `./organization/plugin.ts`; this entry is a one-liner. Plugin
     // must sit before `nextCookies()` (Next.js integration requirement).
     organizationPlugin,
+    ...(serverEnv.STRIPE_SECRET_KEY && serverEnv.STRIPE_WEBHOOK_SECRET
+      ? [
+          stripe({
+            stripeClient: new Stripe(serverEnv.STRIPE_SECRET_KEY),
+            stripeWebhookSecret: serverEnv.STRIPE_WEBHOOK_SECRET,
+            onEvent: async (event) => {
+              if (!event.type.startsWith("customer.subscription.")) return
+              const subscription = event.data.object as Stripe.Subscription
+              const referenceId = subscription.metadata?.referenceId
+              const customerId = typeof subscription.customer === "string"
+                ? subscription.customer
+                : subscription.customer.id
+              const price = subscription.items.data[0]?.price
+              if (!referenceId || !price) return
+              const rawEnd = subscription.items.data[0]?.current_period_end
+              await db.insert(organizationSubscription).values({
+                id: subscription.id,
+                organizationId: referenceId,
+                stripeSubscriptionId: subscription.id,
+                stripeCustomerId: customerId,
+                plan: price.id,
+                status: subscription.status,
+                currentPeriodEnd: rawEnd ? new Date(rawEnd * 1000) : null,
+                cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                updatedAt: new Date(),
+              }).onConflictDoUpdate({
+                target: organizationSubscription.stripeSubscriptionId,
+                set: {
+                  status: subscription.status,
+                  currentPeriodEnd: rawEnd ? new Date(rawEnd * 1000) : null,
+                  cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                  updatedAt: new Date(),
+                },
+              })
+            },
+            subscription: {
+              enabled: true,
+              plans: [
+                ...(serverEnv.STRIPE_PRO_MONTHLY_PRICE_ID
+                  ? [{ name: "pro-monthly", priceId: serverEnv.STRIPE_PRO_MONTHLY_PRICE_ID }]
+                  : []),
+                ...(serverEnv.STRIPE_PRO_ANNUAL_PRICE_ID
+                  ? [{ name: "pro-annual", priceId: serverEnv.STRIPE_PRO_ANNUAL_PRICE_ID }]
+                  : []),
+              ],
+              authorizeReference: async ({ user, referenceId, action }) => {
+                if (!referenceId) return false
+                const [membership] = await db
+                  .select({ role: member.role })
+                  .from(member)
+                  .where(
+                    and(
+                      eq(member.userId, user.id),
+                      eq(member.organizationId, referenceId)
+                    )
+                  )
+                  .limit(1)
+                return canAccessOrganizationBilling(membership?.role, action)
+              },
+            },
+            organization: { enabled: true },
+          }),
+        ]
+      : []),
     nextCookies(),
   ],
 } satisfies BetterAuthOptions

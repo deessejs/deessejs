@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useOAuthSignIn } from "@/hooks/use-auth-form-mutations"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { safeRedirect } from "@workspace/utils/safe-redirect"
@@ -13,22 +12,16 @@ interface OAuthButtonsProps {
 }
 
 export function OAuthButtons({ callbackURL = "/home" }: OAuthButtonsProps) {
-	const [loading, setLoading] = useState<string | null>(null)
+	const oauth = useOAuthSignIn()
+	const loading = oauth.isPending ? oauth.variables?.provider ?? null : null
 
-	async function handleOAuth(provider: "google" | "github") {
-		setLoading(provider)
+	function handleOAuth(provider: "google" | "github") {
 		// Validate callbackURL to defeat open-redirect via protocol-relative URLs
 		// (//evil.com) and backslash bypass (/\\evil.com). See CVE-2025-27143.
 		const safeCallback = safeRedirect(callbackURL)
-		const { error } = await client.auth.signIn.social({
-			provider,
-			callbackURL: safeCallback,
+		oauth.mutate({ provider, callbackURL: safeCallback }, {
+			onError: (error) => toast.error(error.message),
 		})
-		setLoading(null)
-
-		if (error) {
-			toast.error(error.message ?? "Authentication failed")
-		}
 		// better-auth handles the post-signIn.social redirect to callbackURL by default; no redirectPlugin() is wired.
 	}
 

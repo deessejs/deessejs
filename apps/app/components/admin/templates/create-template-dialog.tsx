@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useCreateAdminTemplate } from "@/hooks/use-resource-mutations"
 import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -79,7 +78,8 @@ export function CreateTemplateDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const router = useRouter()
-  const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateAdminTemplate()
+  const failure = createMutation.error instanceof ORPCError ? REFUSALS[createMutation.error.code] ?? FAILURE_MESSAGE : createMutation.error ? FAILURE_MESSAGE : null
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
@@ -90,17 +90,16 @@ export function CreateTemplateDialog({
   const imageName = useWatch({ control: form.control, name: "imageName" })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
-      setFailure(null)
+    if (!next && !createMutation.isPending) {
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function create(values: FormValues) {
-    setFailure(null)
     try {
-      await client.rpc.admin.templates.create({
+      await createMutation.mutateAsync({
         repositoryUrl: values.repositoryUrl,
         slug: values.slug,
         name: values.name,
@@ -120,13 +119,7 @@ export function CreateTemplateDialog({
       reset(defaults)
       onOpenChange(false)
       router.refresh()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (REFUSALS[error.code] ?? FAILURE_MESSAGE)
-          : FAILURE_MESSAGE
-      )
-    }
+    } catch { /* Mutation error is rendered below. */ }
   }
 
   return (
@@ -290,13 +283,13 @@ export function CreateTemplateDialog({
             <Button
               type="button"
               variant="outline"
-              disabled={formState.isSubmitting}
+              disabled={createMutation.isPending}
               onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending
                 ? "Fetching from GitHub…"
                 : "Add template"}
             </Button>

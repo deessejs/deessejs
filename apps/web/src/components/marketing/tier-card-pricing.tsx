@@ -8,6 +8,7 @@ import type { LicenseType } from "@/lib/pricing"
 
 import { PriceBlock } from "@/components/pages/pricing/price-block"
 import { usePricingCadence } from "./pricing-cadence-context"
+import { clientEnv } from "@workspace/env/client"
 
 /**
  * Cadence-aware price + CTA block for the Pro and Agency tier cards.
@@ -29,7 +30,12 @@ import { usePricingCadence } from "./pricing-cadence-context"
  */
 export function TierCardPricing({ license }: { license: LicenseType }) {
   const { cadence } = usePricingCadence()
-  const href = `${license.cta.href}?cadence=${cadence}`
+  const href = license.id === "professional"
+    ? `${clientEnv.NEXT_PUBLIC_APP_URL}/organizations?plan=pro&cadence=${cadence}`
+    : license.id === "agency"
+      ? "/enterprise"
+      : `${license.cta.href}?cadence=${cadence}`
+  const label = license.id === "agency" ? "Contact us about Agency" : license.cta.label
 
   return (
     <>
@@ -54,7 +60,7 @@ export function TierCardPricing({ license }: { license: LicenseType }) {
 
       <div className="mt-auto pt-2">
         <Button asChild size="lg" className="w-full">
-          <Link href={href}>{license.cta.label}</Link>
+          <Link href={href}>{label}</Link>
         </Button>
       </div>
     </>

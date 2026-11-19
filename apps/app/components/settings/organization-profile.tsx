@@ -1,8 +1,8 @@
 "use client"
 
-import { client } from "@/lib/client"
 import { useRef, useState } from "react"
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useOrganizationAvatar, useOrganizationAvatarMutations, type AvatarContentType } from "@/hooks/use-avatar-mutations"
+import { useUpdateOrganizationProfile } from "@/hooks/use-settings-profile-mutations"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
@@ -17,14 +17,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { CopyIcon } from "lucide-react"
 
-const avatarContentTypes = ["image/jpeg", "image/png", "image/webp"] as const
-const organizationAvatarQueryOptions = (slug: string) =>
-  queryOptions({
-    queryKey: ["organization", "avatar", slug],
-    queryFn: () => client.rpc.organization.avatar.get({ slug }),
-    retry: false,
-  })
-
+const avatarContentTypes: readonly AvatarContentType[] = ["image/jpeg", "image/png", "image/webp"]
 export const organizationProfileSchema = z.object({
   name: z
     .string()
@@ -95,10 +88,8 @@ function OrganizationAvatar({
   canManage: boolean
 }) {
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
-  const avatarQuery = organizationAvatarQueryOptions(slug)
-  const avatar = useQuery(avatarQuery)
-  const [avatarBusy, setAvatarBusy] = useState(false)
+  const avatar = useOrganizationAvatar(slug)
+  const { upload, remove } = useOrganizationAvatarMutations(slug)
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return
@@ -107,47 +98,11 @@ function OrganizationAvatar({
       toast.error("Choose a JPEG, PNG, or WebP image.")
       return
     }
-    setAvatarBusy(true)
-    try {
-      const upload = await client.rpc.organization.avatar.createUpload({
-        slug,
-        contentType,
-        byteSize: file.size,
-      })
-      const response = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        headers: upload.requiredHeaders,
-        body: file,
-      })
-      if (!response.ok) throw new Error("Could not upload this image.")
-      await client.rpc.organization.avatar.complete({
-        slug,
-        uploadId: upload.uploadId,
-      })
-      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
-      toast.success("Organization avatar updated")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update avatar"
-      )
-    } finally {
-      setAvatarBusy(false)
-    }
+    upload.mutate(file, { onSuccess: () => toast.success("Organization avatar updated"), onError: (error) => toast.error(error.message) })
   }
 
   async function handleAvatarRemove() {
-    setAvatarBusy(true)
-    try {
-      await client.rpc.organization.avatar.remove({ slug })
-      await queryClient.invalidateQueries({ queryKey: avatarQuery.queryKey })
-      toast.success("Uploaded organization avatar removed")
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not remove avatar"
-      )
-    } finally {
-      setAvatarBusy(false)
-    }
+    remove.mutate(undefined, { onSuccess: () => toast.success("Uploaded organization avatar removed"), onError: (error) => toast.error(error.message) })
   }
 
   const initials = name.trim().slice(0, 2).toUpperCase() || "?"
@@ -181,7 +136,7 @@ function OrganizationAvatar({
             className="sr-only"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            disabled={avatarBusy}
+            disabled={upload.isPending || remove.isPending}
             aria-label="Choose an organization avatar"
             onChange={(event) => {
               void handleAvatarChange(event.currentTarget.files?.[0]).then(
@@ -194,17 +149,17 @@ function OrganizationAvatar({
             variant="outline"
             size="sm"
             type="button"
-            disabled={avatarBusy}
+            disabled={upload.isPending || remove.isPending}
             onClick={() => avatarInputRef.current?.click()}
           >
-            {avatarBusy ? "Saving..." : "Change avatar"}
+            {upload.isPending || remove.isPending ? "Saving..." : "Change avatar"}
           </Button>
           {avatar.data?.imageUrl && (
             <Button
               variant="ghost"
               size="sm"
               type="button"
-              disabled={avatarBusy}
+              disabled={upload.isPending || remove.isPending}
               onClick={() => void handleAvatarRemove().then(() => undefined)}
             >
               Remove upload
@@ -244,6 +199,7 @@ export function OrganizationProfile({
 }) {
   const router = useRouter()
   const canManage = hasManagingRole(organization.role)
+  const updateProfile = useUpdateOrganizationProfile()
   const [logoPreview, setLogoPreview] = useState(organization.logo ?? "")
   const form = useForm({
     defaultValues: { name: organization.name, logo: organization.logo ?? "" },
@@ -251,14 +207,11 @@ export function OrganizationProfile({
     onSubmit: async ({ value }) => {
       const savedValues = { ...value, logo: value.logo.trim() }
       try {
-        const { error } = await client.auth.organization.update({
+        await updateProfile.mutateAsync({
           organizationId: organization.id,
-          data: { name: savedValues.name, logo: savedValues.logo || null },
+          name: savedValues.name,
+          logo: savedValues.logo || null,
         })
-        if (error) {
-          toast.error(error.message ?? "Could not update organization")
-          return
-        }
         form.reset(savedValues)
         setLogoPreview(savedValues.logo)
         toast.success("Organization profile saved")
@@ -320,8 +273,9 @@ export function OrganizationProfile({
               initials.
             </p>
           </div>
-          <form.Subscribe selector={(state) => [state.isDirty, state.isSubmitting] as const}>
-            {([isDirty, isSubmitting]) => <div className="flex justify-end"><Button type="submit" disabled={!isDirty || isSubmitting} aria-busy={isSubmitting}>{isSubmitting ? "Saving..." : "Save changes"}</Button></div>}
+          {updateProfile.error ? <p className="text-sm text-destructive" role="alert">{updateProfile.error.message}</p> : null}
+          <form.Subscribe selector={(state) => state.isDirty}>
+            {(isDirty) => <div className="flex justify-end"><Button type="submit" disabled={!isDirty || updateProfile.isPending} aria-busy={updateProfile.isPending}>{updateProfile.isPending ? "Saving..." : "Save changes"}</Button></div>}
           </form.Subscribe>
         </form>
       ) : (

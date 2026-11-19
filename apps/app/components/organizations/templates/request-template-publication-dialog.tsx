@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useSubmitOrganizationTemplate } from "@/hooks/use-resource-mutations"
 import { useState } from "react"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
@@ -44,41 +44,29 @@ export function RequestTemplatePublicationDialog({
   onSubmitted: () => void
 }) {
   const [confirmed, setConfirmed] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
+  const submitMutation = useSubmitOrganizationTemplate()
+  const failure = submitMutation.error instanceof ORPCError ? ERROR_MESSAGES[submitMutation.error.code] ?? "The publication request could not be submitted. Try again." : submitMutation.error ? "The publication request could not be submitted. Try again." : null
 
   function handleOpenChange(next: boolean) {
-    if (!next && !submitting) {
+    if (!next && !submitMutation.isPending) {
       setConfirmed(false)
-      setFailure(null)
+      submitMutation.reset()
     }
     onOpenChange(next)
   }
 
   async function submit() {
     if (!template || !confirmed) return
-    setFailure(null)
-    setSubmitting(true)
     try {
-      await client.rpc.organization.templates.submit({
+      await submitMutation.mutateAsync({
         organizationSlug,
         templateId: template.id,
         distributionRightsConfirmed: true,
       })
       setConfirmed(false)
-      setFailure(null)
       onOpenChange(false)
       onSubmitted()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (ERROR_MESSAGES[error.code] ??
-              "The publication request could not be submitted. Try again.")
-          : "The publication request could not be submitted. Try again."
-      )
-    } finally {
-      setSubmitting(false)
-    }
+    } catch { /* The mutation error is rendered below. */ }
   }
 
   return (
@@ -127,16 +115,16 @@ export function RequestTemplatePublicationDialog({
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={submitting}
+            disabled={submitMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             type="button"
             onClick={() => void submit()}
-            disabled={!template || !confirmed || submitting}
+            disabled={!template || !confirmed || submitMutation.isPending}
           >
-            {submitting ? "Submitting…" : "Submit for review"}
+            {submitMutation.isPending ? "Submitting…" : "Submit for review"}
           </Button>
         </DialogFooter>
       </DialogContent>

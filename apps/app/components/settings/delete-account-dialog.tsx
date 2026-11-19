@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useDeleteAccount } from "@/hooks/use-settings-mutations"
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -21,22 +21,15 @@ const CONFIRM_TEXT = "DELETE"
 export function DeleteAccountDialog() {
 	const [open, setOpen] = useState(false)
 	const [confirm, setConfirm] = useState("")
-	const [deleting, setDeleting] = useState(false)
-	const [done, setDone] = useState(false)
+  const deleteAccount = useDeleteAccount()
 
 	async function handleDelete() {
-		if (confirm !== CONFIRM_TEXT) return
-		setDeleting(true)
-		const { error } = await client.auth.deleteUser({
-			// Validate even though the literal is hardcoded — defense-in-depth.
-			callbackURL: safeRedirect("/login"),
-		})
-		setDeleting(false)
-		if (error) {
-			setConfirm("")
+		if (confirm !== CONFIRM_TEXT) {
 			return
 		}
-		setDone(true)
+    deleteAccount.mutate(safeRedirect("/login"), {
+      onError: () => setConfirm(""),
+    })
 	}
 
 	function handleCancel() {
@@ -44,7 +37,7 @@ export function DeleteAccountDialog() {
 		setConfirm("")
 	}
 
-	if (done) {
+	if (deleteAccount.isSuccess) {
 		return (
 			<div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
 				<p className="font-medium">Account deleted</p>
@@ -88,10 +81,10 @@ export function DeleteAccountDialog() {
 						</Button>
 						<Button
 							variant="destructive"
-							disabled={confirm !== CONFIRM_TEXT || deleting}
+              disabled={confirm !== CONFIRM_TEXT || deleteAccount.isPending}
 							onClick={handleDelete}
 						>
-							{deleting ? "Deleting…" : "Delete account"}
+              {deleteAccount.isPending ? "Deleting…" : "Delete account"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

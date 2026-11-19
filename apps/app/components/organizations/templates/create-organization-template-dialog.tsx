@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useCreateOrganizationTemplate } from "@/hooks/use-resource-mutations"
 import type { ReactNode } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
@@ -107,7 +106,12 @@ export function CreateOrganizationTemplateDialog({
   organizationSlug: string
   onCreated: () => void
 }) {
-  const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateOrganizationTemplate()
+  const failure = createMutation.error
+    ? createMutation.error instanceof ORPCError
+      ? refusals[createMutation.error.code] ?? genericFailure
+      : genericFailure
+    : null
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaults,
@@ -116,17 +120,16 @@ export function CreateOrganizationTemplateDialog({
   const category = useWatch({ control: form.control, name: "category" })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
-      setFailure(null)
+    if (!next && !createMutation.isPending) {
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function create(values: FormValues) {
-    setFailure(null)
     try {
-      await client.rpc.organization.templates.create({
+      await createMutation.mutateAsync({
         organizationSlug,
         slug: values.slug,
         name: values.name,
@@ -142,13 +145,7 @@ export function CreateOrganizationTemplateDialog({
       reset(defaults)
       onOpenChange(false)
       onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (refusals[error.code] ?? genericFailure)
-          : genericFailure
-      )
-    }
+    } catch { /* Mutation error is rendered from createMutation.error. */ }
   }
 
   return (
@@ -271,12 +268,12 @@ export function CreateOrganizationTemplateDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Adding..." : "Add template"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Adding..." : "Add template"}
             </Button>
           </DialogFooter>
         </form>

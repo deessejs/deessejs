@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useCreateOrganization } from "@/hooks/use-organization-context-mutations"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
@@ -76,8 +76,10 @@ export function CreateOrganizationDialog({
 }) {
   const router = useRouter()
   const [name, setName] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+  const createOrganization = useCreateOrganization()
+  const error = createOrganization.error instanceof ORPCError
+    ? REFUSALS[createOrganization.error.code] ?? CREATE_FAILED_MESSAGE
+    : createOrganization.error ? CREATE_FAILED_MESSAGE : null
 
   function handleOpenChange(next: boolean) {
     if (next) {
@@ -86,29 +88,19 @@ export function CreateOrganizationDialog({
     }
     // Closing clears the transient state. The name stays: a caller who
     // cancelled did not mean to throw it away.
-    setError(null)
-    setCreating(false)
+    createOrganization.reset()
     onOpenChange(false)
   }
 
   async function handleCreate() {
     if (name.trim().length === 0) return
-    setCreating(true)
-    setError(null)
     try {
-      const created = await client.rpc.organization.create({ name })
+      const created = await createOrganization.mutateAsync(name)
       setName("")
       handleOpenChange(false)
       onCreated?.(created)
       router.push(workspaceHomePath(created.slug))
-    } catch (failure) {
-      setCreating(false)
-      if (failure instanceof ORPCError) {
-        setError(REFUSALS[failure.code] ?? CREATE_FAILED_MESSAGE)
-        return
-      }
-      setError(CREATE_FAILED_MESSAGE)
-    }
+    } catch { /* The mutation error is rendered in the dialog. */ }
   }
 
   return (
@@ -142,10 +134,10 @@ export function CreateOrganizationDialog({
             Cancel
           </Button>
           <Button
-            disabled={creating || name.trim().length === 0}
+            disabled={createOrganization.isPending || name.trim().length === 0}
             onClick={handleCreate}
           >
-            {creating ? "Creating…" : "Create"}
+            {createOrganization.isPending ? "Creating…" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>

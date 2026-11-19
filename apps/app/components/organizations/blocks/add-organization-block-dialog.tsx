@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useCreateOrganizationBlock } from "@/hooks/use-resource-mutations"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
@@ -60,7 +59,13 @@ export function AddOrganizationBlockDialog({
   organizationSlug: string
   onCreated: () => void
 }) {
-  const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateOrganizationBlock()
+  const genericFailure = "The block could not be imported. Check its descriptor and try again."
+  const failure = createMutation.error
+    ? createMutation.error instanceof ORPCError
+      ? failures[createMutation.error.code] ?? genericFailure
+      : genericFailure
+    : null
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -68,31 +73,23 @@ export function AddOrganizationBlockDialog({
   const { register, handleSubmit, formState, reset } = form
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
-      setFailure(null)
+    if (!next && !createMutation.isPending) {
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function addBlock(values: FormValues) {
-    setFailure(null)
     try {
-      await client.rpc.organization.blocks.create({
+      await createMutation.mutateAsync({
         organizationSlug,
         ...values,
       })
       reset(defaults)
       onOpenChange(false)
       onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (failures[error.code] ??
-              "The block could not be imported. Check its descriptor and try again.")
-          : "The block could not be imported. Check its descriptor and try again."
-      )
-    }
+    } catch { /* Mutation error is rendered from createMutation.error. */ }
   }
 
   return (
@@ -188,12 +185,12 @@ export function AddOrganizationBlockDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Importing…" : "Import block"}
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Importing…" : "Import block"}
             </Button>
           </DialogFooter>
         </form>

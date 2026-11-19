@@ -1,8 +1,7 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useSubmitOrganizationBlock } from "@/hooks/use-resource-mutations"
 import { useState } from "react"
-import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,
@@ -29,37 +28,27 @@ export function SubmitOrganizationBlockDialog({
   onSubmitted: () => void
 }) {
   const [ref, setRef] = useState("HEAD")
-  const [submitting, setSubmitting] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
+  const submitMutation = useSubmitOrganizationBlock()
+  const failure = submitMutation.error ? "The revision could not be submitted. Check that the repository contains a valid descriptor and try again." : null
 
   function handleOpenChange(next: boolean) {
-    if (!next && !submitting) {
+    if (!next && !submitMutation.isPending) {
       setRef("HEAD")
-      setFailure(null)
+      submitMutation.reset()
     }
     onOpenChange(next)
   }
 
   async function submit() {
-    setFailure(null)
-    setSubmitting(true)
     try {
-      await client.rpc.organization.blocks.submit({
+      await submitMutation.mutateAsync({
         organizationSlug,
         blockId: block.id,
         ref: ref.trim() || "HEAD",
       })
       onOpenChange(false)
       onSubmitted()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? "The revision could not be submitted. Check that the repository contains a valid descriptor and try again."
-          : "The revision could not be submitted. Try again."
-      )
-    } finally {
-      setSubmitting(false)
-    }
+    } catch { /* The mutation error is rendered below. */ }
   }
 
   return (
@@ -107,16 +96,16 @@ export function SubmitOrganizationBlockDialog({
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={submitting}
+            disabled={submitMutation.isPending}
           >
             Cancel
           </Button>
           <Button
             type="button"
             onClick={() => void submit()}
-            disabled={!ref.trim() || submitting}
+            disabled={!ref.trim() || submitMutation.isPending}
           >
-            {submitting ? "Submitting…" : "Submit for review"}
+            {submitMutation.isPending ? "Submitting…" : "Submit for review"}
           </Button>
         </DialogFooter>
       </DialogContent>

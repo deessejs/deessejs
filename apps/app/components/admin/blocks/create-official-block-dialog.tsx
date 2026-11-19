@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useCreateOfficialBlock } from "@/hooks/use-admin-review-mutations"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
@@ -46,7 +45,10 @@ export function CreateOfficialBlockDialog({
   onOpenChange: (open: boolean) => void
   onCreated: () => void
 }) {
-  const [failure, setFailure] = useState<string | null>(null)
+  const createMutation = useCreateOfficialBlock()
+  const failure = createMutation.error instanceof ORPCError && createMutation.error.code === "CONFLICT"
+    ? "An official block with this slug already exists."
+    : createMutation.error ? "The official block could not be published. Check its GitHub source and descriptor, then try again." : null
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
@@ -54,27 +56,20 @@ export function CreateOfficialBlockDialog({
   const { register, handleSubmit, formState, reset } = form
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
-      setFailure(null)
+    if (!next && !createMutation.isPending) {
+      createMutation.reset()
       reset(defaults)
     }
     onOpenChange(next)
   }
 
   async function create(values: FormValues) {
-    setFailure(null)
     try {
-      await client.rpc.admin.blocks.createOfficial(values)
+      await createMutation.mutateAsync(values)
       reset(defaults)
       onOpenChange(false)
       onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError && error.code === "CONFLICT"
-          ? "An official block with this slug already exists."
-          : "The official block could not be published. Check its GitHub source and descriptor, then try again."
-      )
-    }
+    } catch { /* Mutation error is rendered below. */ }
   }
 
   return (
@@ -171,12 +166,12 @@ export function CreateOfficialBlockDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+          disabled={createMutation.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending
                 ? "Publishing…"
                 : "Publish official block"}
             </Button>

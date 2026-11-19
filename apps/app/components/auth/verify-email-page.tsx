@@ -1,7 +1,7 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { Suspense, useState } from "react"
+import { useSendVerificationEmail } from "@/hooks/use-account-actions"
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
 import { MailIcon } from "lucide-react"
@@ -16,20 +16,16 @@ export function VerifyEmailPage() {
 
 function VerifyEmailPageContent() {
   const searchParams = useSearchParams()
-  const [resent, setResent] = useState(false)
-  const [resending, setResending] = useState(false)
+  const resend = useSendVerificationEmail()
 
-  async function handleResend() {
-    setResending(true)
+  function handleResend() {
     const email = searchParams.get("email")
     if (email) {
-      await client.auth.sendVerificationEmail({
+      resend.mutate({
         email,
         callbackURL: searchParams.get("redirectTo") ?? "/home",
       })
     }
-    setResending(false)
-    setResent(true)
   }
 
   return (
@@ -57,10 +53,10 @@ function VerifyEmailPageContent() {
           variant="outline"
           size="sm"
           className="self-center"
-          disabled={resending}
+          disabled={resend.isPending}
           onClick={handleResend}
         >
-          {resending ? "Sending…" : resent ? "Email sent" : "Resend verification email"}
+          {resend.isPending ? "Sending…" : resend.isSuccess ? "Email sent" : "Resend verification email"}
         </Button>
       </div>
     </div>

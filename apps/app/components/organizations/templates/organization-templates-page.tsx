@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useWithdrawOrganizationTemplate } from "@/hooks/use-resource-mutations"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -48,23 +48,21 @@ export function OrganizationTemplatesPage({
   const [publicationDialogOpen, setPublicationDialogOpen] = useState(false)
   const [selectedTemplate, setSelectedTemplate] =
     useState<OrganizationTemplate | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const withdrawMutation = useWithdrawOrganizationTemplate()
+  const actionError = withdrawMutation.error instanceof ORPCError
+    ? "The request is no longer pending. Refresh and try again."
+    : withdrawMutation.error
+      ? "The request could not be withdrawn. Try again."
+      : null
 
   async function withdrawPublication(templateId: string) {
-    setActionError(null)
     try {
-      await client.rpc.organization.templates.withdraw({
+      await withdrawMutation.mutateAsync({
         organizationSlug,
         templateId,
       })
       router.refresh()
-    } catch (error) {
-      setActionError(
-        error instanceof ORPCError
-          ? "The request is no longer pending. Refresh and try again."
-          : "The request could not be withdrawn. Try again."
-      )
-    }
+    } catch { /* Mutation error is rendered above the table. */ }
   }
 
   return (
@@ -88,6 +86,7 @@ export function OrganizationTemplatesPage({
         onWithdrawPublication={(templateId) =>
           void withdrawPublication(templateId)
         }
+        withdrawingTemplateId={withdrawMutation.isPending ? withdrawMutation.variables?.templateId ?? null : null}
         actionError={actionError}
       />
       {canManage && (
@@ -148,6 +147,7 @@ function TemplateContent({
   onAdd,
   onRequestPublication,
   onWithdrawPublication,
+  withdrawingTemplateId,
   actionError,
 }: {
   organizationSlug: string
@@ -158,6 +158,7 @@ function TemplateContent({
   onAdd: () => void
   onRequestPublication: (template: OrganizationTemplate) => void
   onWithdrawPublication: (templateId: string) => void
+  withdrawingTemplateId: string | null
   actionError: string | null
 }) {
   if (fetchError) {
@@ -183,6 +184,7 @@ function TemplateContent({
       canManage={canManage}
       onRequestPublication={onRequestPublication}
       onWithdrawPublication={onWithdrawPublication}
+      withdrawingTemplateId={withdrawingTemplateId}
       actionError={actionError}
     />
   )
@@ -220,6 +222,7 @@ function OrganizationTemplateTable({
   canManage,
   onRequestPublication,
   onWithdrawPublication,
+  withdrawingTemplateId,
   actionError,
 }: {
   organizationSlug: string
@@ -228,6 +231,7 @@ function OrganizationTemplateTable({
   canManage: boolean
   onRequestPublication: (template: OrganizationTemplate) => void
   onWithdrawPublication: (templateId: string) => void
+  withdrawingTemplateId: string | null
   actionError: string | null
 }) {
   const [query, setQuery] = useState("")
@@ -303,6 +307,7 @@ function OrganizationTemplateTable({
               canManage={canManage}
               onRequestPublication={onRequestPublication}
               onWithdrawPublication={onWithdrawPublication}
+              withdrawingTemplateId={withdrawingTemplateId}
             />
           </table>
         </div>
@@ -317,12 +322,14 @@ function TemplateRows({
   canManage,
   onRequestPublication,
   onWithdrawPublication,
+  withdrawingTemplateId,
 }: {
   templates: OrganizationTemplate[]
   organizationSlug: string
   canManage: boolean
   onRequestPublication: (template: OrganizationTemplate) => void
   onWithdrawPublication: (templateId: string) => void
+  withdrawingTemplateId: string | null
 }) {
   return (
     <tbody className="divide-y">
@@ -380,6 +387,7 @@ function TemplateRows({
               canManage={canManage}
               onRequest={() => onRequestPublication(template)}
               onWithdraw={() => onWithdrawPublication(template.id)}
+              isWithdrawing={withdrawingTemplateId === template.id}
             />
           </td>
         </tr>
@@ -393,11 +401,13 @@ function TemplatePublicationStatus({
   canManage,
   onRequest,
   onWithdraw,
+  isWithdrawing,
 }: {
   template: OrganizationTemplate
   canManage: boolean
   onRequest: () => void
   onWithdraw: () => void
+  isWithdrawing: boolean
 }) {
   const publication = template.publication
   const isCurrent = template.currentlyPublished
@@ -407,8 +417,8 @@ function TemplatePublicationStatus({
         {isCurrent ? <Badge>Published</Badge> : null}
         <Badge variant="secondary">In review</Badge>
         {canManage ? (
-          <Button size="sm" variant="outline" onClick={onWithdraw}>
-            Withdraw
+          <Button size="sm" variant="outline" onClick={onWithdraw} disabled={isWithdrawing} aria-busy={isWithdrawing}>
+            {isWithdrawing ? "Withdrawing…" : "Withdraw"}
           </Button>
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
+import { useEmailSignup } from "@/hooks/use-auth-form-mutations"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
@@ -16,6 +16,7 @@ export function SignupForm({
 	redirectTo = "/home",
 }: { redirectTo?: string } = {}) {
 	const router = useRouter()
+	const signup = useEmailSignup()
 
 	const form = useForm({
 		defaultValues: {
@@ -38,23 +39,18 @@ export function SignupForm({
 			onSubmit: signupSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await client.auth.signUp.email(
-				{
+			try {
+				await signup.mutateAsync({
 					email: value.email,
 					password: value.password,
 					name: value.name,
-				},
-				{
 					callbackURL: redirectTo,
-					onSuccess: () => {
-						const params = new URLSearchParams({ email: value.email })
-						if (redirectTo !== "/home") params.set("redirectTo", redirectTo)
-						router.push(`/verify-email?${params.toString()}`)
-					},
-				}
-			)
-			if (error) {
-				toast.error(error.message ?? "Could not create account")
+				})
+				const params = new URLSearchParams({ email: value.email })
+				if (redirectTo !== "/home") params.set("redirectTo", redirectTo)
+				router.push(`/verify-email?${params.toString()}`)
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Could not create account")
 			}
 		},
 	})
@@ -127,15 +123,15 @@ export function SignupForm({
 				</p>
 
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+					selector={(state) => state.canSubmit}
 				>
-					{([canSubmit, isSubmitting]) => (
+					{(canSubmit) => (
 						<Button
 							type="submit"
-							disabled={!canSubmit}
-							aria-busy={isSubmitting}
+							disabled={!canSubmit || signup.isPending}
+							aria-busy={signup.isPending}
 						>
-							{isSubmitting ? "Creating account…" : "Create account"}
+							{signup.isPending ? "Creating account…" : "Create account"}
 						</Button>
 					)}
 				</form.Subscribe>

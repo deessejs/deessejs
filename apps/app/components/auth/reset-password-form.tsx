@@ -1,7 +1,6 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
+import { useResetPassword } from "@/hooks/use-auth-form-mutations"
 import Link from "next/link"
 import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
@@ -14,7 +13,7 @@ interface ResetPasswordFormProps {
 }
 
 export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
-	const [done, setDone] = useState(false)
+	const resetPassword = useResetPassword(token)
 
 	const form = useForm({
 		defaultValues: {
@@ -25,22 +24,15 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 			onSubmit: resetPasswordSchema,
 		},
 		onSubmit: async ({ value }) => {
-			const { error } = await client.auth.resetPassword(
-				{ newPassword: value.password },
-				{
-					query: { token },
-					onSuccess: () => {
-						setDone(true)
-					},
-				}
-			)
-			if (error) {
-				toast.error(error.message ?? "Could not reset password")
+			try {
+				await resetPassword.mutateAsync(value.password)
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Could not reset password")
 			}
 		},
 	})
 
-	if (done) {
+	if (resetPassword.isSuccess) {
 		return (
 			<div className="flex flex-col gap-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
 				<p className="font-medium">Password updated</p>
@@ -86,15 +78,15 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 				</form.Field>
 
 				<form.Subscribe
-					selector={(state) => [state.canSubmit, state.isSubmitting] as const}
+					selector={(state) => state.canSubmit}
 				>
-					{([canSubmit, isSubmitting]) => (
+					{(canSubmit) => (
 						<Button
 							type="submit"
-							disabled={!canSubmit}
-							aria-busy={isSubmitting}
+							disabled={!canSubmit || resetPassword.isPending}
+							aria-busy={resetPassword.isPending}
 						>
-							{isSubmitting ? "Resetting…" : "Reset password"}
+							{resetPassword.isPending ? "Resetting…" : "Reset password"}
 						</Button>
 					)}
 				</form.Subscribe>

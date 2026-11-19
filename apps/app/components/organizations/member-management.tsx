@@ -1,43 +1,11 @@
 "use client"
 
-import { client } from "@/lib/client"
 import { useState, type FormEvent } from "react"
-import { queryOptions, useQuery } from "@tanstack/react-query"
+import { useMemberManagement } from "@/hooks/use-member-management"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
-
-type PendingInvitation = Awaited<
-  ReturnType<typeof client.rpc.organization.pendingInvitations>
->[number]
-
-function memberManagementQueryOptions(
-  organizationId: string,
-  slug: string,
-  canManage: boolean
-) {
-  return queryOptions({
-    queryKey: ["organization-members", organizationId, slug, canManage],
-    queryFn: async () => {
-      const [memberResult, invitationResult] = await Promise.all([
-        client.auth.organization.listMembers({
-          query: { organizationId, limit: 100, offset: 0 },
-        }),
-        canManage
-          ? client.rpc.organization.pendingInvitations({ slug })
-          : Promise.resolve([]),
-      ])
-      if (memberResult.error) {
-        throw new Error(memberResult.error.message ?? "Could not load members.")
-      }
-      return {
-        members: memberResult.data?.members ?? [],
-        invitations: invitationResult,
-      }
-    },
-  })
-}
 
 export function MemberManagement({
   organizationId,
@@ -49,90 +17,16 @@ export function MemberManagement({
   canManage: boolean
 }) {
   const [email, setEmail] = useState("")
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [failure, setFailure] = useState<string | null>(null)
-
-  const query = useQuery(
-    memberManagementQueryOptions(organizationId, slug, canManage)
-  )
+  const { query, invite, cancel } = useMemberManagement(organizationId, slug, canManage)
   const members = query.data?.members ?? []
   const invitations = query.data?.invitations ?? []
-  const displayedFailure = failure ?? query.error?.message ?? null
+  const displayedFailure = query.error?.message ?? invite.error?.message ?? cancel.error?.message
 
-  async function invite(event: FormEvent<HTMLFormElement>) {
+  function handleInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const address = email.trim()
     if (!address) return
-    setSubmitting(true)
-    setFailure(null)
-    try {
-      const { error } = await client.auth.organization.inviteMember({
-        email: address,
-        role: "member",
-        organizationId,
-      })
-      if (error) {
-        setFailure(error.message ?? "The invitation could not be sent.")
-        return
-      }
-      setEmail("")
-      toast.success("Invitation sent")
-      await query.refetch()
-    } catch (error) {
-      setFailure(
-        error instanceof Error ? error.message : "The invitation could not be sent."
-      )
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function cancelInvitation(invitationId: string) {
-    setBusyId(invitationId)
-    setFailure(null)
-    try {
-      const { error } = await client.auth.organization.cancelInvitation({
-        invitationId,
-      })
-      if (error) {
-        setFailure(error.message ?? "The invitation could not be canceled.")
-        return
-      }
-      toast.success("Invitation canceled")
-      await query.refetch()
-    } catch (error) {
-      setFailure(
-        error instanceof Error ? error.message : "The invitation could not be canceled."
-      )
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function resendInvitation(invitation: PendingInvitation) {
-    setBusyId(invitation.id)
-    setFailure(null)
-    try {
-      const { error } = await client.auth.organization.inviteMember({
-        email: invitation.email,
-        role: "member",
-        organizationId,
-        resend: true,
-      })
-      if (error) {
-        setFailure(error.message ?? "The invitation could not be resent.")
-        return
-      }
-      toast.success("Invitation resent")
-      await query.refetch()
-    } catch (error) {
-      setFailure(
-        error instanceof Error ? error.message : "The invitation could not be resent."
-      )
-    } finally {
-      setBusyId(null)
-    }
+    invite.mutate({ email: address }, { onSuccess: () => { setEmail(""); toast.success("Invitation sent") } })
   }
 
   return (
@@ -156,7 +50,7 @@ export function MemberManagement({
           <p className="mt-1 text-sm text-muted-foreground">
             They will join as a member after accepting the invitation.
           </p>
-          <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={invite}>
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={handleInvite}>
             <div className="flex flex-1 flex-col gap-2">
               <Label htmlFor="member-email">Email address</Label>
               <Input
@@ -169,8 +63,8 @@ export function MemberManagement({
                 placeholder="name@example.com"
               />
             </div>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Sending…" : "Send invitation"}
+            <Button type="submit" disabled={invite.isPending}>
+              {invite.isPending ? "Sending…" : "Send invitation"}
             </Button>
           </form>
         </section>
@@ -232,8 +126,8 @@ export function MemberManagement({
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={busyId === invitation.id}
-                        onClick={() => void resendInvitation(invitation)}
+                        disabled={invite.isPending || cancel.isPending}
+                        onClick={() => invite.mutate({ email: invitation.email, resend: true }, { onSuccess: () => toast.success("Invitation resent") })}
                       >
                         Resend
                       </Button>
@@ -241,8 +135,8 @@ export function MemberManagement({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        disabled={busyId === invitation.id}
-                        onClick={() => void cancelInvitation(invitation.id)}
+                        disabled={invite.isPending || cancel.isPending}
+                        onClick={() => cancel.mutate(invitation.id, { onSuccess: () => toast.success("Invitation canceled") })}
                       >
                         Cancel
                       </Button>

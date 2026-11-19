@@ -64,6 +64,7 @@ export type TemplateCardProps = {
  */
 export const TemplateCard = ({ template, className }: TemplateCardProps) => {
   const isCommunity = isCommunityTemplate(template)
+  const isPro = template.labels.some((label) => label.toLowerCase() === "pro")
   return (
     <Card
       className={cn(
@@ -111,6 +112,7 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
           <div className="flex items-start justify-between gap-3">
             <h2 className="!m-0 text-heading-20 tracking-tight text-balance lg:text-heading-24">
               {template.name}
+              {isPro ? <Badge variant="secondary">Pro</Badge> : null}
             </h2>
             <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
               {isCommunity ? (
