@@ -8,7 +8,7 @@ const variables: React.CSSProperties = cssVariables({
 })
 
 const invalidVariables: React.CSSProperties = {
-  // @ts-expect-error
+  // @ts-expect-error Unprefixed custom property keys are invalid.
   custom: "value",
 }
 
