@@ -66,7 +66,7 @@ const runCommand = async (
     return {
       exitCode: typeof result.code === "number" ? result.code : 1,
       stdout: result.stdout ?? "",
-      stderr: result.stderr ?? result.message,
+      stderr: result.stderr || result.message,
     }
   }
 }
@@ -239,6 +239,7 @@ describe.skipIf(process.platform !== "linux")(
         ).toBe(false)
         const env = {
           ...process.env,
+          HOME: join(workDirectory, "home"),
           DEESSEJS_INIT_FIXTURE_ARCHIVE: templateArchivePath,
           DEESSEJS_INIT_FIXTURE_DESCRIPTOR: join(
             templateFixtureDirectory,
@@ -255,10 +256,52 @@ describe.skipIf(process.platform !== "linux")(
             .join(" "),
           PATH: `${fixtureBinDirectory}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`,
         }
+        mkdirSync(env.HOME, { recursive: true })
 
+        const traceRequests = (): string[] =>
+          existsSync(fetchTracePath)
+            ? readFileSync(fetchTracePath, "utf8").trim().split("\n")
+            : []
+        const requestPaths = (): string[] =>
+          traceRequests().map((request) => request.split(" ")[1] ?? "")
+        const beforeColdList = requestPaths().length
+        const coldList = await runCommand(
+          cliExecutable,
+          ["templates", "list", "--json"],
+          {
+            cwd: consumerDirectory,
+            env,
+            timeout: 2 * 60_000,
+          }
+        )
+        expect(coldList.exitCode, coldList.stderr).toBe(0)
+        expect(
+          requestPaths()
+            .slice(beforeColdList)
+            .filter((path) => path.includes("/api/v1/rpc/templates/")),
+          `${coldList.stdout}\n${coldList.stderr}\n${traceRequests().join("\n")}`
+        ).toEqual([
+          "https://app.deessejs.com/api/v1/rpc/templates/list",
+          "https://app.deessejs.com/api/v1/rpc/templates/community/list",
+        ])
+        const beforeWarmList = requestPaths().length
+        const warmList = await runCommand(
+          cliExecutable,
+          ["templates", "list", "--json"],
+          {
+            cwd: consumerDirectory,
+            env,
+            timeout: 2 * 60_000,
+          }
+        )
+        expect(warmList.exitCode, warmList.stderr).toBe(0)
+        expect(requestPaths().slice(beforeWarmList)).toEqual([])
+
+        const requestsBeforeInitialInit = traceRequests().length
         const noInstallResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -287,10 +330,22 @@ describe.skipIf(process.platform !== "linux")(
           ref: expectedRevision,
           installed: false,
         })
-
+        const initialInitRequests = traceRequests().slice(
+          requestsBeforeInitialInit
+        )
+        expect(
+          initialInitRequests
+            .filter((request) =>
+              request.startsWith("POST https://app.deessejs.com")
+            )
+            .map((request) => request.split(" ")[1])
+        ).toEqual(["https://app.deessejs.com/api/v1/rpc/templates/detail"])
+        const requestsBeforeCatalogInfo = readFileSync(fetchTracePath, "utf8")
+          .trim()
+          .split("\n").length
         const catalogInfoResult = await runCommand(
           cliExecutable,
-          ["info", "init-regression-fixture", "--verbose"],
+          ["templates", "info", "init-regression-fixture", "--verbose"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(
@@ -301,21 +356,50 @@ describe.skipIf(process.platform !== "linux")(
         expect(catalogInfoResult.stdout).toContain("Template descriptor")
         expect(catalogInfoResult.stdout).toContain("template:app")
         expect(catalogInfoResult.stdout).toContain("1.0.0")
+        expect(
+          readFileSync(fetchTracePath, "utf8")
+            .trim()
+            .split("\n")
+            .slice(requestsBeforeCatalogInfo)
+            .filter((request) =>
+              request.startsWith("POST https://app.deessejs.com")
+            )
+            .map((request) => request.split(" ")[1])
+        ).toEqual(["https://app.deessejs.com/api/v1/rpc/templates/detail"])
 
+        const requestsBeforeCatalogJsonInfo = readFileSync(
+          fetchTracePath,
+          "utf8"
+        )
+          .trim()
+          .split("\n").length
         const catalogJsonInfoResult = await runCommand(
           cliExecutable,
-          ["info", "init-regression-fixture", "--json"],
+          ["templates", "info", "init-regression-fixture", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(catalogJsonInfoResult.exitCode).toBe(0)
         expect(catalogJsonInfoResult.stdout).toContain('"descriptor"')
+        expect(
+          readFileSync(fetchTracePath, "utf8")
+            .trim()
+            .split("\n")
+            .slice(requestsBeforeCatalogJsonInfo)
+            .filter((request) =>
+              request.startsWith("POST https://app.deessejs.com")
+            )
+            .map((request) => request.split(" ")[1])
+        ).toEqual([])
         expect(catalogInfoResult.stdout).toContain(
-          "Install: deessejs init init-regression-fixture"
+          "Install: deessejs templates init init-regression-fixture"
         )
 
+        const requestsBeforeUnknownInfo = readFileSync(fetchTracePath, "utf8")
+          .trim()
+          .split("\n").length
         const unknownCatalogInfoResult = await runCommand(
           cliExecutable,
-          ["info", "test", "--json"],
+          ["templates", "info", "test", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(unknownCatalogInfoResult.exitCode).not.toBe(0)
@@ -327,10 +411,22 @@ describe.skipIf(process.platform !== "linux")(
         expect(unknownCatalogInfo.message).toContain(
           'template "test" not found'
         )
+        const unknownInfoRequests = readFileSync(fetchTracePath, "utf8")
+          .trim()
+          .split("\n")
+          .slice(requestsBeforeUnknownInfo)
+          .filter((request) =>
+            request.startsWith("POST https://app.deessejs.com")
+          )
+          .map((request) => request.split(" ")[1])
+        expect(unknownInfoRequests).toEqual([
+          "https://app.deessejs.com/api/v1/rpc/templates/detail",
+        ])
 
         const directInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/init-regression-fixture",
             "--json",
@@ -357,6 +453,7 @@ describe.skipIf(process.platform !== "linux")(
         const directHumanInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/init-regression-fixture",
             "--ref",
@@ -406,6 +503,7 @@ describe.skipIf(process.platform !== "linux")(
           const result = await runCommand(
             cliExecutable,
             [
+              "templates",
               "init",
               "init-regression-fixture",
               "--dir",
@@ -440,6 +538,7 @@ describe.skipIf(process.platform !== "linux")(
         const installResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -470,6 +569,7 @@ describe.skipIf(process.platform !== "linux")(
         const quietResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -491,6 +591,7 @@ describe.skipIf(process.platform !== "linux")(
         const noInstallVerboseResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -529,6 +630,7 @@ describe.skipIf(process.platform !== "linux")(
         const noInstallJsonResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -553,6 +655,7 @@ describe.skipIf(process.platform !== "linux")(
         const verboseResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -576,6 +679,7 @@ describe.skipIf(process.platform !== "linux")(
         const verboseJsonResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "init-regression-fixture",
             "--dir",
@@ -599,6 +703,7 @@ describe.skipIf(process.platform !== "linux")(
         const directResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "https://github.com/deessejs/init-regression-fixture",
             "--dir",
@@ -626,6 +731,7 @@ describe.skipIf(process.platform !== "linux")(
         const unsupportedCatalogResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "legacy-starter",
             "--dir",
@@ -646,7 +752,7 @@ describe.skipIf(process.platform !== "linux")(
 
         const unsupportedInfoResult = await runCommand(
           cliExecutable,
-          ["info", "legacy-starter", "--json"],
+          ["templates", "info", "legacy-starter", "--json"],
           { cwd: consumerDirectory, env, timeout: 2 * 60_000 }
         )
         expect(unsupportedInfoResult.exitCode).not.toBe(0)
@@ -659,6 +765,7 @@ describe.skipIf(process.platform !== "linux")(
         const missingRepositoryInfoResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "info",
             "https://github.com/deessejs/missing-template-repository",
             "--json",
@@ -675,6 +782,7 @@ describe.skipIf(process.platform !== "linux")(
         const unsupportedUrlResult = await runCommand(
           cliExecutable,
           [
+            "templates",
             "init",
             "https://github.com/deessejs/legacy-template",
             "--dir",
@@ -691,75 +799,69 @@ describe.skipIf(process.platform !== "linux")(
         })
         expect(unsupportedUrlResult.stdout).toContain("deesse-template.json")
 
-        const requests = readFileSync(fetchTracePath, "utf8").trim().split("\n")
-        expect(requests).toContain(
-          "GET https://app.deessejs.com/api/v1/version"
-        )
-        expect(
-          requests.filter((request) =>
-            request.startsWith("GET https://app.deessejs.com/api/v1/version")
-          )
-        ).toHaveLength(12)
-        expect(requests).toContain(
-          "POST https://app.deessejs.com/api/v1/rpc/templates/list"
-        )
-        expect(requests).toContain(
+        const allRequests = readFileSync(fetchTracePath, "utf8")
+          .trim()
+          .split("\n")
+        expect(allRequests).toContain(
           "GET https://api.github.com/repos/deessejs/init-regression-fixture"
         )
-        expect(requests).toContain(
+        expect(allRequests).toContain(
           `GET https://api.github.com/repos/deessejs/init-regression-fixture/commits/main`
         )
-        expect(requests).toContain(
+        expect(allRequests).toContain(
           `GET https://api.github.com/repos/deessejs/init-regression-fixture/tarball/${expectedRevision}`
         )
         expect(
-          requests.some(
+          allRequests.some(
             (request) =>
               request.includes("/git/trees/") || request.includes("/git/blobs/")
           )
         ).toBe(false)
         expect(
-          requests.filter((request) => request.includes("/tarball/")).length
+          allRequests.filter((request) => request.includes("/tarball/")).length
         ).toBe(14)
         expect(
-          requests.filter((request) =>
-            request.includes(
+          allRequests.filter((request) =>
+            request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/list"
             )
-          ).length
-        ).toBe(16)
+          ),
+          allRequests
+            .filter((request) => request.includes("/rpc/templates/"))
+            .join("\n")
+        ).toHaveLength(1)
         expect(
-          requests.filter((request) =>
-            request.includes(
+          allRequests.filter((request) =>
+            request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/community/list"
             )
-          ).length
-        ).toBe(16)
+          )
+        ).toHaveLength(1)
         expect(
-          requests.filter((request) =>
+          allRequests.filter((request) =>
             request.startsWith(
               "POST https://app.deessejs.com/api/v1/rpc/templates/resolve"
             )
           )
-        ).toHaveLength(4)
-        expect(requests).toContain(
+        ).toHaveLength(0)
+        expect(allRequests).toContain(
           `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
         )
         expect(
-          requests.filter((request) =>
+          allRequests.filter((request) =>
             request.includes(
               `GET https://api.github.com/repos/deessejs/legacy-template/tarball/${missingDescriptorRevision}`
             )
           )
         ).toHaveLength(2)
         expect(
-          requests.filter((request) =>
+          allRequests.filter((request) =>
             request.startsWith(
               "GET https://api.github.com/repos/deessejs/init-regression-fixture/contents/deesse-template.json"
             )
           )
         ).toHaveLength(4)
-        expect(requests).toContain(
+        expect(allRequests).toContain(
           "GET https://api.github.com/repos/deessejs/legacy-template/contents/deesse-template.json"
         )
       },

@@ -4,7 +4,7 @@ This repository includes a pre-configured development environment for GitHub Cod
 
 ## What's Included
 
-- **Node.js 22** - Latest LTS runtime
+- **Node.js 24** - Repository standard runtime
 - **PostgreSQL 16** - Pre-installed and initialized
 - **pnpm** - Fast, disk space efficient package manager
 - **VS Code Extensions** - ESLint, Prettier, Prisma, Tailwind CSS

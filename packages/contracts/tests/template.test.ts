@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { TemplateV1, TemplatesListResponseV1 } from "../src/v1/index.js"
+import {
+  TemplateV1,
+  TemplatesListResponseV1,
+} from "../src/v1/index.js"
 
 const validTemplate = {
   slug: "saas-starter",
@@ -26,9 +29,7 @@ describe("TemplateV1", () => {
       cloneUrl: "https://github.com/deessejs/deessejs.git",
     })
     expect(result.image).toBe("https://cdn.example.com/saas.png")
-    expect(result.cloneUrl).toBe(
-      "https://github.com/deessejs/deessejs.git",
-    )
+    expect(result.cloneUrl).toBe("https://github.com/deessejs/deessejs.git")
   })
 
   it("rejects a missing slug", () => {
@@ -39,18 +40,25 @@ describe("TemplateV1", () => {
 
   it("rejects a non-string label entry", () => {
     expect(() =>
-      TemplateV1.parse({ ...validTemplate, labels: ["ok", 42] }),
+      TemplateV1.parse({ ...validTemplate, labels: ["ok", 42] })
     ).toThrow()
   })
 
   it("rejects a non-array labels", () => {
     expect(() =>
-      TemplateV1.parse({ ...validTemplate, labels: "nextjs" }),
+      TemplateV1.parse({ ...validTemplate, labels: "nextjs" })
     ).toThrow()
   })
 })
 
 describe("TemplatesListResponseV1", () => {
+  it("omits README from the compact V1 list payload", () => {
+    const result = TemplatesListResponseV1.parse({
+      templates: [{ ...validTemplate, readme: "# Detail only" }],
+    })
+    expect(result.templates[0]).not.toHaveProperty("readme")
+  })
+
   it("parses the current hand-curated registry shape", () => {
     const result = TemplatesListResponseV1.parse({
       templates: [
@@ -173,7 +181,7 @@ describe("TemplatesListResponseV1", () => {
 
   it("accepts an empty list", () => {
     expect(TemplatesListResponseV1.parse({ templates: [] }).templates).toEqual(
-      [],
+      []
     )
   })
 
@@ -183,7 +191,7 @@ describe("TemplatesListResponseV1", () => {
 
   it("rejects a non-array templates value", () => {
     expect(() =>
-      TemplatesListResponseV1.parse({ templates: "not-an-array" }),
+      TemplatesListResponseV1.parse({ templates: "not-an-array" })
     ).toThrow()
   })
 })

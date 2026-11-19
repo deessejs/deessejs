@@ -7,7 +7,10 @@ import type { CatalogTemplate } from "@/lib/templates/catalog"
 import { Button } from "@workspace/ui/components/button"
 
 import { FlickeringGrid } from "@/components/marketing/flickering-grid"
-import { liveCache, orpc } from "@/lib/orpc"
+import {
+  getCommunityTemplateCatalog,
+  getPlatformTemplateCatalog,
+} from "@/lib/template-catalog-cache"
 import { filterTemplates, resolveTemplateFilter } from "@/lib/template-filters"
 import { SUBMIT_TEMPLATE_URL } from "@/lib/templates/urls"
 import { CategorySidebar } from "@/components/templates/category-sidebar"
@@ -22,12 +25,10 @@ export const metadata: Metadata = {
 /**
  * Index page at /templates.
  *
- * RSC: fetches the catalog server-side using `liveCache`
- * (revalidate: 0, tag `templates:live`) so a transient failure cannot
- * poison the Next.js data cache under a long-lived tag. On a runtime
- * error the request propagates to the segment's `error.tsx` client
- * boundary, which already renders a "Try again" state. We deliberately
- * do NOT swallow errors as `[]` here — that was the source of the
+ * RSC: fetches both public catalogs through the persistent web cache.
+ * Failed upstream requests are not cached; runtime errors propagate to
+ * the segment's `error.tsx` client boundary, which renders a retry state.
+ * We deliberately do NOT swallow errors as `[]` here, which was the source of the
  * 10-minute pinned empty-state in issue #81.
  *
  * During `next build` (`NEXT_PHASE === "phase-production-build"`) the
@@ -65,8 +66,8 @@ const TemplatesIndexPage = async ({
   let templates: CatalogTemplate[] = []
   try {
     const [result, communityResult] = await Promise.all([
-      orpc.templates.list(undefined, liveCache),
-      orpc.templates.community.list(undefined, liveCache),
+      getPlatformTemplateCatalog(),
+      getCommunityTemplateCatalog(),
     ])
     // Defensive: `result.templates` may be undefined if the upstream
     // returns a malformed payload (the oRPC route handler already

@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       ],
     }
   },
-  transpilePackages: ["@workspace/ui", "@workspace/api", "@workspace/auth", "@workspace/utils"],
+  transpilePackages: ["@workspace/ui", "@workspace/api", "@workspace/auth", "@workspace/utils", "@workspace/content"],
   images: {
     remotePatterns: [
       {
