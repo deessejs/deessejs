@@ -25,7 +25,13 @@ const runNamespacedCommand = (command: Command): Promise<void> =>
 program
   .name("deessejs")
   .description("CLI for the DeesseJS template registry and blocks")
-  .version(readPackageVersion())
+  .version(readPackageVersion(), "-V, --version")
+  .option("-v", "output the version number")
+
+program.on("option:v", () => {
+  process.stdout.write(`${readPackageVersion()}\n`)
+  process.exit(0)
+})
 
 const templatesCommand = new Command("templates").description(
   "Browse and create projects from templates"
