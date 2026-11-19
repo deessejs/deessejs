@@ -26,7 +26,7 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.25
-  "@better-auth/stripe": 1.7.7
+  "@better-auth/stripe": ^1.7.25
   "@better-auth/mcp": ^1.7.25
   "@better-auth/cimd": ^1.7.25
   "@better-auth/oauth-provider": ^1.7.25
@@ -74,8 +74,8 @@ catalog:
 
   # Agent runtime (apps/agent, Vercel eve + MiniMax provider)
   ai: ^7.0.106
-  auth: ^1.7.7
-  better-auth: ^1.7.7
+  auth: ^1.7.25
+  better-auth: ^1.7.25
   cmdk: ^1.1.1
   cross-spawn: ^7.0.6
 
