@@ -32,7 +32,7 @@
         "NEXT_PUBLIC_VERCEL_ANALYTICS_ID"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env", ".env.local", ".env.production", ".env.production.local"],
-      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**", "storybook-static/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", ".content-collections/**", "dist/**", "storybook-static/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
