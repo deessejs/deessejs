@@ -174,8 +174,7 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 
 ## Agent tooling
 
-- **Skills** live in `.agents/skills/` and `.claude/skills/`. Read the relevant `SKILL.md` before using a repository-owned skill.
-- **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
+- **Repository skills** live in `.agents/skills/`. Read the relevant `SKILL.md` before using one.
 - **Web research** follows the protocol in "Where your facts come from".
 
 ## Where the documentation lives
