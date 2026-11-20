@@ -17,7 +17,6 @@ export const createProductMcpHandler = (operations: ProductMcpOperations) =>
           inputSchema: z.object({}),
         },
         async () => ({
-          resultType: "content",
           content: [
             {
               type: "text",
