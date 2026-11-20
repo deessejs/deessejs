@@ -21,7 +21,7 @@ import {
 import {
   organizationSubscriptionsQueryKey,
   useOrganizationSubscriptions,
-} from "@/lib/organization-billing-query"
+} from "@/hooks/organizations/use-organization-subscriptions"
 import { organizationBillingState } from "@/lib/organization-billing-state"
 import { workspaceBillingSettingsPath } from "@/lib/workspace-paths"
 

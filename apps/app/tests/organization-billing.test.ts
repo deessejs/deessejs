@@ -17,7 +17,7 @@ import {
 import {
   organizationSubscriptionsQueryKey,
   organizationSubscriptionsQueryOptions,
-} from "@/lib/organization-billing-query"
+} from "@/hooks/organizations/use-organization-subscriptions"
 import { organizationBillingState } from "@/lib/organization-billing-state"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 
