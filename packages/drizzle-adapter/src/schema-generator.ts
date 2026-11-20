@@ -108,8 +108,10 @@ function importForField(field: DeesseFieldDefinition): string {
 }
 
 function collectImports(schema: DeesseDatabaseSchema): Set<string> {
-  const imports = new Set(["pgTable", "uuid"])
+  const imports = new Set<string>()
   for (const model of Object.values(schema)) {
+    imports.add("pgTable")
+    imports.add("uuid")
     for (const field of Object.values(model.fields)) imports.add(importForField(field))
     for (const index of model.indexes ?? []) imports.add(index.unique ? "uniqueIndex" : "index")
   }
@@ -122,7 +124,9 @@ function schemaNeedsSql(schema: DeesseDatabaseSchema): boolean {
 
 export function generateDrizzleSchemaSource(schema: DeesseDatabaseSchema): string {
   const imports = collectImports(schema)
-  const lines = [`import { ${[...imports].join(", ")} } from "drizzle-orm/pg-core"`]
+  const lines = imports.size > 0
+    ? [`import { ${[...imports].join(", ")} } from "drizzle-orm/pg-core"`]
+    : []
   if (schemaNeedsSql(schema)) lines.push('import { sql } from "drizzle-orm"')
   lines.push("")
   for (const [modelName, model] of Object.entries(schema)) {

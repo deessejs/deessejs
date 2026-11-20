@@ -28,3 +28,5 @@ Plugin declarations are the source for Deesse-owned tables. Run `deesse-drizzle-
 After reviewing both generated schema files, run `pnpm db:generate` to generate the SQL migration, review and commit it, then apply it explicitly with `pnpm db:migrate`. `createDeesse()` does not apply migrations or perform startup DDL.
 
 The real PostgreSQL integration suite is `pnpm --filter @deessejs/drizzle-adapter test`. It requires `TEST_DATABASE_URL` or `DATABASE_URL` to point to a migrated PostgreSQL database.
+
+The `posts` plugin and SQL table used by that suite live only in `tests/fixtures/`. The schema-generation config used for the checked-in product schema intentionally registers no test plugins, so running `pnpm deesse:schema:generate` and `pnpm db:generate` does not add the fixture table to the product migration chain.
