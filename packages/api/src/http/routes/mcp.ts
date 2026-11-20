@@ -4,6 +4,7 @@ import { auth } from "@workspace/auth"
 import { createProductMcpHandler } from "@workspace/mcp"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
+import { API_BASE_PATH } from "../../constants/base-path.js"
 import { appRouter } from "../../orpc/index.js"
 import type { ApiEnv } from "../env.js"
 
@@ -27,6 +28,6 @@ const protectedHandler = requireMcpAuth(
 )
 
 export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
-  const path = new URL(resource).pathname
+  const path = new URL(resource).pathname.slice(API_BASE_PATH.length)
   api.post(path, async (c) => protectedHandler(c.req.raw))
 }
