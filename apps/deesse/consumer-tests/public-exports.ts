@@ -3,7 +3,7 @@ import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient 
 import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance } from "deesse"
+import { createDeesse, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type NoArgsRegistration } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
 import { toNextJsHandler } from "deesse/next"
 
@@ -39,13 +39,20 @@ type ExpectedAuth = ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeo
 type ExpectedRouter = typeof router & { feature: typeof router }
 type ExpectedInstance = DeesseInstance<typeof database, ExpectedAuth, ExpectedRouter, typeof config.plugins>
 type PublicInstanceExact = Assert<Equal<typeof app, ExpectedInstance>>
+type PublicRouterAliasExact = Assert<Equal<ApiRouter<{ router: typeof router }, typeof config.plugins>, ExpectedRouter>>
+type PublicAuthAliasExact = Assert<Equal<BetterAuthInstance<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>, ExpectedAuth>>
 type PublicCapabilitiesExact = Assert<Equal<typeof app.database, DeesseDatabaseService<ComposedDatabaseSchema<typeof database, typeof config.plugins>, CapabilitiesOf<typeof database>>>>
 type PublicInputExact = Assert<Equal<InferRouterInputs<typeof app.api.router>["ping"], { count: number }>>
 type PublicOutputExact = Assert<Equal<InferRouterOutputs<typeof app.api.router>["feature"]["ping"], string>>
 const registered = feature({ prefix: "hi" })
+type PublicDefinitionAssignable = Assert<typeof feature.definition extends Definition<typeof feature.definition.args, { api: { router: typeof router } }, readonly [], Readonly<Record<never, never>>> ? true : false>
+type PublicConfiguredRegistrationExact = Assert<Equal<typeof registered, ConfiguredRegistration<typeof feature.definition>>>
 const parsedPrefix: string = registered.args.prefix
 // @ts-expect-error raw args accept the optional string field, not another type
 feature({ prefix: 1 })
+const noArgsFeature = plugin({ id: "noargs", handler: () => ({ api: { router } }) })
+const noArgsRegistration = noArgsFeature()
+type PublicNoArgsRegistrationExact = Assert<Equal<typeof noArgsRegistration, NoArgsRegistration<typeof noArgsFeature.definition>>>
 
 const authClientPlugin = usernameClient()
 declare module "deesse/react" {
@@ -60,4 +67,4 @@ const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact])
+void (null as unknown as [PublicInstanceExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
