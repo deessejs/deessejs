@@ -118,12 +118,17 @@ export function createRuntime(options: RuntimeOptions): {
 } {
   const plugins = orderedPlugins(options.plugins ?? [])
   const contributions = plugins.map((item) => ({ item, contribution: contributionOf(item) }))
+  const pluginRouters = Object.fromEntries(contributions.flatMap(({ item, contribution }) =>
+    contribution.api?.router ? [[item.id, contribution.api.router]] : []))
+  const applicationRouter = options.api?.router ?? {}
+  const collisions = Object.keys(pluginRouters).filter((pluginId) => Object.hasOwn(applicationRouter, pluginId))
+  if (collisions.length) {
+    throw new Error(`Deesse plugin router namespace conflicts with application router key: ${collisions.join(", ")}`)
+  }
   const schema = composeDatabaseSchema(contributions)
   options.database.initializeSchema?.(schema)
   const serverPlugins = contributions.flatMap(({ contribution }) => contribution.auth?.serverPlugins ?? [])
-  const pluginRouters = Object.fromEntries(contributions.flatMap(({ item, contribution }) =>
-    contribution.api?.router ? [[item.id, contribution.api.router]] : []))
-  const router = { ...(options.api?.router ?? {}), ...pluginRouters } as AnyRouter
+  const router = { ...applicationRouter, ...pluginRouters } as AnyRouter
   const authOptions = {
     ...options.auth,
     database: options.database.authAdapter,

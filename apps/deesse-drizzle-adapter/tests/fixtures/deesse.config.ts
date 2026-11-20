@@ -1,4 +1,4 @@
-import { postsPlugin } from "./posts-plugin.js"
+import { postsPlugin } from "./posts-plugin.ts"
 
 export const deesseConfig = {
   plugins: [postsPlugin()],

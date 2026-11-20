@@ -22,7 +22,7 @@
     "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/deesse-drizzle-adapter --deny-warnings",
     "schema:generate": "node ./dist/cli.js",
     "test:prepare": "pnpm exec auth generate --config ./tests/fixtures/auth.config.ts --adapter drizzle --dialect postgresql --output ./tests/fixtures/generated/auth.generated.ts --yes && pnpm run schema:generate -- --config ./tests/fixtures/deesse.config.ts --output ./tests/fixtures/generated/deesse.generated.ts && pnpm exec drizzle-kit generate --config ./tests/fixtures/drizzle.config.ts",
-    "test": "pnpm run test:prepare && vitest run"
+    "test": "pnpm run build && pnpm run test:prepare && vitest run"
   },
   "dependencies": {
     "@deessejs/errors": "catalog:",

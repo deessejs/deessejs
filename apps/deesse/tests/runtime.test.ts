@@ -62,4 +62,26 @@ describe("Deesse runtime composition", () => {
     const mounted = await next(new Request("http://localhost/not-found"))
     expect(mounted.status).toBe(404)
   })
+
+  it("rejects a plugin namespace that would overwrite an application router key", () => {
+    const appHandler = base.handler(() => "application")
+    const pluginHandler = base.handler(() => "plugin")
+    const feature = plugin({ id: "feature", handler: () => ({ api: { router: { status: pluginHandler } } }) })
+    const database = {
+      database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
+      authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    } satisfies DatabaseAdapter
+    const auth = {
+      baseURL: "http://localhost",
+      secret: "deesse-runtime-collision-test-secret-long-enough",
+      emailAndPassword: { enabled: true },
+    }
+
+    expect(() => createDeesse({
+      database,
+      auth,
+      api: { router: { feature: appHandler } },
+      plugins: [feature()],
+    })).toThrow('Deesse plugin router namespace conflicts with application router key: feature')
+  })
 })
