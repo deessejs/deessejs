@@ -77,6 +77,14 @@ export const serverInputShape = {
   DATABASE_URL: z.string().url().optional(),
   TEST_DATABASE_URL: z.string().url().optional(),
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
+  MCP_RESOURCE_URL: z
+    .string()
+    .url()
+    .default("http://localhost:3001/api/v1/mcp")
+    .refine(
+      (value) => !value.endsWith("/"),
+      "MCP_RESOURCE_URL must not end with a slash"
+    ),
   // Optional. In production, better-auth throws if unset.
   // In dev/test, better-auth uses a built-in default secret.
   // We only validate length when the value is present (prevents crash in test).
@@ -145,6 +153,14 @@ export const serverInputShape = {
     .string()
     .regex(/^[A-Za-z0-9+/]{43}=$/)
     .optional(),
+
+  // Stripe subscriptions are optional until the operator provisions the
+  // Stripe account, webhook endpoint, and Pro prices. The server schema
+  // below accepts either no Stripe values or the complete configuration.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_PRO_MONTHLY_PRICE_ID: z.string().min(1).optional(),
+  STRIPE_PRO_ANNUAL_PRICE_ID: z.string().min(1).optional(),
 
   // Inter-app URL configuration. Server-side mirrors of the
   // NEXT_PUBLIC_* fields on clientSchema. Used by server-side
@@ -219,6 +235,26 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       })
     }
 
+    const stripeConfiguration = [
+      data.STRIPE_SECRET_KEY,
+      data.STRIPE_WEBHOOK_SECRET,
+      data.STRIPE_PRO_MONTHLY_PRICE_ID,
+      data.STRIPE_PRO_ANNUAL_PRICE_ID,
+    ]
+    if (
+      stripeConfiguration.some(Boolean) &&
+      !stripeConfiguration.every(Boolean)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Stripe billing is optional, but when configured it requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_MONTHLY_PRICE_ID, and STRIPE_PRO_ANNUAL_PRICE_ID together.",
+        path: ["STRIPE_SECRET_KEY"],
+      })
+    }
+
+    validateMcpResourceUrl(data.MCP_RESOURCE_URL, data.NODE_ENV, ctx)
+
     // Production-only invariants. Skipped in dev/test so contributors don't
     // need a full .env to start the app. Enforced in prod because each of these
     // silently degrades to a stub (e.g. dummy `{}` DB, default localhost URL,
@@ -279,6 +315,30 @@ export const serverSchema = z.object(serverInputShape).superRefine(
     }
   }
 )
+
+function validateMcpResourceUrl(
+  resourceUrl: string,
+  nodeEnv: "development" | "test" | "production",
+  ctx: z.RefinementCtx
+): void {
+  const resource = new URL(resourceUrl)
+  if (resource.protocol !== "https:" && resource.hostname !== "localhost") {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "MCP_RESOURCE_URL must use HTTPS, except for localhost development",
+      path: ["MCP_RESOURCE_URL"],
+    })
+  }
+
+  if (nodeEnv === "production" && resource.protocol !== "https:") {
+    ctx.addIssue({
+      code: "custom",
+      message: "MCP_RESOURCE_URL must use HTTPS in production",
+      path: ["MCP_RESOURCE_URL"],
+    })
+  }
+}
 
 /**
  * Client-side env contract. Only NEXT_PUBLIC_* values, safe to bundle to the

@@ -2,7 +2,6 @@
 
 import { client } from "@/lib/client"
 import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -16,7 +15,7 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { useForm } from "react-hook-form"
+import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
 const schema = z.object({
@@ -61,38 +60,36 @@ export function AddOrganizationBlockDialog({
   onCreated: () => void
 }) {
   const [failure, setFailure] = useState<string | null>(null)
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const form = useForm({
     defaultValues: defaults,
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      setFailure(null)
+      try {
+        await client.rpc.organization.blocks.create({
+          organizationSlug,
+          ...value,
+        })
+        form.reset()
+        onOpenChange(false)
+        onCreated()
+      } catch (error) {
+        setFailure(
+          error instanceof ORPCError
+            ? (failures[error.code] ??
+                "The block could not be imported. Check its descriptor and try again.")
+            : "The block could not be imported. Check its descriptor and try again."
+        )
+      }
+    },
   })
-  const { register, handleSubmit, formState, reset } = form
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
+    if (!next && !form.state.isSubmitting) {
       setFailure(null)
-      reset(defaults)
+      form.reset()
     }
     onOpenChange(next)
-  }
-
-  async function addBlock(values: FormValues) {
-    setFailure(null)
-    try {
-      await client.rpc.organization.blocks.create({
-        organizationSlug,
-        ...values,
-      })
-      reset(defaults)
-      onOpenChange(false)
-      onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (failures[error.code] ??
-              "The block could not be imported. Check its descriptor and try again.")
-          : "The block could not be imported. Check its descriptor and try again."
-      )
-    }
   }
 
   return (
@@ -105,78 +102,127 @@ export function AddOrganizationBlockDialog({
             is validated and pinned to the resolved commit.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(addBlock)}>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="GitHub repository URL"
               id="block-repository-url"
-              error={formState.errors.repositoryUrl?.message}
+              error={
+                form.getFieldValue("repositoryUrl") &&
+                (form.state.fieldMeta.repositoryUrl?.errors[0] as
+                  | string
+                  | undefined)
+              }
             >
-              <Input
-                id="block-repository-url"
-                {...register("repositoryUrl")}
-                placeholder="https://github.com/owner/repository"
-                autoComplete="url"
-              />
+              <form.Field name="repositoryUrl">
+                {(field) => (
+                  <Input
+                    id="block-repository-url"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="https://github.com/owner/repository"
+                    autoComplete="url"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Block slug"
               id="block-slug"
-              error={formState.errors.slug?.message}
+              error={form.state.fieldMeta.slug?.errors[0] as string | undefined}
             >
-              <Input
-                id="block-slug"
-                {...register("slug")}
-                placeholder="my-block"
-                autoComplete="off"
-              />
+              <form.Field name="slug">
+                {(field) => (
+                  <Input
+                    id="block-slug"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="my-block"
+                    autoComplete="off"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Display name"
               id="block-name"
-              error={formState.errors.name?.message}
+              error={form.state.fieldMeta.name?.errors[0] as string | undefined}
             >
-              <Input
-                id="block-name"
-                {...register("name")}
-                placeholder="My Block"
-              />
+              <form.Field name="name">
+                {(field) => (
+                  <Input
+                    id="block-name"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="My Block"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Category"
               id="block-category"
-              error={formState.errors.category?.message}
+              error={
+                form.state.fieldMeta.category?.errors[0] as string | undefined
+              }
             >
-              <Input
-                id="block-category"
-                {...register("category")}
-                placeholder="integration"
-              />
+              <form.Field name="category">
+                {(field) => (
+                  <Input
+                    id="block-category"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="integration"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Descriptor subdirectory"
               id="block-subdirectory"
               hint="Leave empty when deesse-block.json is at the repository root."
-              error={formState.errors.subdirectory?.message}
+              error={
+                form.state.fieldMeta.subdirectory?.errors[0] as
+                  | string
+                  | undefined
+              }
             >
-              <Input
-                id="block-subdirectory"
-                {...register("subdirectory")}
-                placeholder="blocks/my-block"
-              />
+              <form.Field name="subdirectory">
+                {(field) => (
+                  <Input
+                    id="block-subdirectory"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="blocks/my-block"
+                  />
+                )}
+              </form.Field>
             </Field>
           </div>
           <Field
             label="Description"
             id="block-description"
             hint="Optional organization presentation text."
-            error={formState.errors.description?.message}
+            error={
+              form.state.fieldMeta.description?.errors[0] as string | undefined
+            }
           >
-            <Textarea
-              id="block-description"
-              {...register("description")}
-              rows={3}
-            />
+            <form.Field name="description">
+              {(field) => (
+                <Textarea
+                  id="block-description"
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  rows={3}
+                />
+              )}
+            </form.Field>
           </Field>
           {failure ? (
             <p className="text-sm text-destructive" role="alert">
@@ -188,12 +234,12 @@ export function AddOrganizationBlockDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={form.state.isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Importing…" : "Import block"}
+            <Button type="submit" disabled={form.state.isSubmitting}>
+              {form.state.isSubmitting ? "Importing…" : "Import block"}
             </Button>
           </DialogFooter>
         </form>

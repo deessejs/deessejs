@@ -1,14 +1,23 @@
 import { betterAuth } from "better-auth"
 import type { BetterAuthOptions } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
+import { jwt } from "better-auth/plugins"
 import { admin, bearer, deviceAuthorization } from "better-auth/plugins"
+import { mcp } from "@better-auth/mcp"
+import { cimd } from "@better-auth/cimd"
+import { fetchClientMetadataResource } from "@better-auth/cimd/node"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
 import { sendAuthEmail, templates } from "@workspace/email"
 import { HOST_ALLOWLIST } from "./host-allowlist.js"
 import { organizationPlugin } from "./organization/plugin.js"
+import { createStripePlugin } from "./stripe/config.js"
+import { isPersonalSubscriptionRequest } from "./stripe/route-guard.js"
+
+const stripePlugin = createStripePlugin(serverEnv)
 
 /**
  * Better Auth `basePath` — the URL prefix the handler claims.
@@ -99,6 +108,26 @@ const authConfig: BetterAuthOptions = {
         : "https://app.deessejs.com",
   },
   basePath: AUTH_BASE_PATH,
+  ...(stripePlugin
+    ? {
+        hooks: {
+          before: createAuthMiddleware(async (ctx) => {
+            if (
+              !isPersonalSubscriptionRequest(
+                ctx.path,
+                ctx.body?.customerType ?? ctx.query?.customerType
+              )
+            ) {
+              return
+            }
+
+            throw new APIError("FORBIDDEN", {
+              message: "DeesseJS subscriptions must be organization-scoped.",
+            })
+          }),
+        },
+      }
+    : {}),
   secret: serverEnv.BETTER_AUTH_SECRET,
   // Ad-hoc extras only (staging, partner origins). Prod origins and
   // Vercel previews are auto-added via `allowedHosts` above. Gated
@@ -261,6 +290,19 @@ const authConfig: BetterAuthOptions = {
   ],
 
   plugins: [
+    jwt({ disableSettingJwtHeader: true }),
+    mcp({
+      resource: serverEnv.MCP_RESOURCE_URL,
+      loginPage: "/oauth/login",
+      consentPage: "/oauth/consent",
+      allowPublicClientPrelogin: true,
+      scopes: ["openid", "profile", "offline_access", "templates:read"],
+      refreshTokenReuseInterval: 0,
+    }),
+    cimd({
+      fetchClientMetadataResource,
+      metadataProfile: "mcp-2026-07-28",
+    }),
     // Device authorization: the device-code flow that lets the CLI obtain
     // a session token without a password. The plugin adds /device/code,
     // /device/token, /device, /device/approve, /device/deny under the
@@ -303,6 +345,7 @@ const authConfig: BetterAuthOptions = {
     // `./organization/plugin.ts`; this entry is a one-liner. Plugin
     // must sit before `nextCookies()` (Next.js integration requirement).
     organizationPlugin,
+    ...(stripePlugin ? [stripePlugin] : []),
     nextCookies(),
   ],
 } satisfies BetterAuthOptions

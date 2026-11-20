@@ -19,7 +19,7 @@
 // Components.
 
 import { appUrl, apiBaseUrl } from "@/lib/preview-urls"
-import { AuthClientProvider } from "./auth-client-provider"
+import { AuthClientProvider } from "@/hooks/auth/auth-client-provider"
 import { UserMenu } from "./user-menu"
 
 export function UserMenuServer({ variant }: { variant: "desktop" | "mobile" }) {

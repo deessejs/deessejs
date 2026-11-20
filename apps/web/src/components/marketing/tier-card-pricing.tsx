@@ -7,7 +7,7 @@ import { Button } from "@workspace/ui/components/button"
 import type { LicenseType } from "@/lib/pricing"
 
 import { PriceBlock } from "@/components/pages/pricing/price-block"
-import { usePricingCadence } from "./pricing-cadence-context"
+import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
 
 /**
  * Cadence-aware price + CTA block for the Pro and Agency tier cards.

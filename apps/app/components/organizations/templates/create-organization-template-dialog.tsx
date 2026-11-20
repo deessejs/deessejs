@@ -3,7 +3,6 @@
 import { client } from "@/lib/client"
 import { useState } from "react"
 import type { ReactNode } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import {
   CATEGORY_LABELS,
@@ -28,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
-import { useForm, useWatch } from "react-hook-form"
+import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
 const formSchema = z.object({
@@ -108,47 +107,44 @@ export function CreateOrganizationTemplateDialog({
   onCreated: () => void
 }) {
   const [failure, setFailure] = useState<string | null>(null)
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm({
     defaultValues: defaults,
+    validators: { onSubmit: formSchema },
+    onSubmit: async ({ value }) => {
+      setFailure(null)
+      try {
+        await client.rpc.organization.templates.create({
+          organizationSlug,
+          slug: value.slug,
+          name: value.name,
+          repositoryUrl: value.repositoryUrl,
+          descriptionOverride: value.descriptionOverride.trim() || null,
+          category: value.category,
+          labels: value.labels
+            .split(",")
+            .map((label) => label.trim())
+            .filter(Boolean),
+          licenseFallback: value.licenseFallback.trim() || null,
+        })
+        form.reset()
+        onOpenChange(false)
+        onCreated()
+      } catch (error) {
+        setFailure(
+          error instanceof ORPCError
+            ? (refusals[error.code] ?? genericFailure)
+            : genericFailure
+        )
+      }
+    },
   })
-  const { register, handleSubmit, formState, setValue, reset } = form
-  const category = useWatch({ control: form.control, name: "category" })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
+    if (!next && !form.state.isSubmitting) {
       setFailure(null)
-      reset(defaults)
+      form.reset()
     }
     onOpenChange(next)
-  }
-
-  async function create(values: FormValues) {
-    setFailure(null)
-    try {
-      await client.rpc.organization.templates.create({
-        organizationSlug,
-        slug: values.slug,
-        name: values.name,
-        repositoryUrl: values.repositoryUrl,
-        descriptionOverride: values.descriptionOverride.trim() || null,
-        category: values.category,
-        labels: values.labels
-          .split(",")
-          .map((label) => label.trim())
-          .filter(Boolean),
-        licenseFallback: values.licenseFallback.trim() || null,
-      })
-      reset(defaults)
-      onOpenChange(false)
-      onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError
-          ? (refusals[error.code] ?? genericFailure)
-          : genericFailure
-      )
-    }
   }
 
   return (
@@ -161,52 +157,77 @@ export function CreateOrganizationTemplateDialog({
             are fetched and saved for {organizationSlug}.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(create)}>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="GitHub repository URL"
               controlId="organization-template-repository-url"
-              error={formState.errors.repositoryUrl?.message}
+              error={
+                form.state.fieldMeta.repositoryUrl?.errors[0] as
+                  | string
+                  | undefined
+              }
             >
-              <Input
-                id="organization-template-repository-url"
-                {...register("repositoryUrl")}
-                placeholder="https://github.com/owner/repository"
-                autoComplete="url"
-              />
+              <form.Field name="repositoryUrl">
+                {(field) => (
+                  <Input
+                    id="organization-template-repository-url"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="https://github.com/owner/repository"
+                    autoComplete="url"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Template slug"
               controlId="organization-template-slug"
-              error={formState.errors.slug?.message}
+              error={form.state.fieldMeta.slug?.errors[0] as string | undefined}
             >
-              <Input
-                id="organization-template-slug"
-                {...register("slug")}
-                placeholder="my-template"
-                autoComplete="off"
-              />
+              <form.Field name="slug">
+                {(field) => (
+                  <Input
+                    id="organization-template-slug"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="my-template"
+                    autoComplete="off"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Display name"
               controlId="organization-template-name"
-              error={formState.errors.name?.message}
+              error={form.state.fieldMeta.name?.errors[0] as string | undefined}
             >
-              <Input
-                id="organization-template-name"
-                {...register("name")}
-                placeholder="My Template"
-              />
+              <form.Field name="name">
+                {(field) => (
+                  <Input
+                    id="organization-template-name"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="My Template"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field label="Category" controlId="organization-template-category">
               <Select
-                value={category}
+                value={form.getFieldValue("category")}
                 onValueChange={(value) => {
                   const nextCategory = CATEGORY_SLUGS.find(
                     (option) => option === value
                   )
                   if (nextCategory) {
-                    setValue("category", nextCategory, { shouldDirty: true })
+                    form.setFieldValue("category", nextCategory)
                   }
                 }}
               >
@@ -230,22 +251,32 @@ export function CreateOrganizationTemplateDialog({
               controlId="organization-template-labels"
               hint="Comma-separated, for example nextjs, drizzle"
             >
-              <Input
-                id="organization-template-labels"
-                {...register("labels")}
-                placeholder="nextjs, drizzle"
-              />
+              <form.Field name="labels">
+                {(field) => (
+                  <Input
+                    id="organization-template-labels"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="nextjs, drizzle"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="License fallback"
               controlId="organization-template-license"
               hint="Optional editorial value"
             >
-              <Input
-                id="organization-template-license"
-                {...register("licenseFallback")}
-                placeholder="MIT"
-              />
+              <form.Field name="licenseFallback">
+                {(field) => (
+                  <Input
+                    id="organization-template-license"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="MIT"
+                  />
+                )}
+              </form.Field>
             </Field>
           </div>
           <Field
@@ -253,11 +284,16 @@ export function CreateOrganizationTemplateDialog({
             controlId="organization-template-description"
             hint="Leave blank to use the GitHub repository description."
           >
-            <Textarea
-              id="organization-template-description"
-              {...register("descriptionOverride")}
-              rows={3}
-            />
+            <form.Field name="descriptionOverride">
+              {(field) => (
+                <Textarea
+                  id="organization-template-description"
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  rows={3}
+                />
+              )}
+            </form.Field>
           </Field>
 
           {failure && (
@@ -271,12 +307,12 @@ export function CreateOrganizationTemplateDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={form.state.isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting ? "Adding..." : "Add template"}
+            <Button type="submit" disabled={form.state.isSubmitting}>
+              {form.state.isSubmitting ? "Adding..." : "Add template"}
             </Button>
           </DialogFooter>
         </form>

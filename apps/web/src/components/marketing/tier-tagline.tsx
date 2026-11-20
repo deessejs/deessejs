@@ -1,6 +1,6 @@
 "use client"
 
-import { usePricingCadence } from "./pricing-cadence-context"
+import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
 
 /**
  * Cadence-aware tagline for the Pro and Agency tier cards.

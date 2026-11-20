@@ -15,7 +15,8 @@ import { loginSchema } from "@/components/auth/schemas"
 
 export function LoginForm({
 	redirectTo = "/home",
-}: { redirectTo?: string } = {}) {
+	continueOAuthFlow = false,
+}: { redirectTo?: string; continueOAuthFlow?: boolean } = {}) {
 	const router = useRouter()
 
 	const form = useForm({
@@ -35,9 +36,10 @@ export function LoginForm({
 			// here is idempotent and keeps the call site
 			// self-contained.
 			const target = safeRedirect(redirectTo, "/home")
-			const { error } = await client.auth.signIn.email(value, {
-				onSuccess: () => router.push(target),
-			})
+			const { error } = await client.auth.signIn.email(
+				value,
+				continueOAuthFlow ? undefined : { onSuccess: () => router.push(target) },
+			)
 			if (error) {
 				toast.error(error.message ?? "Invalid credentials")
 			}
@@ -117,17 +119,23 @@ export function LoginForm({
 				</div>
 			</div>
 
-			<OAuthButtons callbackURL={redirectTo} />
+			<OAuthButtons
+				{...(continueOAuthFlow
+					? { continueOAuthFlow }
+					: { callbackURL: redirectTo })}
+			/>
 
-			<p className="text-center text-sm text-muted-foreground">
-				Don&apos;t have an account?{" "}
-				<Link
-					href="/signup"
-					className="text-primary underline-offset-4 hover:underline"
-				>
-					Sign up
-				</Link>
-			</p>
+			{!continueOAuthFlow && (
+				<p className="text-center text-sm text-muted-foreground">
+					Don&apos;t have an account?{" "}
+					<Link
+						href="/signup"
+						className="text-primary underline-offset-4 hover:underline"
+					>
+						Sign up
+					</Link>
+				</p>
+			)}
 		</div>
 	)
 }

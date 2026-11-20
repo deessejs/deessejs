@@ -2,11 +2,13 @@
 
 import { createAuthClient } from "better-auth/react"
 import type { BetterAuthClientOptions } from "better-auth/client"
+import { oauthProviderClient } from "@better-auth/oauth-provider/client"
 import {
   adminClient,
   deviceAuthorizationClient,
   organizationClient,
 } from "better-auth/client/plugins"
+import { stripeClient } from "@better-auth/stripe/client"
 import { clientEnv } from "@workspace/env/client"
 import { API_AUTH_PATH } from "@workspace/api/base-path"
 
@@ -75,9 +77,11 @@ const authClientOptions = {
     deviceAuthorizationClient(),
     adminClient(),
     organizationClient(),
+    oauthProviderClient(),
+    stripeClient({ subscription: true }),
   ],
 } satisfies BetterAuthClientOptions
 
-export const authClient = createAuthClient(
-  authClientOptions,
-) as ReturnType<typeof createAuthClient<typeof authClientOptions>>
+export const authClient = createAuthClient(authClientOptions) as ReturnType<
+  typeof createAuthClient<typeof authClientOptions>
+>

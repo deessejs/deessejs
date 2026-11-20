@@ -19,6 +19,11 @@ import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
 
 const program = new Command()
+program.configureHelp({
+  sortSubcommands: true,
+  subcommandTerm: (command) => command.name(),
+})
+
 const runNamespacedCommand = (command: Command): Promise<void> =>
   command.parseAsync(normalizeTemplateCommandArgs(process.argv)).then(() => {})
 
@@ -33,10 +38,15 @@ program.on("option:v", () => {
   process.exit(0)
 })
 
-const templatesCommand = new Command("templates").description(
-  "Browse and create projects from templates"
-)
-templatesCommand.addCommand(
+const templateCommand = new Command("template")
+  .alias("templates")
+  .description("Browse and create projects from templates")
+templateCommand.configureHelp({
+  sortSubcommands: true,
+  subcommandTerm: (command) => command.name(),
+})
+templateCommand.addHelpText("after", "\nAlias: templates")
+templateCommand.addCommand(
   new Command("list")
     .description("List available templates")
     .option("--category <name>", "filter to a single category")
@@ -44,7 +54,7 @@ templatesCommand.addCommand(
     .option("--verbose", "show human-readable output")
     .action(() => runNamespacedCommand(listCommand))
 )
-templatesCommand.addCommand(
+templateCommand.addCommand(
   new Command("info")
     .description("Show details for one template")
     .argument(
@@ -56,7 +66,7 @@ templatesCommand.addCommand(
     .option("--verbose", "show human-readable output")
     .action(() => runNamespacedCommand(infoCommand))
 )
-templatesCommand.addCommand(
+templateCommand.addCommand(
   new Command("init")
     .description("Create a project from a template and install dependencies")
     .argument(
@@ -78,7 +88,7 @@ templatesCommand.addCommand(
     .option("--json", "JSON output for scripting")
     .action(() => runNamespacedCommand(initCommand))
 )
-program.addCommand(templatesCommand)
+program.addCommand(templateCommand)
 program.addCommand(blockCommand)
 program.addCommand(addCommand)
 program.addCommand(cacheCommand)
@@ -91,6 +101,7 @@ program.addCommand(updateCommand)
 const authCommand = new Command("auth").description(
   "Authenticate this machine against the DeesseJS server"
 )
+authCommand.configureHelp({ sortSubcommands: true })
 authCommand.addCommand(loginCommand)
 authCommand.addCommand(statusCommand)
 authCommand.addCommand(logoutCommand)

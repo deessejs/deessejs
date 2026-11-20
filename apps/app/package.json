@@ -14,6 +14,7 @@
   "dependencies": {
     "@nanostores/react": "^1.0.0",
     "@hookform/resolvers": "catalog:",
+    "@better-auth/stripe": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -27,6 +28,7 @@
     "@workspace/env": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/utils": "workspace:*",
+    "@better-auth/oauth-provider": "catalog:",
     "better-auth": "catalog:",
     "hono": "catalog:",
     "lucide-react": "catalog:",

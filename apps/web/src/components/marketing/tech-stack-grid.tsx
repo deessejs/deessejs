@@ -1,10 +1,16 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState, useSyncExternalStore } from "react"
-import { AnimatePresence, motion } from "motion/react"
+import { useSyncExternalStore } from "react"
+import { AnimatePresence, LazyMotion, domAnimation } from "motion/react"
+import * as m from "motion/react-m"
 
 import { cn } from "@workspace/ui/lib/utils"
+import {
+  useTechStackRotation,
+  useTechStackRotationTimer,
+  type RotateTechStackSlot,
+} from "@/hooks/marketing/use-tech-stack-rotation"
 
 /**
  * Tech stack grid where each slot rotates through the available
@@ -41,14 +47,21 @@ import { cn } from "@workspace/ui/lib/utils"
 
 type Tech = { name: string; logo: string }
 
-const MIN_CYCLE_MS = 7000
-const MAX_CYCLE_MS = 12000
 const TRANSITION_MS = 0.35
 
-function randomCycleMs() {
-  return (
-    MIN_CYCLE_MS + Math.floor(Math.random() * (MAX_CYCLE_MS - MIN_CYCLE_MS))
-  )
+function TechStackRotationTimer({
+  slot,
+  techCount,
+  reducedMotion,
+  rotateSlot,
+}: {
+  slot: number
+  techCount: number
+  reducedMotion: boolean
+  rotateSlot: RotateTechStackSlot
+}) {
+  useTechStackRotationTimer(slot, techCount, reducedMotion, rotateSlot)
+  return null
 }
 
 function subscribeToReducedMotion(onChange: () => void) {
@@ -61,37 +74,6 @@ function getReducedMotionSnapshot() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
-/**
- * Pick a random index in `length` that differs from `exclude`.
- * Retries up to 10 times to avoid the same-index collision; falls back
- * to `exclude` if all retries collide (only possible when length < 2,
- * which the caller filters out).
- */
-function pickDifferentIndex(length: number, exclude: number): number {
-  let pick = Math.floor(Math.random() * length)
-  let safety = 0
-  while (pick === exclude && safety < 10) {
-    pick = Math.floor(Math.random() * length)
-    safety++
-  }
-  return pick
-}
-
-/**
- * Swap two distinct positions in an array. Used to mutate the shared
- * order while preserving the uniqueness invariant.
- */
-function swapAt<T>(input: ReadonlyArray<T>, i: number, j: number): T[] {
-  if (i === j) return input.slice()
-  const a = input.slice()
-  const ai = a[i]
-  const aj = a[j]
-  if (ai === undefined || aj === undefined) return a
-  a[i] = aj
-  a[j] = ai
-  return a
-}
-
 export function TechStackGrid({
   techs,
   className,
@@ -99,7 +81,6 @@ export function TechStackGrid({
   techs: ReadonlyArray<Tech>
   className?: string
 }) {
-  const [order, setOrder] = useState<ReadonlyArray<Tech>>(techs)
   const reducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     getReducedMotionSnapshot,
@@ -109,76 +90,58 @@ export function TechStackGrid({
   // Each slot has its own timer. When it fires, it picks a random *other*
   // slot and swaps the two technologies. This keeps every tech present
   // exactly once at any moment.
-  useEffect(() => {
-    if (reducedMotion || techs.length < 2) return
-    const timeouts: Array<number> = []
-
-    const fireSlot = (slotIdx: number) => {
-      setOrder((prev) => {
-        const otherIdx = pickDifferentIndex(prev.length, slotIdx)
-        return swapAt(prev, slotIdx, otherIdx)
-      })
-    }
-
-    const armSlot = (slotIdx: number) => {
-      const id = window.setTimeout(() => {
-        fireSlot(slotIdx)
-        // Re-arm this slot with a fresh random delay so the rhythm stays
-        // irregular across the lifetime of the page.
-        armSlot(slotIdx)
-      }, randomCycleMs())
-      timeouts.push(id)
-    }
-
-    for (let i = 0; i < techs.length; i++) {
-      armSlot(i)
-    }
-
-    return () => {
-      for (const id of timeouts) window.clearTimeout(id)
-    }
-  }, [techs, reducedMotion])
+  const { order: animatedOrder, rotateSlot } = useTechStackRotation(
+    techs.length
+  )
 
   return (
-    <div
-      className={cn(
-        "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
-        className
-      )}
-    >
-      {techs.map((slot, slotIdx) => {
-        const tech = order[slotIdx] ?? slot
-        return (
-          <div
-            key={slotIdx}
-            className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={tech.name}
-                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                {...(reducedMotion ? {} : { exit: { opacity: 0, y: -8 } })}
-                transition={{
-                  duration: TRANSITION_MS,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className="flex items-center justify-center gap-2"
-              >
-                <Image
-                  src={`/logos/${tech.logo}.svg`}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="size-5 shrink-0 dark:invert"
-                  aria-hidden
-                />
-                <span className="font-medium">{tech.name}</span>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )
-      })}
-    </div>
+    <LazyMotion features={domAnimation}>
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-px bg-border sm:grid-cols-4 xl:grid-cols-8",
+          className
+        )}
+      >
+        {techs.map((slot, slotIdx) => {
+          const tech = techs[animatedOrder[slotIdx] ?? slotIdx] ?? slot
+          return (
+            <div
+              key={slotIdx}
+              className="group relative flex h-20 items-center justify-center gap-2 overflow-hidden bg-background px-4 py-6 text-copy-13 text-muted-foreground transition-colors hover:bg-accent/40"
+            >
+              <TechStackRotationTimer
+                slot={slotIdx}
+                techCount={techs.length}
+                reducedMotion={reducedMotion}
+                rotateSlot={rotateSlot}
+              />
+              <AnimatePresence mode="wait" initial={false}>
+                <m.div
+                  key={tech.name}
+                  initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  {...(reducedMotion ? {} : { exit: { opacity: 0, y: -8 } })}
+                  transition={{
+                    duration: TRANSITION_MS,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Image
+                    src={`/logos/${tech.logo}.svg`}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="size-5 shrink-0 dark:invert"
+                    aria-hidden
+                  />
+                  <span className="font-medium">{tech.name}</span>
+                </m.div>
+              </AnimatePresence>
+            </div>
+          )
+        })}
+      </div>
+    </LazyMotion>
   )
 }

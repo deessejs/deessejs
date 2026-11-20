@@ -368,6 +368,12 @@
   },
   "overrides": [
     {
+      "files": ["apps/app/**/*.{jsx,tsx}"],
+      "rules": {
+        "project/tanstack-form-required": "error"
+      }
+    },
+    {
       "files": [
         "apps/cli/src/utils/add-*.ts",
         "apps/cli/test/unit/add-*.test.ts"
@@ -478,6 +484,8 @@
       ],
       "plugins": ["typescript", "react"],
       "rules": {
+        "project/no-raw-react-effects": "error",
+        "project/hooks-location": "error",
         "react/display-name": "error",
         "react/jsx-key": "error",
         "react/jsx-no-comment-textnodes": "error",
@@ -516,7 +524,7 @@
           }
         ],
         "react/rules-of-hooks": "error",
-        "react/exhaustive-deps": "warn",
+        "react/exhaustive-deps": "error",
         "react/static-components": "error",
         "react/use-memo": "error",
         "react/preserve-manual-memoization": "error",
