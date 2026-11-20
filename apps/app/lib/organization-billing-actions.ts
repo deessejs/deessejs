@@ -2,13 +2,11 @@ import { client } from "@/lib/client"
 
 export async function startOrganizationCheckout(input: {
   organizationId: string
-  annual: boolean
   successUrl: string
   cancelUrl: string
 }): Promise<string> {
   const { data, error } = await client.auth.subscription.upgrade({
     plan: "pro",
-    annual: input.annual,
     referenceId: input.organizationId,
     customerType: "organization",
     successUrl: input.successUrl,

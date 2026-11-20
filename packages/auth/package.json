@@ -39,6 +39,11 @@
       "import": "./dist/organization/provisioning.js",
       "default": "./dist/organization/provisioning.js"
     },
+    "./organization/entitlement": {
+      "types": "./dist/organization/entitlement.d.ts",
+      "import": "./dist/organization/entitlement.js",
+      "default": "./dist/organization/entitlement.js"
+    },
     "./organization/create": {
       "types": "./dist/organization/create.d.ts",
       "import": "./dist/organization/create.js",

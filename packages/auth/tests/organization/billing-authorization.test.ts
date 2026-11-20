@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest"
 import { canAccessOrganizationBilling } from "../../src/organization/billing-authorization.js"
 
 describe("organization billing authorization", () => {
-  it("allows every member role to read subscription status", () => {
+  it("restricts raw subscription reads to owners and admins", () => {
     for (const role of ["owner", "admin", "member", "custom-role"]) {
-      expect(canAccessOrganizationBilling(role, "list-subscription")).toBe(true)
+      expect(canAccessOrganizationBilling(role, "list-subscription")).toBe(
+        role === "owner" || role === "admin"
+      )
     }
   })
 

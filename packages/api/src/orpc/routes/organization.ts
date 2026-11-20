@@ -1,6 +1,7 @@
 import type { ORPCError } from "@orpc/server"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
+import { hasOrganizationProEntitlement } from "@workspace/auth/organization/entitlement"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   assertOrganizationName,
@@ -129,6 +130,29 @@ export const settings = base
   })
   .output(organizationSummary)
   .handler(async ({ context }) => context.organization)
+
+/** A sanitized entitlement read for any current organization member. */
+export const proEntitlement = base
+  .input(z.object({ slug: z.string() }))
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED
+    )
+    return options.next({
+      context: { ...options.context, organization: org },
+    })
+  })
+  .output(z.object({ proIncluded: z.boolean() }))
+  .handler(async ({ context }) => ({
+    proIncluded: await hasOrganizationProEntitlement(
+      context.user.id,
+      context.organization.id
+    ),
+  }))
 
 /** Pending invitations are visible to owners and admins only. */
 export const pendingInvitations = base
@@ -399,6 +423,7 @@ export const create = base
 export const organizationRouter = {
   bySlug,
   settings,
+  proEntitlement,
   pendingInvitations,
   accountInvitations,
   active,

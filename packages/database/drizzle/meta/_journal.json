@@ -106,6 +106,13 @@
       "when": 1795104577032,
       "tag": "0015_odd_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795179120394,
+      "tag": "0016_soft_madripoor",
+      "breakpoints": true
     }
   ]
 }
