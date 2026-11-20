@@ -1,16 +1,26 @@
 /** Called only with claims returned by Better Auth's verified-token callback. */
-export function mapVerifiedMcpClaimsToIdentity(claims: {
+export interface VerifiedMcpClaims {
   sub?: unknown
   scope?: unknown
-}): { userId: string | null; scopes: string[] } {
-  return {
-    userId:
-      typeof claims.sub === "string" && claims.sub.length > 0
-        ? claims.sub
-        : null,
-    scopes:
-      typeof claims.scope === "string"
-        ? claims.scope.split(/\s+/).filter(Boolean)
-        : [],
+}
+
+export interface McpIdentity {
+  userId: string | null
+  scopes: string[]
+}
+
+export function mapVerifiedMcpClaimsToIdentity(
+  claims: VerifiedMcpClaims
+): McpIdentity {
+  const subject = claims.sub
+  const scopeClaim = claims.scope
+  let userId: string | null = null
+  let scopes: string[] = []
+
+  if (typeof subject === "string" && subject.length > 0) userId = subject
+  if (typeof scopeClaim === "string") {
+    scopes = scopeClaim.split(/\s+/).filter(Boolean)
   }
+
+  return { userId, scopes }
 }

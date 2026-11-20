@@ -8,6 +8,7 @@ import type { Hono } from "hono"
 import { API_BASE_PATH, API_AUTH_PATH } from "../../constants/base-path.js"
 import { appRouter } from "../../orpc/index.js"
 import { mapVerifiedMcpClaimsToIdentity } from "./mcp-identity.js"
+import { assertMcpToolScope } from "./mcp-tool-scope.js"
 import type { ApiEnv } from "../env.js"
 
 const resource = serverEnv.MCP_RESOURCE_URL
@@ -42,11 +43,12 @@ const protectedHandler = auth.$context.then((authContext) =>
       audience: resource,
       jwksUrl: `${authIssuer}/jwks`,
       jwtVerifyOptions: { typ: "at+jwt", requiredClaims: ["azp"] },
-      requiredScopes: ["templates:read"],
+      challengeScopes: ["templates:read", "organizations:read"],
       dpop: { replayStore: createDpopReplayStore(authContext) },
     },
-    (request, accessTokenClaims) => {
+    async (request, accessTokenClaims) => {
       const identity = mapVerifiedMcpClaimsToIdentity(accessTokenClaims)
+      await assertMcpToolScope(request, identity)
       return createHandler(identity).fetch(request)
     }
   )
@@ -58,7 +60,9 @@ export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
   const metadataPrefix = "/.well-known/oauth-protected-resource"
 
   api.get(`${metadataPrefix}/*`, (c) => {
-    if (c.req.path !== `${API_BASE_PATH}${metadataPrefix}${resourceUrl.pathname}`)
+    if (
+      c.req.path !== `${API_BASE_PATH}${metadataPrefix}${resourceUrl.pathname}`
+    )
       return c.notFound()
 
     return c.json({
