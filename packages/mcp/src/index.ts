@@ -1,9 +1,13 @@
 import { McpServer, createMcpHandler } from "@modelcontextprotocol/server"
-import type { TemplatesListResponseV1 } from "@workspace/contracts/v1"
+import type {
+  MyOrganizationsListResponseV1,
+  TemplatesListResponseV1,
+} from "@workspace/contracts/v1"
 import { z } from "zod"
 
 export interface ProductMcpOperations {
   listTemplates: () => Promise<TemplatesListResponseV1>
+  listMyOrganizations: () => Promise<MyOrganizationsListResponseV1>
 }
 
 export const createProductMcpHandler = (operations: ProductMcpOperations) =>
@@ -21,6 +25,22 @@ export const createProductMcpHandler = (operations: ProductMcpOperations) =>
             {
               type: "text",
               text: JSON.stringify(await operations.listTemplates()),
+            },
+          ],
+        })
+      )
+      server.registerTool(
+        "list_my_organizations",
+        {
+          description:
+            "List the organizations you belong to and your current role in each.",
+          inputSchema: z.object({}),
+        },
+        async () => ({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(await operations.listMyOrganizations()),
             },
           ],
         })

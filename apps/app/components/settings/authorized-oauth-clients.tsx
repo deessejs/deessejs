@@ -8,6 +8,7 @@ import {
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
   "templates:read": "Read the public template catalog",
+  "organizations:read": "Read your organizations and current roles",
   openid: "Confirm your account identity",
   profile: "Share basic profile details",
   offline_access: "Keep the connection active between visits",

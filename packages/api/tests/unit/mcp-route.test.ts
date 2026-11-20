@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest"
+import { call } from "@orpc/server"
+import { createProductMcpHandler } from "@workspace/mcp"
+import { serverEnv } from "@workspace/env/server"
 import { api } from "../../src/index.js"
 import { API_BASE_PATH } from "../../src/constants/base-path.js"
-import { serverEnv } from "@workspace/env/server"
-import { createProductMcpHandler } from "@workspace/mcp"
+import { appRouter } from "../../src/orpc/index.js"
 
 describe("MCP HTTP route", () => {
   const resourceUrl = new URL(serverEnv.MCP_RESOURCE_URL)
@@ -11,7 +13,7 @@ describe("MCP HTTP route", () => {
   const apiMetadataPath = `${API_BASE_PATH}${metadataPath}`
   const issuer = `${serverEnv.API_BASE_URL}${API_BASE_PATH}/auth`
 
-  it("serves RFC 9728 metadata with the canonical resource and read-only scope", async () => {
+  it("serves RFC 9728 metadata with the supported read scopes", async () => {
     const response = await api.request(apiMetadataPath)
 
     expect(response.status).toBe(200)
@@ -20,7 +22,7 @@ describe("MCP HTTP route", () => {
       resource: serverEnv.MCP_RESOURCE_URL,
       authorization_servers: [issuer],
       bearer_methods_supported: ["header"],
-      scopes_supported: ["templates:read"],
+      scopes_supported: ["templates:read", "organizations:read"],
     })
   })
 
@@ -62,6 +64,7 @@ describe("MCP HTTP route", () => {
       listTemplates: async () => ({
         templates: [],
       }),
+      listMyOrganizations: async () => ({ organizations: [] }),
     })
     const response = await handler.fetch(
       new Request("https://app.deessejs.com/api/v1/mcp", {
@@ -109,5 +112,87 @@ describe("MCP HTTP route", () => {
       },
     })
     expect(body.result).not.toHaveProperty("error")
+  })
+
+  it("serves list_my_organizations through the current membership operation", async () => {
+    const handler = createProductMcpHandler({
+      listTemplates: async () => ({ templates: [] }),
+      listMyOrganizations: async () => ({
+        organizations: [
+          {
+            id: "org-1",
+            name: "Acme",
+            slug: "acme",
+            logo: null,
+            role: "owner",
+          },
+        ],
+      }),
+    })
+    const response = await handler.fetch(
+      new Request("https://app.deessejs.com/api/v1/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          "mcp-protocol-version": "2026-07-28",
+          "mcp-method": "tools/call",
+          "mcp-name": "list_my_organizations",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "list_my_organizations",
+            arguments: {},
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                name: "DeesseJS MCP regression test",
+                version: "1.0.0",
+              },
+            },
+          },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      result: {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              organizations: [
+                {
+                  id: "org-1",
+                  name: "Acme",
+                  slug: "acme",
+                  logo: null,
+                  role: "owner",
+                },
+              ],
+            }),
+          },
+        ],
+      },
+    })
+  })
+
+  it("denies organization reads without organizations:read at call time", async () => {
+    await expect(
+      call(appRouter.organization.listMine, undefined, {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: "mcp-scope-test",
+          mcpIdentity: { userId: "verified-user", scopes: ["templates:read"] },
+        },
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" })
   })
 })

@@ -296,7 +296,13 @@ const authConfig: BetterAuthOptions = {
       loginPage: "/oauth/login",
       consentPage: "/oauth/consent",
       allowPublicClientPrelogin: true,
-      scopes: ["openid", "profile", "offline_access", "templates:read"],
+      scopes: [
+        "openid",
+        "profile",
+        "offline_access",
+        "templates:read",
+        "organizations:read",
+      ],
       refreshTokenReuseInterval: 0,
     }),
     cimd({

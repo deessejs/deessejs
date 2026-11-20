@@ -3,9 +3,9 @@ title: Template catalog
 description: Connect the DeesseJS template catalog as an OAuth-protected Model Context Protocol server.
 ---
 
-# Template catalog
+# Available tools
 
-DeesseJS provides a remote Model Context Protocol (MCP) server at `MCP_RESOURCE_URL`. It exposes one read-only tool named `list_templates`, backed by the public product template catalog. Sign in through DeesseJS OAuth before using the endpoint. Catalog entries remain public.
+DeesseJS provides a remote Model Context Protocol (MCP) server at `MCP_RESOURCE_URL`. It exposes two read-only tools: `list_templates`, backed by the public product template catalog, and `list_my_organizations`, which returns the organizations in your current memberships and your role in each. The organization tool requires the `organizations:read` OAuth permission. Sign in through DeesseJS OAuth before using the endpoint. Catalog entries remain public.
 
 **Setup**
 

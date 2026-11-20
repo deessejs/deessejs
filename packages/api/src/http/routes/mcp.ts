@@ -7,20 +7,32 @@ import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
 import { API_BASE_PATH, API_AUTH_PATH } from "../../constants/base-path.js"
 import { appRouter } from "../../orpc/index.js"
+import { mapVerifiedMcpClaimsToIdentity } from "./mcp-identity.js"
 import type { ApiEnv } from "../env.js"
 
 const resource = serverEnv.MCP_RESOURCE_URL
-const mcpHandler = createProductMcpHandler({
-  listTemplates: () =>
-    call(appRouter.templates.list, undefined, {
-      context: {
-        headers: new Headers(),
-        user: null,
-        session: null,
-        requestId: crypto.randomUUID(),
-      },
-    }),
-})
+const createHandler = (identity: { userId: string | null; scopes: string[] }) =>
+  createProductMcpHandler({
+    listTemplates: () =>
+      call(appRouter.templates.list, undefined, {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: crypto.randomUUID(),
+        },
+      }),
+    listMyOrganizations: () =>
+      call(appRouter.organization.listMine, undefined, {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: crypto.randomUUID(),
+          mcpIdentity: identity,
+        },
+      }),
+  })
 
 const authIssuer = `${serverEnv.API_BASE_URL}${API_AUTH_PATH}`
 const protectedHandler = auth.$context.then((authContext) =>
@@ -33,7 +45,10 @@ const protectedHandler = auth.$context.then((authContext) =>
       requiredScopes: ["templates:read"],
       dpop: { replayStore: createDpopReplayStore(authContext) },
     },
-    (request) => mcpHandler.fetch(request)
+    (request, accessTokenClaims) => {
+      const identity = mapVerifiedMcpClaimsToIdentity(accessTokenClaims)
+      return createHandler(identity).fetch(request)
+    }
   )
 )
 
@@ -50,7 +65,7 @@ export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
       resource,
       authorization_servers: [authIssuer],
       bearer_methods_supported: ["header"],
-      scopes_supported: ["templates:read"],
+      scopes_supported: ["templates:read", "organizations:read"],
     })
   })
 
