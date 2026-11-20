@@ -1,14 +1,13 @@
 import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import { drizzle } from "drizzle-orm/postgres-js"
+import { migrate } from "drizzle-orm/postgres-js/migrator"
 import { eq } from "drizzle-orm"
 import postgres from "postgres"
-import { readFile } from "node:fs/promises"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import * as schema from "@workspace/database/schema"
+import * as schema from "./fixtures/schema.js"
 import { createDeesse } from "deesse"
 import { postsPlugin } from "./fixtures/posts-plugin.js"
-import { posts } from "./fixtures/posts-table.js"
 import { drizzleAdapter } from "../src/index.js"
 
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL
@@ -16,8 +15,7 @@ const describePostgres = databaseUrl ? describe : describe.skip
 
 describePostgres("PostgreSQL Deesse adapter integration", () => {
   const sqlClient = postgres(databaseUrl ?? "postgres://unused:unused@localhost:5432/unused", { max: 1, prepare: false })
-  const testSchema = { ...schema, posts }
-  const db = drizzle(sqlClient, { schema: testSchema })
+  const db = drizzle(sqlClient, { schema })
   const adapter = drizzleAdapter(db)
   const app = createDeesse({
     database: adapter,
@@ -30,12 +28,10 @@ describePostgres("PostgreSQL Deesse adapter integration", () => {
   })
 
   beforeAll(async () => {
-    const fixtureSql = await readFile(new URL("./fixtures/posts.sql", import.meta.url), "utf8")
-    await sqlClient.unsafe(fixtureSql)
+    await migrate(db, { migrationsFolder: "./tests/fixtures/migrations" })
   })
 
   afterAll(async () => {
-    await sqlClient.unsafe('DROP TABLE IF EXISTS "posts"')
     await sqlClient.end()
   })
 

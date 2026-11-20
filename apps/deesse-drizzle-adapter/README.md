@@ -23,10 +23,10 @@ The adapter implements the bounded `findById`, `findMany`, `insert`, `updateById
 
 ## Schema and migrations
 
-Plugin declarations are the source for Deesse-owned tables. Run `deesse-drizzle-schema --config ./deesse.config.ts --output ./src/schema/deesse.generated.ts` to invoke the configured plugins once and emit their Drizzle schema. This command does not connect to a database. Better Auth's CLI owns `packages/database/src/schema/auth.ts`. Both files are generated artifacts and must not be edited manually.
+Plugin declarations are the source for Deesse-owned tables. Run `deesse-drizzle-schema --config ./deesse.config.ts --output ./src/schema/deesse.generated.ts` to invoke the configured plugins once and emit their Drizzle schema. This command does not connect to a database. Better Auth's CLI owns the auth schema in the consuming application. Both files are generated artifacts and must not be edited manually.
 
-After reviewing both generated schema files, run `pnpm db:generate` to generate the SQL migration, review and commit it, then apply it explicitly with `pnpm db:migrate`. `createDeesse()` does not apply migrations or perform startup DDL.
+In the consuming application, include the generated Deesse schema and Better Auth CLI schema in that application's Drizzle schema barrel. Generate, review, commit, and explicitly apply migrations with the application's Drizzle Kit workflow. The adapter package does not write to or export through the monorepo product database. `createDeesse()` does not apply migrations or perform startup DDL.
 
 The real PostgreSQL integration suite is `pnpm --filter @deessejs/drizzle-adapter test`. It requires `TEST_DATABASE_URL` or `DATABASE_URL` to point to a migrated PostgreSQL database.
 
-The `posts` plugin and SQL table used by that suite live only in `tests/fixtures/`. The schema-generation config used for the checked-in product schema intentionally registers no test plugins, so running `pnpm deesse:schema:generate` and `pnpm db:generate` does not add the fixture table to the product migration chain.
+The `posts` plugin, Better Auth schema, and generated migrations used by that suite live only in `tests/fixtures/`. Running the integration suite generates and applies these files only to its test database. The fixtures do not write into or export through the DeesseJS product database workspace.

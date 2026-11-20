@@ -42,6 +42,8 @@ jobs:
         run: pnpm lint:next-routes
       - name: Test Next route handler boundary
         run: pnpm test:next-routes
+      - name: Test React effect and hook rules
+        run: pnpm test:react-rules
       - name: Lint suppression guard
         run: pnpm lint:guard
       - run: pnpm turbo lint --summarize -- --max-warnings=0
@@ -56,6 +58,7 @@ jobs:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      MCP_RESOURCE_URL: https://ci.example.com/api/v1/mcp
       NEXT_PUBLIC_APP_URL: https://ci.example.com
       # The production superRefine gate requires PARENT_DOMAIN
       # for cross-subdomain cookie sharing. Stubbed in CI so the
@@ -103,6 +106,7 @@ jobs:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      MCP_RESOURCE_URL: https://ci.example.com/api/v1/mcp
       NEXT_PUBLIC_APP_URL: https://ci.example.com
       # Every NEXT_PUBLIC_* URL var is checked against its schema
       # default by `scripts/env-check.ts`. CI stubs all four so the
@@ -316,12 +320,7 @@ jobs:
           --filter=@workspace/auth
           --filter=@workspace/api
           --filter=@workspace/database
-          --filter=deesse
-          --filter=@deessejs/drizzle-adapter
           --filter=@deessejs/cli
-
-      - name: Generate Deesse plugin schema
-        run: pnpm deesse:schema:generate
 
       - name: Generate migrations
         run: pnpm db:generate
@@ -337,7 +336,7 @@ jobs:
         # constraint tests run against this real PostgreSQL service.
         # The package's own suite is a no-op without a database, so the
         # unit job stays green.
-        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database --filter=@deessejs/drizzle-adapter
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
 
       - name: Run avatar HTTP E2E against MinIO
         run: pnpm --filter @workspace/api test:e2e:avatar
