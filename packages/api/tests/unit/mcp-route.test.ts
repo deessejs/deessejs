@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { api } from "../../src/index.js"
 import { API_BASE_PATH } from "../../src/constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
+import { createProductMcpHandler } from "@workspace/mcp"
 
 describe("MCP HTTP route", () => {
   const resourceUrl = new URL(serverEnv.MCP_RESOURCE_URL)
@@ -54,5 +55,59 @@ describe("MCP HTTP route", () => {
     expect(preflight.headers.get("access-control-allow-origin")).toBe(origin)
     expect(preflight.headers.get("access-control-allow-methods")).toContain("GET")
     expect(doubled.status).toBe(404)
+  })
+
+  it("returns a protocol-valid result for list_templates", async () => {
+    const handler = createProductMcpHandler({
+      listTemplates: async () => ({
+        templates: [],
+      }),
+    })
+    const response = await handler.fetch(
+      new Request("https://app.deessejs.com/api/v1/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          "mcp-protocol-version": "2026-07-28",
+          "mcp-method": "tools/call",
+          "mcp-name": "list_templates",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "list_templates",
+            arguments: {},
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": {
+                name: "DeesseJS MCP regression test",
+                version: "1.0.0",
+              },
+            },
+          },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toMatchObject({
+      jsonrpc: "2.0",
+      id: 1,
+      result: {
+        resultType: "complete",
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ templates: [] }),
+          },
+        ],
+      },
+    })
+    expect(body.result).not.toHaveProperty("error")
   })
 })
