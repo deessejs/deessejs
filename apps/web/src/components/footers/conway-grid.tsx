@@ -49,8 +49,7 @@
 
 import * as React from "react"
 import {
-  useEffect,
-  useLayoutEffect,
+  useCallback,
   useMemo,
   useReducer,
   useRef,
@@ -59,19 +58,20 @@ import {
 import { usePathname } from "next/navigation"
 import { useReducedMotion } from "motion/react"
 import { cn } from "@workspace/ui/lib/utils"
+import { useConwayGridEffects } from "@/hooks/footers/use-conway-grid-effects"
 
-const CELL_SIZE = 8
+export const CELL_SIZE = 8
 const HEIGHT = 240
-const ROWS = Math.floor(HEIGHT / CELL_SIZE)
-const TICK_MS = 100
+export const ROWS = Math.floor(HEIGHT / CELL_SIZE)
+export const TICK_MS = 100
 const INJECTION_MARGIN = 2
 const INJECTION_ATTEMPTS = 5
 const INJECTION_RETRY_DELAY = 1_000
-const INJECTION_RETRY_TICKS = Math.round(INJECTION_RETRY_DELAY / TICK_MS)
-const FIRST_INJECTION_TICKS_MIN = 80 // 8s at 100ms/tick
-const FIRST_INJECTION_TICKS_MAX = 120 // 12s
-const NEXT_INJECTION_TICKS_MIN = 80 // 8s
-const NEXT_INJECTION_TICKS_MAX = 150 // 15s
+export const INJECTION_RETRY_TICKS = Math.round(INJECTION_RETRY_DELAY / TICK_MS)
+export const FIRST_INJECTION_TICKS_MIN = 80 // 8s at 100ms/tick
+export const FIRST_INJECTION_TICKS_MAX = 120 // 12s
+export const NEXT_INJECTION_TICKS_MIN = 80 // 8s
+export const NEXT_INJECTION_TICKS_MAX = 150 // 15s
 
 export function centerIndex(cols: number, rows: number): number {
   return Math.floor(rows / 2) * cols + Math.floor(cols / 2)
@@ -466,7 +466,7 @@ export function pickInjection(
 // Sim reducer — pure, atomic state transitions for the grid + mode
 // ----------------------------------------------------------------------
 
-type SimState = {
+export type SimState = {
   cols: number
   rows: number
   grid: Uint8Array
@@ -474,7 +474,7 @@ type SimState = {
   topology: ConwayTopology
 }
 
-type SimAction =
+export type SimAction =
   | { type: "STEP" }
   | { type: "INJECT"; pattern: ConwayPattern; x: number; y: number }
   | { type: "SEED"; grid: Uint8Array; cols: number; rows: number }
@@ -575,7 +575,7 @@ const INITIAL_SIM: SimState = {
 // remount (fresh Math.random seed).
 // ----------------------------------------------------------------------
 
-function randomInRange(min: number, max: number, rng: () => number): number {
+export function randomInRange(min: number, max: number, rng: () => number): number {
   return min + Math.floor(rng() * (max - min + 1))
 }
 
@@ -672,11 +672,6 @@ export function ConwayGrid({ className }: { className?: string }) {
 
   // Keep `gridRef` and `modeRef` in sync with the reducer output.
   // This is a one-way mirror; we never read the ref to drive a render.
-  useEffect(() => {
-    gridRef.current = sim.grid
-    modeRef.current = sim.mode
-  }, [sim.grid, sim.mode])
-
   // Drawing state. The pointer keeps capturing on the SVG until it is
   // released or the gesture ends. `lastCellRef` is cleared whenever the
   // pointer leaves the grid so a re-entry doesn't draw a long line back
@@ -696,7 +691,7 @@ export function ConwayGrid({ className }: { className?: string }) {
    * pointerup / pointercancel / lostpointercapture, and on resize
    * before the grid is replaced.
    */
-  const endGesture = () => {
+  const endGesture = useCallback(() => {
     const id = pointerIdRef.current
     if (id !== null) {
       const svg = svgRef.current
@@ -711,152 +706,16 @@ export function ConwayGrid({ className }: { className?: string }) {
     pointerIdRef.current = null
     isDrawingRef.current = false
     lastCellRef.current = null
-  }
-
-  // Initial measurement + seed. useLayoutEffect runs synchronously after
-  // the DOM is mounted but before the browser paints, which lets us
-  // measure the wrapper width and seed the grid without a visible
-  // empty-frame flash.
-  useLayoutEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const w = el.getBoundingClientRect().width
-    const measured = Math.floor(w / CELL_SIZE)
-    if (measured >= 3) {
-      dispatch({
-        type: "SEED",
-        grid: seedGrid(measured, ROWS, Math.random),
-        cols: measured,
-        rows: ROWS,
-      })
-      countdownRef.current = randomInRange(
-        FIRST_INJECTION_TICKS_MIN,
-        FIRST_INJECTION_TICKS_MAX,
-        Math.random
-      )
-    }
   }, [])
 
-  // ResizeObserver: re-measure cols on every layout change. When the
-  // measured column count differs from the current one, terminate any
-  // active gesture (the wrapper dimensions are about to change and the
-  // cached lastCellRef would otherwise trace a parasite line on the
-  // next gesture), then reseed. The callback runs as an observer
-  // callback, not inside a useEffect body, so the cascading-render
-  // lint rule does not apply.
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const observer = new ResizeObserver(() => {
-      const w = el.getBoundingClientRect().width
-      const measured = Math.floor(w / CELL_SIZE)
-      if (measured === cols) return
-      endGesture()
-      if (measured >= 3) {
-        dispatch({
-          type: "SEED",
-          grid: seedGrid(measured, ROWS, Math.random),
-          cols: measured,
-          rows: ROWS,
-        })
-        countdownRef.current = randomInRange(
-          FIRST_INJECTION_TICKS_MIN,
-          FIRST_INJECTION_TICKS_MAX,
-          Math.random
-        )
-        // Keep the cursor inside the new grid bounds.
-        setCursor((cur) => {
-          if (!cur) return cur
-          return [Math.min(cur[0], measured - 1), Math.min(cur[1], ROWS - 1)]
-        })
-      } else {
-        // Below the safe dimension — suspend by zeroing out cols. The
-        // tick effect's `cols < 3` gate stops Conway and injections.
-        dispatch({ type: "SEED", grid: new Uint8Array(0), cols: 0, rows: ROWS })
-      }
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [cols])
-
-  // IntersectionObserver: suspend when scrolled out of view.
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0]
-        if (entry) setIsInView(entry.isIntersecting)
-      },
-      { threshold: 0 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  // document.visibilityState: suspend when the tab is hidden.
-  useEffect(() => {
-    const onVis = () => setDocVisible(document.visibilityState === "visible")
-    document.addEventListener("visibilitychange", onVis)
-    return () => document.removeEventListener("visibilitychange", onVis)
-  }, [])
-
-  // Tick effect. The interval is set up once per visibility / dimension
-  // change and is NOT re-installed on every grid mutation or countdown
-  // decrement. The countdown is decremented inside the timer callback
-  // on every non-suspended tick, regardless of `sim.mode`. The previous
-  // state of the grid and the current countdown are read from refs so
-  // the callback always sees the latest values without depending on
-  // them.
-  useEffect(() => {
-    if (cols < 3) return
-    if (!isInView || !docVisible || reduceMotion) return
-
-    const interval = window.setInterval(() => {
-      const current = gridRef.current
-
-      // (1) Conway step first. Runs on every tick when the grid is
-      // active, even when an injection also lands on this tick. The
-      // injection is re-validated by the reducer against the latest
-      // state after STEP, so a too-crowded pick may still be rejected.
-      if (modeRef.current === "active") {
-        dispatch({ type: "STEP" })
-      }
-
-      // (2) Decrement the countdown. The injection check fires when the
-      // countdown reaches zero.
-      const remaining = countdownRef.current > 0 ? countdownRef.current - 1 : 0
-      countdownRef.current = remaining
-
-      if (remaining > 0) return
-
-      // (3) Injection attempt. Note: we deliberately do NOT re-run
-      // Conway here to "find a placement" — that would double the
-      // work. The reducer's INJECT branch re-checks canPlaceEmpty
-      // against the post-STEP grid.
-      const pick = pickInjection(current, cols, rows, Math.random)
-      if (!pick) {
-        // No placement found — retry in INJECTION_RETRY_TICKS ticks
-        // instead of hammering the picker.
-        countdownRef.current = INJECTION_RETRY_TICKS
-        return
-      }
-
-      dispatch({
-        type: "INJECT",
-        pattern: pick.pattern,
-        x: pick.x,
-        y: pick.y,
-      })
-      countdownRef.current = randomInRange(
-        NEXT_INJECTION_TICKS_MIN,
-        NEXT_INJECTION_TICKS_MAX,
-        Math.random
-      )
-    }, TICK_MS)
-
-    return () => window.clearInterval(interval)
-  }, [cols, rows, isInView, docVisible, reduceMotion])
+  useConwayGridEffects({
+    wrapperRef, sim, cols, rows, isInView, docVisible, reduceMotion: Boolean(reduceMotion), dispatch,
+    setIsInView, setDocVisible, setCursor, gridRef, modeRef, countdownRef, endGesture,
+    cellSize: CELL_SIZE, rowsCount: ROWS, tickMs: TICK_MS,
+    firstInjectionMin: FIRST_INJECTION_TICKS_MIN, firstInjectionMax: FIRST_INJECTION_TICKS_MAX,
+    nextInjectionMin: NEXT_INJECTION_TICKS_MIN, nextInjectionMax: NEXT_INJECTION_TICKS_MAX,
+    retryTicks: INJECTION_RETRY_TICKS, seedGrid, randomInRange, pickInjection,
+  })
 
   // When the wrapper takes focus, initialise the keyboard cursor at
   // the centre of the grid (if the grid is wide enough).

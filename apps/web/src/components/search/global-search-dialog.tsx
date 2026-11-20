@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useRef } from "react"
+import { useSearchInputFocus } from "@/hooks/search/use-search-shortcuts"
 import { useRouter } from "next/navigation"
 import { Search, X } from "lucide-react"
 import Fuse from "fuse.js"
@@ -59,11 +60,7 @@ export function GlobalSearchDialog() {
     return fuse.search(query).slice(0, 8)
   }, [query, fuse])
 
-  useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus()
-    }
-  }, [isOpen])
+  useSearchInputFocus(isOpen, inputRef)
 
   const handleClose = () => {
     setQuery("")

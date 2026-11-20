@@ -42,6 +42,8 @@ jobs:
         run: pnpm lint:next-routes
       - name: Test Next route handler boundary
         run: pnpm test:next-routes
+      - name: Test React effect and hook rules
+        run: pnpm test:react-rules
       - name: Lint suppression guard
         run: pnpm lint:guard
       - run: pnpm turbo lint --summarize -- --max-warnings=0

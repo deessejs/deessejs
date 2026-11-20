@@ -6,7 +6,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
-    "lint": "pnpm lint:directives && pnpm lint:type-assertions && pnpm lint:next-routes && pnpm test:next-routes && pnpm lint:guard && turbo lint -- --max-warnings=0",
+    "lint": "pnpm lint:directives && pnpm lint:type-assertions && pnpm lint:next-routes && pnpm test:next-routes && pnpm test:react-rules && pnpm lint:guard && turbo lint -- --max-warnings=0",
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
@@ -20,6 +20,7 @@
     "lint:type-assertions": "node scripts/lint-type-assertions.mjs",
     "lint:next-routes": "node scripts/check-next-route-handlers.mjs",
     "test:next-routes": "node --test scripts/check-next-route-handlers.test.mjs",
+    "test:react-rules": "node --test scripts/oxlint/project-react-rules.test.mjs",
     "lint:guard": "pnpm exec oxlint --config .oxlintrc.json scripts/check-lint-directives.mjs --max-warnings=0",
     "dedupe:check": "pnpm dedupe --check",
     "complex:collect": "node --experimental-strip-types scripts/complexity-collect.ts",

@@ -4,7 +4,6 @@ import {
   useDeferredValue,
   useMemo,
   useState,
-  useEffect,
   type ReactNode,
 } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
@@ -14,6 +13,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import type { Post } from "@/lib/blog/types"
 import { BLOG_PAGE_SIZE } from "@/lib/blog/posts"
+import { useBlogHistoryPagination } from "@/hooks/blog/use-blog-history-pagination"
 
 import { PostCardGrid } from "./blog-post-grid"
 
@@ -68,20 +68,7 @@ export function BlogSearch({
   nextUrl.set("page", String(nextPage))
   const nextHref = `${pathname}?${nextUrl.toString()}`
 
-  useEffect(() => {
-    function restoreHistoryState(event: PopStateEvent) {
-      const url = new URL(window.location.href)
-      const urlPage = Number(url.searchParams.get("page")) || 1
-      const stateCount = event.state?.blogVisibleCount
-      setVisibleCount(
-        typeof stateCount === "number"
-          ? stateCount
-          : Math.min(urlPage * BLOG_PAGE_SIZE, posts.length)
-      )
-    }
-    window.addEventListener("popstate", restoreHistoryState)
-    return () => window.removeEventListener("popstate", restoreHistoryState)
-  }, [posts.length])
+  useBlogHistoryPagination(posts.length, BLOG_PAGE_SIZE, setVisibleCount)
 
   async function loadMore(event: React.MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()

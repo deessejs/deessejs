@@ -170,11 +170,11 @@ Gotchas that are not visible in the code:
 
 ## Git workflow
 
-This repo is staging-first: start from `staging`, work on a branch named `impl/{n}-{slug}`, `chore/{slug}` or `fix/{slug}`, and open the pull request against `staging`. Never push to `main`, never merge into it, and never bypass the branch protection. The progression from `staging` to `main` is a release action rather than a development one, and an agent never performs it: today the release workflow documents it as a human-driven promotion, and the decision to automate it once the required checks and the review have passed is recorded on Nuclino. A push to `staging` publishes the canary channel and a push to `main` publishes the latest one. A change that touches the published surface of a package needs a `.changeset/*.md` file, and the `/spec`, `/implement`, `/create-pr` and `/review-pr` skills all follow this flow. The full guide, with the intent behind each rule and the files that implement it, is on Nuclino in the workspace **DeesseJS**, under the name **Git Workflow and Releases**.
+This repo is staging-first: start from `staging`, work on a branch named `impl/{n}-{slug}`, `chore/{slug}` or `fix/{slug}`, and open the pull request against `staging`. Never push to `main`, never merge into it, and never bypass the branch protection. The progression from `staging` to `main` is a release action rather than a development one, and an agent never performs it: today the release workflow documents it as a human-driven promotion, and the decision to automate it once the required checks and the review have passed is recorded on Nuclino. A push to `staging` publishes the canary channel and a push to `main` publishes the latest one. A change that touches the published surface of a package needs a `.changeset/*.md` file. The repository-owned `/create-pr` skill follows this flow. The full guide, with the intent behind each rule and the files that implement it, is on Nuclino in the workspace **DeesseJS**, under the name **Git Workflow and Releases**.
 
 ## Agent tooling
 
-- **Skills** live in `.claude/skills/`: `spec`, `implement`, `create-pr`, `review-pr`, `create-issue`, `triage`, `product-design` and `use-shadcn`. Read the `SKILL.md` before running one.
+- **Skills** live in `.agents/skills/` and `.claude/skills/`. Read the relevant `SKILL.md` before using a repository-owned skill.
 - **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
 - **Web research** follows the protocol in "Where your facts come from".
 
