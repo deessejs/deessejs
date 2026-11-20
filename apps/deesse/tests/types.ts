@@ -5,7 +5,7 @@ import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient 
 import { organization, username } from "better-auth/plugins"
 import { inferAdditionalFields, organizationClient, usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseAuthAdapter, type DeesseConfig, type DeesseDatabaseAdapter, type DeesseDatabaseResult, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseFieldDefinition, type DeesseInstance, type DeesseJsonValue, type DeesseModelResult, type DeesseModelRow, type DeessePluginContributionRegistry, type DeesseRequestContext, type PluginExtension } from "deesse"
+import { createDeesse, createPluginApi, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseAuthAdapter, type DeesseConfig, type DeesseDatabaseAdapter, type DeesseDatabaseResult, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseFieldDefinition, type DeesseInstance, type DeesseJsonValue, type DeesseModelResult, type DeesseModelRow, type DeessePluginContributionRegistry, type DeesseRequestContext, type PluginExtension } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
@@ -78,6 +78,14 @@ const orgClient = organizationClient()
 const additionalFieldsClient = inferAdditionalFields<typeof auth>()
 const minimalApp = createDeesse({ database, auth })
 const contextualOs = os.$context<DeesseRequestContext<typeof adapterSchema>>()
+const inferredPluginOs = createPluginApi(adapterSchema)
+const inferredPluginRouter = inferredPluginOs.router({
+  articleContext: inferredPluginOs.handler(({ context }) => {
+    const service: DeesseDatabaseService<typeof adapterSchema> = context.database
+    const email: string | undefined = context.user?.email
+    return { email, service: service.capabilities.transactions }
+  }),
+})
 const contextualRouter = contextualOs.router({
   articleById: contextualOs.handler(({ context }) => {
     const service: DeesseDatabaseService<typeof adapterSchema> = context.database
@@ -113,6 +121,7 @@ type ComposedInstanceDatabaseKeysExact = Assert<Equal<keyof InstanceDatabaseSche
 type AuthAdapterExact = Assert<Equal<typeof database.authAdapter, DeesseAuthAdapter>>
 type DatabaseAdapterShapeExact = Assert<Equal<keyof DeesseDatabaseAdapter<typeof adapterSchema>, "database" | "authAdapter" | "initializeSchema">>
 type ContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
+type InferredPluginRouterOutputExact = Assert<Equal<InferRouterOutputs<typeof inferredPluginRouter>["articleContext"], { email: string | undefined; service: true }>>
 type ContextualRouterKeysExact = Assert<Equal<keyof typeof contextualApp.api.router, "articleById">>
 type NoConfigArgsOmitted = Assert<Equal<keyof typeof noConfigRegistration, "id" | "definition">>
 type NoConfigContributionExact = Assert<Equal<keyof ReturnType<typeof noConfigRegistration.definition.handler>["database"]["schema"], "noConfig">>

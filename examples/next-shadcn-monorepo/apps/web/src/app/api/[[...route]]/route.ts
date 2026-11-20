@@ -1,10 +1,10 @@
 import { toNextJsHandler } from "deesse/next"
-import { app } from "@/server/app"
+import { createDeesseApp } from "../../../../deesse.config.ts"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-const handler = toNextJsHandler(app)
+const handler = toNextJsHandler(await createDeesseApp())
 
 export const GET = handler
 export const POST = handler

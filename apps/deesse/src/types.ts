@@ -219,7 +219,8 @@ export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
   (TApi extends { router: infer TRouter extends AnyRouter } ? TRouter : Record<never, never>) & PluginRouters<TPlugins>
 
 export type DeesseFetchHandler = (request: Request) => Promise<Response>
-export type DeesseRequestContext<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities, TUser = object | null, TSession = object | null> = {
+export type DeesseRequestUser = { readonly id: string; readonly email: string; readonly [key: string]: unknown }
+export type DeesseRequestContext<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities, TUser = DeesseRequestUser | null, TSession = object | null> = {
   readonly database: DeesseDatabaseService<TSchema, TCapabilities>
   readonly request: Request
   readonly headers: Headers

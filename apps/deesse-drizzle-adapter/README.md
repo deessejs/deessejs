@@ -23,7 +23,7 @@ The adapter implements the bounded `findById`, `findMany`, `insert`, `updateById
 
 ## Schema and migrations
 
-Plugin declarations are the source for Deesse-owned tables. Run `deesse-drizzle-schema --config ./deesse.config.ts --output ./src/schema/deesse.generated.ts` to invoke the configured plugins once and emit their Drizzle schema. This command does not connect to a database. Better Auth's CLI owns the auth schema in the consuming application. Both files are generated artifacts and must not be edited manually.
+Plugin declarations are the source for Deesse-owned tables. Run `deesse-drizzle-schema --config ./deesse.config.ts --output ./.deesse/generated/deesse.schema.ts` to invoke the configured plugins once and emit their Drizzle schema. The optional `--auth-config-output ./.deesse/tooling/auth.config.ts` flag emits an internal Better Auth CLI bridge from the same declarative app config and plugin contributions. That bridge lets Better Auth's official CLI generate its authoritative auth schema without requiring the consumer to instantiate Better Auth. These commands do not connect to a database. Generated outputs should stay in ignored framework tooling directories and must not be edited manually.
 
 In the consuming application, include the generated Deesse schema and Better Auth CLI schema in that application's Drizzle schema barrel. Generate, review, commit, and explicitly apply migrations with the application's Drizzle Kit workflow. The adapter package does not write to or export through the monorepo product database. `createDeesse()` does not apply migrations or perform startup DDL.
 

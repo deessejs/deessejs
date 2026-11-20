@@ -1,58 +1,42 @@
-import { ORPCError, os } from "@orpc/server"
-import { plugin } from "deesse"
-import { z } from "zod"
-import type { ExampleRequestContext } from "./src/server/types.js"
+import "dotenv/config"
+import { os } from "@orpc/server"
+import { createDeesse } from "deesse"
+import { drizzle } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
+import { drizzleAdapter } from "@deessejs/drizzle-adapter"
+import { postsPlugin } from "./plugins/posts.js"
 
-export const postsSchema = {
-  posts: {
-    fields: {
-      title: { type: "string" },
-      createdAt: { type: "timestamp" },
-    },
-    indexes: [{ name: "posts_created_at_idx", fields: ["createdAt"] }],
-  },
+const auth = {
+  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  secret: process.env.BETTER_AUTH_SECRET ?? "local-only-deesse-next-example-secret",
+  emailAndPassword: { enabled: true },
 } as const
-
-const appRpc = os.router({
-  health: os.handler(() => ({ status: "ok" as const })),
-})
-
-const postsRpc = os.$context<ExampleRequestContext>()
-
-const postsRouter = postsRpc.router({
-  status: postsRpc.handler(() => ({ status: "ready" as const })),
-  list: postsRpc.handler(async ({ context }) => {
-    const result = await context.database.findMany("posts", {
-      orderBy: { createdAt: "desc" },
-      limit: 10,
-    })
-    if (result._tag === "Err") throw result.error
-    return result.value
-  }),
-  create: postsRpc.input(z.object({ title: z.string().trim().min(1).max(120) })).handler(async ({ context, input }) => {
-    const result = await context.database.insert("posts", {
-      title: input.title,
-      createdAt: new Date(),
-    })
-    if (result._tag === "Err") throw result.error
-    return result.value
-  }),
-  me: postsRpc.handler(({ context }) => {
-    if (!context.user) throw new ORPCError("UNAUTHORIZED")
-    return { id: context.user.id, email: context.user.email }
-  }),
-})
-
-export const postsPlugin = plugin({
-  id: "posts",
-  handler: () => ({
-    database: { schema: postsSchema },
-    api: { router: postsRouter },
-  }),
-})
 
 export const deesseConfig = {
-  api: { router: appRpc },
+  auth,
+  api: { router: os.router({ health: os.handler(() => ({ status: "ok" as const })) }) },
   plugins: [postsPlugin()],
 } as const
+
+export async function createDeesseApp() {
+  const [authSchema, deesseSchema] = await Promise.all([
+    import("./.deesse/generated/auth.schema.ts"),
+    import("./.deesse/generated/deesse.schema.ts"),
+  ])
+  const client = postgres(process.env.DATABASE_URL ?? "postgres://postgres:postgres@127.0.0.1:5432/deesse_next_example", {
+    max: 1,
+    prepare: false,
+  })
+  const drizzleDatabase = drizzle(client, { schema: { ...authSchema, ...deesseSchema } })
+  const database = drizzleAdapter(drizzleDatabase)
+  return createDeesse({ database, ...deesseConfig })
+}
+
+declare module "deesse/react" {
+  interface DeesseReactRegistry {
+    example: {
+      router: Awaited<ReturnType<typeof createDeesseApp>>["api"]["router"]
+    }
+  }
+}
 

@@ -3,7 +3,7 @@ import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient 
 import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
-import { createDeesse, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type NoArgsRegistration } from "deesse"
+import { createDeesse, createPluginApi, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type DeesseRequestUser, type NoArgsRegistration } from "deesse"
 import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
 import { toNextJsHandler } from "deesse/next"
 
@@ -34,11 +34,19 @@ const config = {
   plugins: [feature({})],
 } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof router }, readonly [ReturnType<typeof feature>]>
 const app = createDeesse(config)
+const pluginApi = createPluginApi(consumerSchema)
+const pluginContextRouter = pluginApi.router({
+  user: pluginApi.handler(({ context }) => {
+    const user: DeesseRequestUser | null = context.user
+    return user?.email ?? null
+  }),
+})
 const nextHandler = toNextJsHandler(app)
 type ExpectedAuth = ReturnType<typeof betterAuth<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>>
 type ExpectedRouter = typeof router & { feature: typeof router }
 type ExpectedInstance = DeesseInstance<typeof database, ExpectedAuth, ExpectedRouter, typeof config.plugins>
 type PublicInstanceExact = Assert<Equal<typeof app, ExpectedInstance>>
+type PublicPluginContextExact = Assert<Equal<InferRouterOutputs<typeof pluginContextRouter>["user"], string | null>>
 type PublicRouterAliasExact = Assert<Equal<ApiRouter<{ router: typeof router }, typeof config.plugins>, ExpectedRouter>>
 type PublicAuthAliasExact = Assert<Equal<BetterAuthInstance<ComposedBetterAuthOptions<typeof auth, typeof config.plugins>>, ExpectedAuth>>
 type PublicCapabilitiesExact = Assert<Equal<typeof app.database, DeesseDatabaseService<ComposedDatabaseSchema<typeof database, typeof config.plugins>, CapabilitiesOf<typeof database>>>>
@@ -67,4 +75,4 @@ const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
+void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])

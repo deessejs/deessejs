@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises"
-import { dirname, resolve } from "node:path"
+import { dirname, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
+import { generateAuthCliConfigSource } from "./auth-config-generator.js"
 import type { CliDatabaseSchema, CliPlugin } from "./cli.types.js"
 import { generateDrizzleSchemaSource } from "./schema-generator.js"
 
@@ -38,6 +39,9 @@ function orderPlugins(plugins: readonly CliPlugin[]) {
 async function main(): Promise<void> {
   const configPath = resolve(readFlag("--config"))
   const outputPath = resolve(readFlag("--output"))
+  const authConfigOutputPath = process.argv.includes("--auth-config-output")
+    ? resolve(readFlag("--auth-config-output"))
+    : undefined
   const module = await import(pathToFileURL(configPath).href)
   const config = module.deesseConfig ?? module.default
   if (!config || typeof config !== "object") {
@@ -60,6 +64,14 @@ async function main(): Promise<void> {
   await mkdir(dirname(outputPath), { recursive: true })
   await writeFile(outputPath, source, "utf8")
   process.stdout.write(`Generated Deesse Drizzle schema: ${outputPath}\n`)
+
+  if (authConfigOutputPath) {
+    const configImport = relative(dirname(authConfigOutputPath), configPath).split(sep).join("/")
+    const configSpecifier = configImport.startsWith(".") ? configImport : `./${configImport}`
+    await mkdir(dirname(authConfigOutputPath), { recursive: true })
+    await writeFile(authConfigOutputPath, generateAuthCliConfigSource(configSpecifier), "utf8")
+    process.stdout.write(`Generated internal Better Auth CLI config: ${authConfigOutputPath}\n`)
+  }
 }
 
 main().catch((cause: unknown) => {

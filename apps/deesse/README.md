@@ -8,6 +8,8 @@ DeesseJS core and its typed React client. This PR adds the first bounded Postgre
 
 `deesse/next` exports `toNextJsHandler(instance)` as a Hono Vercel/Next host bridge. `deesse/react` creates a Better Auth React client and a router-derived oRPC client with the same `/api/auth` and `/api/rpc` paths. The app supplies application-specific router and Better Auth client types through the existing type-only module augmentation.
 
+`createPluginApi(schema)` creates an oRPC builder whose request context uses the stable Deesse database service and standard request-scoped auth fields. The schema argument infers the plugin's model operations without rebuilding the context type in the host app.
+
 Runtime tests use Better Auth's in-memory adapter only as an isolated test double for composition and host behavior. The PostgreSQL adapter integration suite uses a real PostgreSQL URL, and proves the operations, transactions, auth persistence and session flow described below when run with the CI PostgreSQL service.
 
 ## Bounded database type contract
