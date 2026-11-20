@@ -1,10 +1,10 @@
-import { requireMcpAuth } from "@better-auth/mcp"
+import { createMcpProtectedRequestHandler } from "@better-auth/mcp"
 import { call } from "@orpc/server"
 import { auth } from "@workspace/auth"
 import { createProductMcpHandler } from "@workspace/mcp"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
-import { API_BASE_PATH } from "../../constants/base-path.js"
+import { API_BASE_PATH, API_AUTH_PATH } from "../../constants/base-path.js"
 import { appRouter } from "../../orpc/index.js"
 import type { ApiEnv } from "../env.js"
 
@@ -21,10 +21,16 @@ const mcpHandler = createProductMcpHandler({
     }),
 })
 
-const protectedHandler = requireMcpAuth(
-  auth,
+const authIssuer = `${serverEnv.API_BASE_URL}${API_AUTH_PATH}`
+const protectedHandler = createMcpProtectedRequestHandler(
+  {
+    issuer: authIssuer,
+    audience: resource,
+    jwksUrl: `${authIssuer}/jwks`,
+    jwtVerifyOptions: { requiredClaims: ["azp"] },
+    requiredScopes: ["templates:read"],
+  },
   (request) => mcpHandler.fetch(request),
-  { resource, requiredScopes: ["templates:read"] }
 )
 
 export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
