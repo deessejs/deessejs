@@ -1,5 +1,9 @@
 export { TemplateV1, type TemplateV1 as TemplateV1Type } from "./template.js"
 export {
+  MyOrganizationsListResponseV1,
+  type MyOrganizationsListResponseV1 as MyOrganizationsListResponseV1Type,
+} from "./my-organizations.js"
+export {
   TemplateSummaryV1,
   type TemplateSummaryV1 as TemplateSummaryV1Type,
 } from "./template-summary.js"
