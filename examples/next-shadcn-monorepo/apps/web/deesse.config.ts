@@ -21,10 +21,10 @@ const postsRpc = os.$context<ExampleRequestContext>()
 
 const postsRouter = postsRpc.router({
   status: postsRpc.handler(() => ({ status: "ready" as const })),
-  list: postsRpc.input(z.object({ limit: z.number().int().min(1).max(100).default(10) })).handler(async ({ context, input }) => {
+  list: postsRpc.handler(async ({ context }) => {
     const result = await context.database.findMany("posts", {
       orderBy: { createdAt: "desc" },
-      limit: input.limit,
+      limit: 10,
     })
     if (result._tag === "Err") throw result.error
     return result.value

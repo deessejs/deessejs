@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from "react"
-import { cn } from "../lib/utils.js"
+import { cn } from "../lib/utils.ts"
 
 export function Button({ className, variant = "default", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "default" | "secondary" | "outline" }) {
   const variants = {

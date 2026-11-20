@@ -1075,6 +1075,9 @@ importers:
         specifier: 'catalog:'
         version: 3.6.0
     devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
       shadcn:
         specifier: 'catalog:'
         version: 4.12.0(typescript@6.0.3)

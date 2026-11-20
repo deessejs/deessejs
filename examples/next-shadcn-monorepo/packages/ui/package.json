@@ -15,6 +15,7 @@
     "tailwind-merge": "catalog:"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
     "shadcn": "catalog:",
     "tailwindcss": "catalog:"
   }

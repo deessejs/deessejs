@@ -15,7 +15,7 @@ export function PostsConsole() {
 
   async function loadPosts() {
     try {
-      const rows = await client.api.posts.list({})
+      const rows = await client.api.posts.list()
       setPosts(rows)
       setMessage(`Loaded ${rows.length} post${rows.length === 1 ? "" : "s"}.`)
     } catch {
@@ -25,8 +25,7 @@ export function PostsConsole() {
 
   async function createAccount() {
     try {
-      const username = email.split("@")[0] ?? ""
-      const result = await client.auth.signUp.email({ name: username || "Example User", email, password, username })
+      const result = await client.auth.signUp.email({ name: email.split("@")[0] || "Example User", email, password })
       setMessage(result.error?.message ?? "Account created. You can now sign in.")
     } catch {
       setMessage("Account creation failed. Check the database and auth configuration.")
@@ -39,20 +38,6 @@ export function PostsConsole() {
       setMessage(result.error?.message ?? "Signed in. The protected API route can now read your session.")
     } catch {
       setMessage("Sign in failed. Check the email and password.")
-    }
-  }
-
-  async function checkUsername() {
-    const username = email.split("@")[0] ?? ""
-    if (!username) {
-      setMessage("Enter an email address to check its name as a username.")
-      return
-    }
-    try {
-      const result = await client.auth.isUsernameAvailable({ username })
-      setMessage(result.data?.available ? `Username ${username} is available.` : `Username ${username} is already in use.`)
-    } catch {
-      setMessage("Username check failed.")
     }
   }
 
@@ -84,7 +69,6 @@ export function PostsConsole() {
         <Button onClick={signIn} type="button">Sign in</Button>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Button onClick={checkUsername} type="button" variant="outline">Check username</Button>
         <Button onClick={loadSession} type="button" variant="outline">Check protected API</Button>
         <Button onClick={loadPosts} type="button" variant="outline">Load posts</Button>
       </div>
