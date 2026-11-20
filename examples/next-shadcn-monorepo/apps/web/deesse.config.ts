@@ -4,7 +4,7 @@ import { createDeesse } from "deesse"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import { drizzleAdapter } from "@deessejs/drizzle-adapter"
-import { postsPlugin } from "./plugins/posts.js"
+import { postsPlugin } from "./plugins/posts.ts"
 
 const auth = {
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
