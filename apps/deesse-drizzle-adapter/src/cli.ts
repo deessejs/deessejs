@@ -8,11 +8,11 @@ import type { CliDatabaseSchema, CliPlugin } from "./cli.types.js"
 import { generateDrizzleSchemaSource } from "./schema-generator.js"
 
 interface CliOptions {
-  configPath?: string
-  pluginsPath?: string
+  configPath?: string | undefined
+  pluginsPath?: string | undefined
   outputPath: string
-  authConfigOutputPath?: string
-  authSchemaPlaceholderPath?: string
+  authConfigOutputPath?: string | undefined
+  authSchemaPlaceholderPath?: string | undefined
 }
 
 interface PluginContribution {
