@@ -100,7 +100,99 @@ const plugin = {
         }
       },
     },
+    "tanstack-form-required": {
+      meta: {
+        type: "problem",
+        schema: [],
+        docs: {
+          description:
+            "Require TanStack Form for app-managed forms. A native form is allowed only with an action prop that references a server action and no client onSubmit handler.",
+        },
+      },
+      create(context) {
+        const useFormNames = new Set()
+        const functionScopes = []
+
+        function enterFunction(node) {
+          functionScopes.push({ node, usesTanStackForm: false })
+        }
+
+        function leaveFunction() {
+          functionScopes.pop()
+        }
+
+        return {
+          ImportDeclaration(node) {
+            if (node.source.value !== "@tanstack/react-form") return
+            for (const specifier of node.specifiers) {
+              if (
+                specifier.type === "ImportSpecifier" &&
+                specifier.imported.name === "useForm"
+              ) {
+                useFormNames.add(specifier.local.name)
+              }
+            }
+          },
+          FunctionDeclaration: enterFunction,
+          "FunctionDeclaration:exit": leaveFunction,
+          FunctionExpression: enterFunction,
+          "FunctionExpression:exit": leaveFunction,
+          ArrowFunctionExpression: enterFunction,
+          "ArrowFunctionExpression:exit": leaveFunction,
+          CallExpression(node) {
+            if (
+              node.callee.type === "Identifier" &&
+              useFormNames.has(node.callee.name)
+            ) {
+              const currentScope = functionScopes.at(-1)
+              if (currentScope) currentScope.usesTanStackForm = true
+            }
+          },
+          JSXOpeningElement(node) {
+            if (
+              node.name.type !== "JSXIdentifier" ||
+              node.name.name !== "form"
+            ) {
+              return
+            }
+
+            const currentScope = functionScopes.at(-1)
+            if (currentScope?.usesTanStackForm || isServerActionForm(node)) {
+              return
+            }
+
+            context.report({
+              node: node.name,
+              message:
+                "Use @tanstack/react-form for app-managed forms. Native forms are allowed only for server actions via action={serverAction}, without a client onSubmit handler.",
+            })
+          },
+        }
+      },
+    },
   },
+}
+
+function isServerActionForm(node) {
+  let hasServerAction = false
+  let hasClientSubmitHandler = false
+
+  for (const attribute of node.attributes ?? []) {
+    if (attribute.type !== "JSXAttribute" || attribute.name.type !== "JSXIdentifier")
+      continue
+    if (attribute.name.name === "onSubmit") hasClientSubmitHandler = true
+    if (
+      attribute.name.name === "action" &&
+      attribute.value?.type === "JSXExpressionContainer" &&
+      ["Identifier", "MemberExpression"].includes(
+        attribute.value.expression.type
+      )
+    ) {
+      hasServerAction = true
+    }
+  }
+
+  return hasServerAction && !hasClientSubmitHandler
 }
 
 function reportMemberCount(context, node, maximum) {
