@@ -7,13 +7,14 @@ describe("Deesse Drizzle schema generation", () => {
     expect(generateDrizzleSchemaSource({})).toBe("")
   })
 
-  it("bridges the declarative Deesse auth config and plugin server contributions to Better Auth CLI", () => {
+  it("reuses Deesse-owned Better Auth and supports the config-object generator fallback", () => {
     const source = generateAuthCliConfigSource("../../deesse.config.ts")
 
-    expect(source).toContain('import { deesseConfig } from "../../deesse.config.ts"')
+    expect(source).toContain('import * as appConfig from "../../deesse.config.ts"')
+    expect(source).toContain("const deesse = appConfig.deesse")
+    expect(source).toContain("export const auth = deesse?.auth ?? betterAuth({")
     expect(source).toContain('"args" in registration ? definition.handler(registration.args) : definition.handler()')
     expect(source).toContain("contribution.auth?.serverPlugins")
     expect(source).toContain("plugins: [...(deesseConfig.auth.plugins ?? []), ...contributedServerPlugins]")
-    expect(source).toContain("export const auth = betterAuth({")
   })
 })

@@ -1,12 +1,12 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth"
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient, type ReactAuthClient } from "better-auth/react"
 import type { BetterAuthClientOptions } from "better-auth/client"
 import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient } from "@orpc/server"
 import { organization, username } from "better-auth/plugins"
 import { inferAdditionalFields, organizationClient, usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, createPluginApi, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseAuthAdapter, type DeesseConfig, type DeesseDatabaseAdapter, type DeesseDatabaseResult, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseFieldDefinition, type DeesseInstance, type DeesseJsonValue, type DeesseModelResult, type DeesseModelRow, type DeessePluginContributionRegistry, type DeesseRequestContext, type PluginExtension } from "deesse"
-import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
+import { createClient } from "deesse/react"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
 type Assert<T extends true> = T
@@ -75,7 +75,6 @@ const auth = {
   user: { additionalFields: { teamCode: { type: "string", required: true } } },
 } satisfies BetterAuthOptions
 const orgClient = organizationClient()
-const additionalFieldsClient = inferAdditionalFields<typeof auth>()
 const minimalApp = createDeesse({ database, auth })
 const contextualOs = os.$context<DeesseRequestContext<typeof adapterSchema>>()
 const inferredPluginOs = createPluginApi(adapterSchema)
@@ -99,6 +98,7 @@ const contextualApp = createDeesse({ database, auth, api: { router: contextualRo
 const noConfigRegistration = noConfigPlugin()
 const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>
 const app = createDeesse(config)
+const additionalFieldsClient = inferAdditionalFields<typeof app.auth>()
 const directApp = createDeesse({ database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] })
 type ExpectedAuthOptions = ComposedBetterAuthOptions<typeof auth, typeof config.plugins>
 type ExpectedAuthInstance = ReturnType<typeof betterAuth<ExpectedAuthOptions>>
@@ -146,7 +146,6 @@ type ArticleJsonExact = Assert<Equal<DeesseModelRow<typeof adapterSchema.article
 type RequestContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
 type ApiInputExact = Assert<Equal<InferRouterInputs<typeof app.api.router>["ping"], { count: number }>>
 type ApiOutputExact = Assert<Equal<InferRouterOutputs<typeof app.api.router>["feature"]["get"], { title: string }>>
-type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
 type EmptyRouterExact = Assert<Equal<keyof typeof minimalApp.api.router, never>>
 void app.auth.api.createOrganization
 const registration = feature({})
@@ -229,13 +228,13 @@ void app.api.router.audit
 // @ts-expect-error no-args plugin factories reject registration arguments
 noConfigPlugin({})
 
-declare module "deesse/react" {
-  interface DeesseReactRegistry {
-    app: { router: typeof app.api.router; authOptions: { plugins: [typeof orgClient, typeof contributedUsernameClient, typeof additionalFieldsClient] } }
-  }
-}
-
-const client = createClient()
+const clientAuthOptions = { plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] } satisfies BetterAuthClientOptions
+const client = createClient({
+  $InferServer: {} as typeof app,
+  auth: clientAuthOptions,
+})
+// @ts-expect-error app-specific API inference requires an explicit server type link
+createClient()
 const isolatedAuthClient = createAuthClient({ plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] })
 const isolatedUsernameClient = createAuthClient({ plugins: [usernameClient()] })
 const isolatedContributedUsernameClient = createAuthClient({ plugins: [contributedUsernameClient] })
@@ -243,9 +242,8 @@ void isolatedUsernameClient.isUsernameAvailable
 void isolatedContributedUsernameClient.isUsernameAvailable
 void isolatedAuthClient.isUsernameAvailable
 const isolatedTeamCode: string = isolatedAuthClient.$Infer.Session.user.teamCode
-type ReactAuthOptionsBound = Assert<DeesseReactRegistry["app"]["authOptions"] extends BetterAuthClientOptions ? true : false>
-type ReactAuthOptionsPluginTypes = Assert<Equal<DeesseReactRegistry["app"]["authOptions"]["plugins"], [typeof orgClient, typeof contributedUsernameClient, typeof additionalFieldsClient]>>
-type ReactAuthOptionsExtracted = Assert<Equal<DeesseReactAuthOptions, DeesseReactRegistry["app"]["authOptions"]>>
+type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
+type ClientAuthExact = Assert<Equal<typeof client.auth, ReactAuthClient<typeof clientAuthOptions>>>
 void app.auth.api.isUsernameAvailable
 const serverTeamCode: string = app.auth.$Infer.Session.user.teamCode
 const pluginResult: Promise<{ title: string }> = client.api.feature.get({ id: "article-1" })
@@ -274,4 +272,4 @@ const organizationPermission: boolean = client.auth.organization.checkRolePermis
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [count, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, ReactAuthOptionsBound, ReactAuthOptionsPluginTypes, ReactAuthOptionsExtracted])
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, ClientAuthExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])

@@ -2,7 +2,7 @@
 
 This private example follows shadcn's official Next.js monorepo layout: `apps/web` is the Next.js host and `packages/ui` contains the shared shadcn-style components. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The UI workspace is named `@deesse-example/ui` because this monorepo already owns `@workspace/ui`.
 
-The web app consumes the local `deesse` and `@deessejs/drizzle-adapter` workspaces. Its Hono runtime is mounted through `deesse/next` at the Next.js API catch-all. The browser uses the zero-argument `createClient()` from `deesse/react` for oRPC calls and Better Auth. The router type is bound through a type-only module augmentation in `apps/web/deesse.config.ts`.
+The web app consumes the local `deesse` and `@deessejs/drizzle-adapter` workspaces. Its Hono runtime is mounted through `deesse/next` at the Next.js API catch-all. The browser's `src/lib/deesse-client.ts` links `createClient()` to the server instance with a type-only import of `deesse.config.ts`; components keep using the same simple client surface. The server configuration does not enter the browser's runtime module graph.
 
 This is a small integration example, not a production starter. It demonstrates Better Auth email/password, a public health route, authenticated request context, and creating/listing posts through the plugin API. The postgres-js pool, generated schema, and migration files belong to this example. No product database package or migration is used.
 
@@ -47,9 +47,9 @@ The code has local-only fallback values so workspace typecheck and build do not 
 
 ## Schema workflow
 
-`deesse.config.ts` owns the declarative Better Auth settings, app router, postgres-js connection, Drizzle client, and adapter construction. It creates the runtime through `createDeesseApp()`, which loads the generated schema only after the explicit schema-generation workflow has run. The posts plugin and its schema live in `apps/web/plugins/posts.ts`.
+`deesse.config.ts` owns the declarative Better Auth settings, app router, postgres-js connection, Drizzle client, adapter construction, and the synchronous `createDeesse()` call. Deesse constructs Better Auth internally. Root plugin registrations are collected in `apps/web/plugins/index.ts`; the posts plugin and its schema live in `apps/web/plugins/posts.ts`.
 
-`schema:generate` asks the Deesse Drizzle tooling to emit the plugin schema and a temporary Better Auth CLI configuration under the ignored `apps/web/.deesse/` directory. That internal configuration lets Better Auth's official CLI generate the auth schema from the same app settings and plugin contributions without requiring the example to construct or export a Better Auth instance. Drizzle Kit reads the generated schema files directly and creates reviewed migrations under this example's `drizzle/` directory. Do not edit generated output. Review and commit migrations before applying them to a shared database.
+`schema:generate` emits runtime Drizzle table modules under the ignored `apps/web/.deesse/generated/` directory. The adapter needs these table objects: it builds its model lookup from the configured Drizzle schema and checks plugin model declarations against the tables. The Deesse generator reads the root plugin registry without importing the runtime config. It creates a temporary empty auth schema module only on a clean setup so the synchronous config can be imported; Better Auth's official CLI then replaces that file with its authoritative auth schema through an internal bridge to `deesse.auth`. These are database schema artifacts, not generated TypeScript client declarations. Drizzle Kit consumes them to produce reviewed migrations under this example's `drizzle/` directory. Do not edit generated output. Review and commit migrations before applying them to a shared database.
 
 The adapter integration tests use a separate fixture database. These example scripts do not change the adapter fixtures, `packages/database`, or the product migration workflow.
 

@@ -1,10 +1,11 @@
 import { betterAuth } from "better-auth"
+import type { BetterAuthClientPlugin } from "better-auth/client"
 import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient } from "@orpc/server"
 import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, createPluginApi, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type DeesseRequestUser, type NoArgsRegistration } from "deesse"
-import { createClient, type DeesseReactAuthOptions, type DeesseReactRegistry } from "deesse/react"
+import { createClient } from "deesse/react"
 import { toNextJsHandler } from "deesse/next"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
@@ -62,17 +63,19 @@ const noArgsFeature = plugin({ id: "noargs", handler: () => ({ api: { router } }
 const noArgsRegistration = noArgsFeature()
 type PublicNoArgsRegistrationExact = Assert<Equal<typeof noArgsRegistration, NoArgsRegistration<typeof noArgsFeature.definition>>>
 
-const authClientPlugin = usernameClient()
-declare module "deesse/react" {
-  interface DeesseReactRegistry {
-    consumerApp: { router: typeof app.api.router; authOptions: { plugins: [typeof authClientPlugin] } }
-  }
-}
-const client = createClient()
+const authClientPlugin = {
+  ...usernameClient(),
+  $InferServerPlugin: {} as ReturnType<typeof username>,
+} satisfies BetterAuthClientPlugin
+const client = createClient({
+  $InferServer: {} as typeof app,
+  auth: { plugins: [authClientPlugin] },
+})
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
-type PublicReactRegistryExact = Assert<Equal<DeesseReactAuthOptions, DeesseReactRegistry["consumerApp"]["authOptions"]>>
+type PublicUsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">
+type PublicAuthPluginExact = Assert<Equal<PublicUsernameClientInput, { username: string }>>
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicReactRegistryExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
+void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])

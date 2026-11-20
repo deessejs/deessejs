@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs"
 import { mkdir, writeFile } from "node:fs/promises"
 import { dirname, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -37,17 +38,30 @@ function orderPlugins(plugins: readonly CliPlugin[]) {
 }
 
 async function main(): Promise<void> {
-  const configPath = resolve(readFlag("--config"))
+  const configIndex = process.argv.indexOf("--config")
+  const configPath = configIndex >= 0 ? resolve(readFlag("--config")) : undefined
+  const pluginsIndex = process.argv.indexOf("--plugins")
+  const pluginsPath = pluginsIndex >= 0 ? resolve(readFlag("--plugins")) : undefined
+  if (!configPath && !pluginsPath) throw new Error("Provide --config or --plugins.")
   const outputPath = resolve(readFlag("--output"))
   const authConfigOutputPath = process.argv.includes("--auth-config-output")
     ? resolve(readFlag("--auth-config-output"))
     : undefined
-  const module = await import(pathToFileURL(configPath).href)
-  const config = module.deesseConfig ?? module.default
-  if (!config || typeof config !== "object") {
-    throw new Error("The config module must export deesseConfig or a default Deesse config object.")
+  const authSchemaPlaceholderPath = process.argv.includes("--auth-schema-placeholder-output")
+    ? resolve(readFlag("--auth-schema-placeholder-output"))
+    : undefined
+  if (authConfigOutputPath && !configPath) {
+    throw new Error("--auth-config-output requires --config.")
   }
-  const plugins = Array.isArray(config.plugins) ? config.plugins : []
+  const pluginModule = await import(pathToFileURL(pluginsPath ?? configPath!).href)
+  const configModule = pluginsPath ? undefined : pluginModule
+  const config = configModule?.deesseConfig ?? configModule?.default
+  const plugins = pluginsPath
+    ? pluginModule.plugins ?? pluginModule.default
+    : Array.isArray(config?.plugins) ? config.plugins : []
+  if (!Array.isArray(plugins)) {
+    throw new Error("The plugin module must export a plugins array, or the config must export plugins.")
+  }
   const contributions = orderPlugins(plugins).map((item) => {
     const handler = item.definition.handler
     const contribution = "args" in item ? handler(item.args) : handler()
@@ -65,8 +79,14 @@ async function main(): Promise<void> {
   await writeFile(outputPath, source, "utf8")
   process.stdout.write(`Generated Deesse Drizzle schema: ${outputPath}\n`)
 
+  if (authSchemaPlaceholderPath && !existsSync(authSchemaPlaceholderPath)) {
+    await mkdir(dirname(authSchemaPlaceholderPath), { recursive: true })
+    await writeFile(authSchemaPlaceholderPath, "export {}\n", "utf8")
+    process.stdout.write(`Created temporary Better Auth schema bootstrap: ${authSchemaPlaceholderPath}\n`)
+  }
+
   if (authConfigOutputPath) {
-    const configImport = relative(dirname(authConfigOutputPath), configPath).split(sep).join("/")
+    const configImport = relative(dirname(authConfigOutputPath), configPath!).split(sep).join("/")
     const configSpecifier = configImport.startsWith(".") ? configImport : `./${configImport}`
     await mkdir(dirname(authConfigOutputPath), { recursive: true })
     await writeFile(authConfigOutputPath, generateAuthCliConfigSource(configSpecifier), "utf8")
