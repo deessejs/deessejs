@@ -26,6 +26,7 @@ import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
 import { mountBlogRoutes } from "./blog.js"
 import { mountChangelogRoutes } from "./changelog.js"
 import { mountRegistryRoutes } from "./registry.js"
+import { mountMcpRoutes } from "./mcp.js"
 
 async function resolveAvatarImageAccess(objectId: string, viewerId?: string) {
   if (!viewerId) return null
@@ -171,6 +172,7 @@ async function resolveTemplateImageAccess(objectId: string, viewerId?: string) {
  * most things belong in `routes/templates.ts` and friends.
  */
 export const mountHttp = (api: Hono<ApiEnv>): void => {
+  mountMcpRoutes(api)
   mountRegistryRoutes(api)
   mountBlogRoutes(api)
   mountChangelogRoutes(api)

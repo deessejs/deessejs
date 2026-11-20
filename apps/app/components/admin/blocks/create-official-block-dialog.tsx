@@ -2,7 +2,6 @@
 
 import { client } from "@/lib/client"
 import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { ORPCError } from "@orpc/client"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -16,7 +15,7 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
-import { useForm } from "react-hook-form"
+import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
 const schema = z.object({
@@ -47,34 +46,32 @@ export function CreateOfficialBlockDialog({
   onCreated: () => void
 }) {
   const [failure, setFailure] = useState<string | null>(null)
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const form = useForm({
     defaultValues: defaults,
+    validators: { onSubmit: schema },
+    onSubmit: async ({ value }) => {
+      setFailure(null)
+      try {
+        await client.rpc.admin.blocks.createOfficial(value)
+        form.reset()
+        onOpenChange(false)
+        onCreated()
+      } catch (error) {
+        setFailure(
+          error instanceof ORPCError && error.code === "CONFLICT"
+            ? "An official block with this slug already exists."
+            : "The official block could not be published. Check its GitHub source and descriptor, then try again."
+        )
+      }
+    },
   })
-  const { register, handleSubmit, formState, reset } = form
 
   function handleOpenChange(next: boolean) {
-    if (!next && !formState.isSubmitting) {
+    if (!next && !form.state.isSubmitting) {
       setFailure(null)
-      reset(defaults)
+      form.reset()
     }
     onOpenChange(next)
-  }
-
-  async function create(values: FormValues) {
-    setFailure(null)
-    try {
-      await client.rpc.admin.blocks.createOfficial(values)
-      reset(defaults)
-      onOpenChange(false)
-      onCreated()
-    } catch (error) {
-      setFailure(
-        error instanceof ORPCError && error.code === "CONFLICT"
-          ? "An official block with this slug already exists."
-          : "The official block could not be published. Check its GitHub source and descriptor, then try again."
-      )
-    }
   }
 
   return (
@@ -88,78 +85,126 @@ export function CreateOfficialBlockDialog({
             validation.
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit(create)}>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               label="GitHub repository URL"
               id="official-block-repository"
-              error={formState.errors.repositoryUrl?.message}
+              error={
+                form.state.fieldMeta.repositoryUrl?.errors[0] as
+                  | string
+                  | undefined
+              }
             >
-              <Input
-                id="official-block-repository"
-                {...register("repositoryUrl")}
-                placeholder="https://github.com/owner/repository"
-                autoComplete="url"
-              />
+              <form.Field name="repositoryUrl">
+                {(field) => (
+                  <Input
+                    id="official-block-repository"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="https://github.com/owner/repository"
+                    autoComplete="url"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Block slug"
               id="official-block-slug"
-              error={formState.errors.slug?.message}
+              error={form.state.fieldMeta.slug?.errors[0] as string | undefined}
             >
-              <Input
-                id="official-block-slug"
-                {...register("slug")}
-                placeholder="my-block"
-                autoComplete="off"
-              />
+              <form.Field name="slug">
+                {(field) => (
+                  <Input
+                    id="official-block-slug"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="my-block"
+                    autoComplete="off"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Display name"
               id="official-block-name"
-              error={formState.errors.name?.message}
+              error={form.state.fieldMeta.name?.errors[0] as string | undefined}
             >
-              <Input
-                id="official-block-name"
-                {...register("name")}
-                placeholder="My Block"
-              />
+              <form.Field name="name">
+                {(field) => (
+                  <Input
+                    id="official-block-name"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="My Block"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Category"
               id="official-block-category"
-              error={formState.errors.category?.message}
+              error={
+                form.state.fieldMeta.category?.errors[0] as string | undefined
+              }
             >
-              <Input
-                id="official-block-category"
-                {...register("category")}
-                placeholder="integration"
-              />
+              <form.Field name="category">
+                {(field) => (
+                  <Input
+                    id="official-block-category"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="integration"
+                  />
+                )}
+              </form.Field>
             </Field>
             <Field
               label="Descriptor subdirectory"
               id="official-block-subdirectory"
               hint="Leave empty when deesse-block.json is at the repository root."
-              error={formState.errors.subdirectory?.message}
+              error={
+                form.state.fieldMeta.subdirectory?.errors[0] as
+                  | string
+                  | undefined
+              }
             >
-              <Input
-                id="official-block-subdirectory"
-                {...register("subdirectory")}
-                placeholder="blocks/my-block"
-              />
+              <form.Field name="subdirectory">
+                {(field) => (
+                  <Input
+                    id="official-block-subdirectory"
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="blocks/my-block"
+                  />
+                )}
+              </form.Field>
             </Field>
           </div>
           <Field
             label="Description"
             id="official-block-description"
             hint="Optional catalog description."
-            error={formState.errors.description?.message}
+            error={
+              form.state.fieldMeta.description?.errors[0] as string | undefined
+            }
           >
-            <Textarea
-              id="official-block-description"
-              {...register("description")}
-              rows={3}
-            />
+            <form.Field name="description">
+              {(field) => (
+                <Textarea
+                  id="official-block-description"
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  rows={3}
+                />
+              )}
+            </form.Field>
           </Field>
           {failure ? (
             <p className="text-sm text-destructive" role="alert">
@@ -171,12 +216,12 @@ export function CreateOfficialBlockDialog({
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={formState.isSubmitting}
+              disabled={form.state.isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={formState.isSubmitting}>
-              {formState.isSubmitting
+            <Button type="submit" disabled={form.state.isSubmitting}>
+              {form.state.isSubmitting
                 ? "Publishing…"
                 : "Publish official block"}
             </Button>

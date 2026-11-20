@@ -13,7 +13,7 @@ import type { LicenseType } from "@/lib/pricing"
 import { Cell } from "./_shared/cell"
 import { LICENSE_KICKER } from "./license-kicker"
 import { PriceBlock } from "./price-block"
-import { usePricingCadence } from "@/components/marketing/pricing-cadence-context"
+import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
 
 /**
  * License card — kicker + name + tagline + price + bullets + CTA.

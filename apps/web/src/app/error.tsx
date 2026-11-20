@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
+import { useReportError } from "@/hooks/infrastructure/use-report-error"
 
 export default function ErrorPage({
   error,
@@ -11,10 +11,7 @@ export default function ErrorPage({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  useEffect(() => {
-    // Log to your error reporting service
-    console.error(error)
-  }, [error])
+  useReportError(error)
 
   return (
     <section className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 text-center">

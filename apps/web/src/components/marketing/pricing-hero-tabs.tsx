@@ -2,7 +2,7 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 
-import { usePricingCadence } from "./pricing-cadence-context"
+import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
 
 /**
  * Client-only cadence toggle rendered in the hero. Reads and writes

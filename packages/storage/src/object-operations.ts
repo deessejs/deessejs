@@ -6,7 +6,7 @@ import {
   PutObjectCommand,
   type S3Client,
 } from "@aws-sdk/client-s3"
-import type { IncomingMessage } from "node:http"
+import { Readable } from "node:stream"
 import type { ObjectStorage, StorageObjectMetadata } from "./storage.js"
 
 type ObjectOperations = Pick<
@@ -22,6 +22,12 @@ function assertKey(key: string): void {
 
 function encodeCopySource(bucket: string, key: string): string {
   return `${bucket}/${key.split("/").map(encodeURIComponent).join("/")}`
+}
+
+function toReadable(body: unknown): Readable | undefined {
+  if (body === undefined) return undefined
+  if (body instanceof Readable) return body
+  throw new TypeError("Object storage returned a non-readable response body")
 }
 
 function toMetadata(response: {
@@ -72,7 +78,7 @@ export function createObjectOperations(
         new GetObjectCommand({ Bucket: bucket, Key: key }),
       )
       return {
-        body: response.Body as IncomingMessage | undefined,
+        body: toReadable(response.Body),
         ...toMetadata(response),
       }
     },

@@ -30,6 +30,13 @@ The [root guide](../../AGENTS.md) holds the rules that cut across every workspac
 - **The templates catalogue reads from the API.** The registry rows are served by `packages/api` and enriched with live GitHub data. The catalogue here is the component catalogue, which is a different thing: it is the list of UI blocks and components that can be copied into a project.
 - **Copy follows the content rules in `DESIGN.md`.** Title case for labels and buttons, sentence case for body text, actions written as verb plus noun, and no exclamation marks.
 
+## Hooks and effects
+
+- Project-defined hooks belong under `apps/web/src/hooks/`, grouped into feature subdirectories when useful. Keep data orchestration and browser subscriptions out of page and component modules.
+- Components and pages must not call React `useEffect` or `useLayoutEffect` directly. Put necessary external synchronization in a purpose-specific hook under `src/hooks/`, with explicit inputs and symmetric cleanup. Prefer render-time derivation, event handlers, and query/store APIs when they express the behavior directly.
+- Package-owned hooks stay in their owning package. Do not move third-party hooks into this app.
+- The Oxlint effect boundary resolves React named, default, and namespace imports, local identifier aliases, and literal computed members such as `React["useEffect"]`. Dynamically computed members and re-exported bindings need project-wide symbol analysis, which this local syntax rule does not perform. Do not use those indirections to hide effects.
+
 ## Commands
 
 ```bash

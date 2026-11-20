@@ -61,7 +61,9 @@
     "auth:generate": "auth generate --config src/auth.ts --adapter drizzle --dialect postgresql --output ../../packages/database/src/schema/auth.ts --yes"
   },
   "dependencies": {
+    "@better-auth/cimd": "catalog:",
     "@better-auth/drizzle-adapter": "catalog:",
+    "@better-auth/mcp": "catalog:",
     "@better-auth/stripe": "catalog:",
     "@workspace/database": "workspace:*",
     "@workspace/email": "workspace:*",

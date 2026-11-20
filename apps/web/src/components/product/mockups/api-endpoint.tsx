@@ -13,7 +13,8 @@
  * the implementation."
  */
 
-import { useEffect, useState } from "react"
+import { useCallback, useState } from "react"
+import { useTypewriter } from "@/hooks/mockups/use-typewriter"
 import * as m from "motion/react-m"
 import { Check } from "lucide-react"
 
@@ -37,29 +38,8 @@ const RESPONSE_JSON = `{
 
 export function ApiEndpointMockup() {
   const [status, setStatus] = useState<Status>("requesting")
-  const [shown, setShown] = useState("")
-
-  useEffect(() => {
-    let cancelled = false
-    let timer: number | undefined
-
-    const tick = (i: number) => {
-      if (cancelled) return
-      setShown(REQUEST.slice(0, i))
-      if (i < REQUEST.length) {
-        timer = window.setTimeout(() => tick(i + 1), 35)
-      } else {
-        timer = window.setTimeout(() => setStatus("responded"), 400)
-      }
-    }
-
-    timer = window.setTimeout(() => tick(1), 300)
-
-    return () => {
-      cancelled = true
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
-  }, [])
+  const complete = useCallback(() => setStatus("responded"), [])
+  const shown = useTypewriter(REQUEST, 300, 35, false, complete)
 
   return (
     <MockupMotionBoundary>

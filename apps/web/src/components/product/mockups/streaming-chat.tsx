@@ -11,8 +11,8 @@
  * Conveys "your agent responds live, not as a one-shot blob".
  */
 
-import { useEffect, useState } from "react"
 import * as m from "motion/react-m"
+import { useTypewriter } from "@/hooks/mockups/use-typewriter"
 
 import { MockupMotionBoundary } from "./motion-boundary"
 
@@ -25,27 +25,7 @@ const RESPONSE =
 const TYPING_SPEED_MS = 28
 
 export function StreamingChatMockup() {
-  const [shown, setShown] = useState("")
-
-  useEffect(() => {
-    let cancelled = false
-    let timer: number | undefined
-
-    const tick = (i: number) => {
-      if (cancelled) return
-      setShown(RESPONSE.slice(0, i))
-      if (i < RESPONSE.length) {
-        timer = window.setTimeout(() => tick(i + 1), TYPING_SPEED_MS)
-      }
-    }
-
-    timer = window.setTimeout(() => tick(1), 600)
-
-    return () => {
-      cancelled = true
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
-  }, [])
+  const shown = useTypewriter(RESPONSE, 600, TYPING_SPEED_MS)
 
   return (
     <MockupMotionBoundary>
