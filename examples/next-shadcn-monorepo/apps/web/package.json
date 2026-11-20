@@ -10,8 +10,8 @@
     "lint": "pnpm --dir ../../../../ exec oxlint --config .oxlintrc.json examples/next-shadcn-monorepo --deny-warnings",
     "typecheck": "pnpm run schema:generate && tsc --noEmit",
     "schema:generate": "pnpm run deesse:schema && pnpm run auth:schema",
-    "auth:schema": "pnpm exec auth generate --config ./.deesse/tooling/auth.config.ts --adapter drizzle --dialect postgresql --output ./.deesse/generated/auth.schema.ts --yes",
-    "deesse:schema": "node ../../../../apps/deesse-drizzle-adapter/dist/cli.js --plugins ./plugins/index.ts --config ./deesse.config.ts --output ./.deesse/generated/deesse.schema.ts --auth-config-output ./.deesse/tooling/auth.config.ts --auth-schema-placeholder-output ./.deesse/generated/auth.schema.ts",
+    "auth:schema": "pnpm exec auth generate --config ./.deesse/tooling/auth.config.ts --adapter drizzle --dialect postgresql --output ./src/server/database/schema/auth.ts --yes",
+    "deesse:schema": "node ../../../../apps/deesse-drizzle-adapter/dist/cli.js --plugins ./plugins/index.ts --config ./deesse.config.ts --output ./src/server/database/schema/deesse.ts --auth-config-output ./.deesse/tooling/auth.config.ts --auth-schema-placeholder-output ./src/server/database/schema/auth.ts",
     "db:generate": "pnpm exec drizzle-kit generate --config ./drizzle.config.ts",
     "db:migrate": "pnpm exec drizzle-kit migrate --config ./drizzle.config.ts"
   },

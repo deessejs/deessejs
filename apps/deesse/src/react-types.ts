@@ -8,10 +8,8 @@ export type DeesseClientServer = {
 }
 
 export type DeesseClientOptions<
-  TServer extends DeesseClientServer,
   TAuthOptions extends BetterAuthClientOptions = BetterAuthClientOptions,
 > = {
-  $InferServer: TServer
   auth?: TAuthOptions
   baseURL?: string
   fetch?: typeof globalThis.fetch

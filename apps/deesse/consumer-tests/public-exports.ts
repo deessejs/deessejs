@@ -67,15 +67,16 @@ const authClientPlugin = {
   ...usernameClient(),
   $InferServerPlugin: {} as ReturnType<typeof username>,
 } satisfies BetterAuthClientPlugin
-const client = createClient({
-  $InferServer: {} as typeof app,
+const client = createClient<typeof app>({
   auth: { plugins: [authClientPlugin] },
 })
+const simpleClient = createClient<typeof app>()
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
+type PublicZeroOptionClientExact = Assert<Equal<typeof simpleClient.api, RouterClient<typeof app.api.router>>>
 type PublicUsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">
 type PublicAuthPluginExact = Assert<Equal<PublicUsernameClientInput, { username: string }>>
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
+void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicZeroOptionClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])

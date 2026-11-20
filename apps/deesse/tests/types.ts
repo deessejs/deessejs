@@ -229,12 +229,10 @@ void app.api.router.audit
 noConfigPlugin({})
 
 const clientAuthOptions = { plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] } satisfies BetterAuthClientOptions
-const client = createClient({
-  $InferServer: {} as typeof app,
+const client = createClient<typeof app>({
   auth: clientAuthOptions,
 })
-// @ts-expect-error app-specific API inference requires an explicit server type link
-createClient()
+const linkedClient = createClient<typeof app>()
 const isolatedAuthClient = createAuthClient({ plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] })
 const isolatedUsernameClient = createAuthClient({ plugins: [usernameClient()] })
 const isolatedContributedUsernameClient = createAuthClient({ plugins: [contributedUsernameClient] })
@@ -243,6 +241,7 @@ void isolatedContributedUsernameClient.isUsernameAvailable
 void isolatedAuthClient.isUsernameAvailable
 const isolatedTeamCode: string = isolatedAuthClient.$Infer.Session.user.teamCode
 type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
+type LinkedClientApiExact = Assert<Equal<typeof linkedClient.api, RouterClient<typeof app.api.router>>>
 type ClientAuthExact = Assert<Equal<typeof client.auth, ReactAuthClient<typeof clientAuthOptions>>>
 void app.auth.api.isUsernameAvailable
 const serverTeamCode: string = app.auth.$Infer.Session.user.teamCode
@@ -272,4 +271,4 @@ const organizationPermission: boolean = client.auth.organization.checkRolePermis
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [count, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, ClientAuthExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, ClientAuthExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])

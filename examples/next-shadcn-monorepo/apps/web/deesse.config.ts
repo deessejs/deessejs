@@ -4,8 +4,8 @@ import { createDeesse } from "deesse"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import { drizzleAdapter } from "@deessejs/drizzle-adapter"
-import * as authSchema from "./.deesse/generated/auth.schema.ts"
-import * as deesseSchema from "./.deesse/generated/deesse.schema.ts"
+import * as authSchema from "./src/server/database/schema/auth.ts"
+import * as deesseSchema from "./src/server/database/schema/deesse.ts"
 import { plugins } from "./plugins/index.ts"
 
 const client = postgres(process.env.DATABASE_URL ?? "postgres://postgres:postgres@127.0.0.1:5432/deesse_next_example", {
