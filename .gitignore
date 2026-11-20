@@ -19,3 +19,6 @@ apps/web/playwright-report/
 
 # CodeGraph local index and database
 .codegraph/
+
+# Local Claude Code settings
+.claude/settings.local.json

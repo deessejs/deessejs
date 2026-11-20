@@ -28,8 +28,8 @@ and verify the rendered result.
   are trying to accomplish, the product object, and what will change.
 - Define the outcome before the output. Problem, desired behavior,
   success signal, non-goals — before choosing a surface.
-- Use evidence, not taste. Trace to DESIGN.md, packages/ui/CLAUDE.md,
-  apps/*/CLAUDE.md, an accepted PR, or a verified adjacent pattern.
+- Use evidence, not taste. Trace to DESIGN.md, packages/ui/AGENTS.md,
+  apps/*/AGENTS.md, an accepted PR, or a verified adjacent pattern.
 - Treat shipped code as evidence, not automatic precedent. It proves
   what exists, not why it is correct.
 - Choose the smallest coherent intervention. Defaults, behavior, reuse
@@ -41,7 +41,7 @@ and verify the rendered result.
 - Verify the real surface. Source inspection establishes behavior;
   rendered interface establishes visual quality.
 - Keep one entry point. Invoke this skill; it routes internally to
-  DESIGN.md, packages/ui/CLAUDE.md, apps/*/CLAUDE.md.
+  DESIGN.md, packages/ui/AGENTS.md, apps/*/AGENTS.md.
 
 ## Request Modes
 
@@ -69,8 +69,8 @@ Resolve conflicts in this order:
 
 1. The user's explicit goal and constraints.
 2. DESIGN.md (canonical spec for the entire DeesseJS design system).
-3. packages/ui/CLAUDE.md (operational guide for primitives, tokens).
-4. apps/*/CLAUDE.md (per-app paths, gotchas, structure).
+3. packages/ui/AGENTS.md (operational guide for primitives, tokens).
+4. apps/*/AGENTS.md (per-app paths, gotchas, structure).
 5. Accepted PRs with stable evidence (the patterns we've already shipped).
 6. General interface heuristics (last resort).
 
@@ -97,9 +97,9 @@ If unsure, ask the user before loading.
 | Need                              | Load                                                |
 | --------------------------------- | --------------------------------------------------- |
 | Product/flow/component decision   | DESIGN.md §1 (principles) + this skill              |
-| Material visual or layout change  | DESIGN.md §2 (tokens) + packages/ui/CLAUDE.md §5-6  |
+| Material visual or layout change  | DESIGN.md §2 (tokens) + packages/ui/AGENTS.md §5-6  |
 | Copy or accessible names          | DESIGN.md §6 (voice) + this skill's Copy mode       |
-| Keyboard, focus, forms, a11y      | DESIGN.md §4 (focus) + packages/ui/CLAUDE.md §7     |
+| Keyboard, focus, forms, a11y      | DESIGN.md §4 (focus) + packages/ui/AGENTS.md §7     |
 | Overflow, localization, errors    | DESIGN.md §3 (token system) + ESLint output         |
 
 ## Code vs Prose
@@ -144,7 +144,7 @@ When in Review mode, lead with findings ordered by user impact:
 - P3: minor craft or consistency improvement
 
 Each finding includes: file/line or rendered location, canonical source
-(DESIGN.md section, packages/ui/CLAUDE.md section, PR #), user consequence,
+(DESIGN.md section, packages/ui/AGENTS.md section, PR #), user consequence,
 smallest concrete fix.
 
 ## Coverage Gaps
@@ -162,7 +162,7 @@ the user before applying a decision.
 
 - Add or change a rule only after DESIGN.md verification and human acceptance.
 - Record scope, rationale, evidence, exceptions, and a bad/good example.
-- Prefer the narrowest destination: DESIGN.md section, packages/ui/CLAUDE.md
+- Prefer the narrowest destination: DESIGN.md section, packages/ui/AGENTS.md
   section, ESLint rule, or coverage gap entry.
 - Keep deterministic checks mechanical (ESLint). Keep judgment in prose.
 - Never promote one screenshot, one shipped file, or one reviewer comment
