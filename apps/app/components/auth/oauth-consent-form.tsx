@@ -169,32 +169,29 @@ function OAuthConsentFormContent() {
         )}
       </p>
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          const submitter = (event.nativeEvent as SubmitEvent).submitter
-          if (!(submitter instanceof HTMLButtonElement)) return
-          form.setFieldValue("accept", submitter.value === "approve")
-          void form.handleSubmit()
-        }}
-        className="flex gap-3"
-      >
+      <div className="flex gap-3">
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(submitting) => (
             <>
               <Button
                 className="flex-1"
                 variant="outline"
-                type="submit"
-                value="deny"
+                type="button"
+                onClick={() => {
+                  form.setFieldValue("accept", false)
+                  void form.handleSubmit()
+                }}
                 disabled={submitting}
               >
                 Deny
               </Button>
               <Button
                 className="flex-1"
-                type="submit"
-                value="approve"
+                type="button"
+                onClick={() => {
+                  form.setFieldValue("accept", true)
+                  void form.handleSubmit()
+                }}
                 disabled={submitting}
               >
                 {submitting ? "Saving…" : "Approve"}
@@ -202,7 +199,7 @@ function OAuthConsentFormContent() {
             </>
           )}
         </form.Subscribe>
-      </form>
+      </div>
     </div>
   )
 }
