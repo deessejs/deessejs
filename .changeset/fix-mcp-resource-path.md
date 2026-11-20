@@ -2,4 +2,4 @@
 "@workspace/api": patch
 ---
 
-Fix MCP route mounting and token verification for dynamic auth base URLs.
+Fix MCP route mounting and protect dynamic-base-URL token verification with shared DPoP replay detection.
