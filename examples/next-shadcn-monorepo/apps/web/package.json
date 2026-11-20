@@ -2,6 +2,7 @@
   "name": "@deesse-example/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "pnpm run schema:generate && next build",
@@ -10,7 +11,7 @@
     "typecheck": "pnpm run schema:generate && tsc --noEmit",
     "schema:generate": "pnpm run auth:schema && pnpm run deesse:schema",
     "auth:schema": "pnpm exec auth generate --config ./auth.config.ts --adapter drizzle --dialect postgresql --output ./src/server/schema/auth.generated.ts --yes",
-    "deesse:schema": "pnpm exec deesse-drizzle-schema --config ./deesse.config.ts --output ./src/server/schema/deesse.generated.ts",
+    "deesse:schema": "node ../../../../apps/deesse-drizzle-adapter/dist/cli.js --config ./deesse.config.ts --output ./src/server/schema/deesse.generated.ts",
     "db:generate": "pnpm exec drizzle-kit generate --config ./drizzle.config.ts",
     "db:migrate": "pnpm exec drizzle-kit migrate --config ./drizzle.config.ts"
   },
