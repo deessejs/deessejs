@@ -1,15 +1,85 @@
 import { createMcpProtectedRequestHandler } from "@better-auth/mcp"
 import { call } from "@orpc/server"
-import { createDpopReplayStore } from "better-auth/oauth2"
+import {
+  createDpopReplayStore,
+  createInsufficientScopeError,
+} from "better-auth/oauth2"
+import { HTTPException } from "hono/http-exception"
 import { auth } from "@workspace/auth"
-import { createProductMcpHandler } from "@workspace/mcp"
+import {
+  createProductMcpHandler,
+  PRODUCT_MCP_TOOL_POLICIES,
+} from "@workspace/mcp"
 import { serverEnv } from "@workspace/env/server"
 import type { Hono } from "hono"
 import { API_BASE_PATH, API_AUTH_PATH } from "../../constants/base-path.js"
 import { appRouter } from "../../orpc/index.js"
-import { mapVerifiedMcpClaimsToIdentity } from "./mcp-identity.js"
-import { assertMcpToolScope } from "./mcp-tool-scope.js"
 import type { ApiEnv } from "../env.js"
+
+interface VerifiedMcpClaims {
+  sub?: unknown
+  scope?: unknown
+}
+
+interface McpIdentity {
+  userId: string | null
+  scopes: string[]
+}
+
+type JsonObject = Record<string, unknown>
+
+const isJsonObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+function mapVerifiedMcpClaimsToIdentity(
+  claims: VerifiedMcpClaims
+): McpIdentity {
+  const subject = claims.sub
+  const scopeClaim = claims.scope
+  let userId: string | null = null
+  let scopes: string[] = []
+
+  if (typeof subject === "string" && subject.length > 0) userId = subject
+  if (typeof scopeClaim === "string") {
+    scopes = scopeClaim.split(/\s+/).filter(Boolean)
+  }
+
+  return { userId, scopes }
+}
+
+async function assertMcpToolScope(
+  request: Request,
+  identity: McpIdentity
+): Promise<void> {
+  let payload: unknown
+  try {
+    payload = await request.clone().json()
+  } catch {
+    return
+  }
+
+  if (!isJsonObject(payload) || payload.method !== "tools/call") return
+
+  const params = payload.params
+  if (!isJsonObject(params) || typeof params.name !== "string") {
+    throw new HTTPException(403, {
+      message: "MCP tool call has no registered scope policy.",
+    })
+  }
+
+  const toolPolicy = Object.values(PRODUCT_MCP_TOOL_POLICIES).find(
+    (policy) => policy.name === params.name
+  )
+  if (!toolPolicy) {
+    throw new HTTPException(403, {
+      message: "MCP tool call has no registered scope policy.",
+    })
+  }
+
+  if (!identity.scopes.includes(toolPolicy.scope)) {
+    throw createInsufficientScopeError([toolPolicy.scope])
+  }
+}
 
 const resource = serverEnv.MCP_RESOURCE_URL
 const createHandler = (identity: { userId: string | null; scopes: string[] }) =>

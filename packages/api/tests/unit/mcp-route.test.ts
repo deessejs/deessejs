@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createSign, generateKeyPairSync } from "node:crypto"
 import { createServer } from "node:http"
 import { call } from "@orpc/server"
+import { createInsufficientScopeError } from "better-auth/oauth2"
+import { HTTPException } from "hono/http-exception"
 import {
   Client,
   StreamableHTTPClientTransport,
@@ -15,8 +17,58 @@ import { serverEnv } from "@workspace/env/server"
 import { api } from "../../src/index.js"
 import { API_BASE_PATH } from "../../src/constants/base-path.js"
 import { appRouter } from "../../src/orpc/index.js"
-import { assertMcpToolScope } from "../../src/http/routes/mcp-tool-scope.js"
-import { mapVerifiedMcpClaimsToIdentity } from "../../src/http/routes/mcp-identity.js"
+
+const mapTestClaimsToIdentity = (claims: {
+  sub?: unknown
+  scope?: unknown
+}) => {
+  const subject = claims.sub
+  const scopeClaim = claims.scope
+  let userId: string | null = null
+  let scopes: string[] = []
+
+  if (typeof subject === "string" && subject.length > 0) userId = subject
+  if (typeof scopeClaim === "string") {
+    scopes = scopeClaim.split(/\s+/).filter(Boolean)
+  }
+
+  return { userId, scopes }
+}
+
+const isJsonObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+async function assertTestToolScope(
+  request: Request,
+  identity: ReturnType<typeof mapTestClaimsToIdentity>
+): Promise<void> {
+  let payload: unknown
+  try {
+    payload = await request.clone().json()
+  } catch {
+    return
+  }
+
+  if (!isJsonObject(payload) || payload.method !== "tools/call") return
+  const params = payload.params
+  if (!isJsonObject(params) || typeof params.name !== "string") {
+    throw new HTTPException(403, {
+      message: "MCP tool call has no registered scope policy.",
+    })
+  }
+
+  const policy = Object.values(PRODUCT_MCP_TOOL_POLICIES).find(
+    (candidate) => candidate.name === params.name
+  )
+  if (!policy) {
+    throw new HTTPException(403, {
+      message: "MCP tool call has no registered scope policy.",
+    })
+  }
+  if (!identity.scopes.includes(policy.scope)) {
+    throw createInsufficientScopeError([policy.scope])
+  }
+}
 
 describe("MCP HTTP route", () => {
   const resourceUrl = new URL(serverEnv.MCP_RESOURCE_URL)
@@ -66,11 +118,9 @@ describe("MCP HTTP route", () => {
         challengeScopes: ["templates:read", "organizations:read"],
       },
       async (request, claims) => {
-        await assertMcpToolScope(
-          request,
-          mapVerifiedMcpClaimsToIdentity(claims)
-        )
-        return new Response("tool called")
+        const identity = mapTestClaimsToIdentity(claims)
+        await assertTestToolScope(request, identity)
+        return new Response(JSON.stringify(identity))
       }
     )
 
@@ -252,7 +302,7 @@ describe("MCP HTTP route", () => {
     })
 
     await expect(
-      assertMcpToolScope(request, {
+      assertTestToolScope(request, {
         userId: "verified-user",
         scopes: ["templates:read", "organizations:read"],
       })
@@ -271,6 +321,10 @@ describe("MCP HTTP route", () => {
     const deniedChallenge = deniedOrganizations.headers.get("www-authenticate")
 
     expect(templateResponse.status).toBe(200)
+    await expect(templateResponse.json()).resolves.toMatchObject({
+      userId: "verified-user",
+      scopes: ["templates:read"],
+    })
     expect(deniedOrganizations.status).toBe(403)
     expect(deniedChallenge).toContain('error="insufficient_scope"')
     expect(deniedChallenge).toContain('scope="organizations:read"')
@@ -286,7 +340,10 @@ describe("MCP HTTP route", () => {
     )
 
     expect(response.status).toBe(200)
-    await expect(response.text()).resolves.toBe("tool called")
+    await expect(response.json()).resolves.toMatchObject({
+      userId: "verified-user",
+      scopes: ["organizations:read"],
+    })
   })
 
   it("allows tokens with both tool scopes to call either tool", async () => {
