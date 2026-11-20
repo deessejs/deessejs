@@ -1,2 +1,2 @@
-export * from "./auth.generated.js"
-export * from "./deesse.generated.js"
+export * from "./auth.generated.ts"
+export * from "./deesse.generated.ts"
