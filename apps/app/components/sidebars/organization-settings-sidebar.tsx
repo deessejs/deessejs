@@ -15,13 +15,14 @@ import {
   SidebarRail,
   useSidebar,
 } from "@workspace/ui/components/sidebar"
-import { HomeIcon, SettingsIcon, UsersIcon } from "lucide-react"
+import { CreditCardIcon, HomeIcon, SettingsIcon, UsersIcon } from "lucide-react"
 
 import { NavUser } from "@/components/sidebars/nav-user"
 import { OrganizationSwitcher } from "@/components/sidebars/organization-switcher"
 import {
   organizationSlugFromPathname,
   workspaceHomePath,
+  workspaceBillingSettingsPath,
   workspaceMembersPath,
   workspaceOrganizationSettingsPath,
 } from "@/lib/workspace-paths"
@@ -36,6 +37,7 @@ export function OrganizationSettingsSidebar() {
   const homeHref = workspaceHomePath(slug)
   const generalHref = workspaceOrganizationSettingsPath(slug)
   const membersHref = workspaceMembersPath(slug)
+  const billingHref = workspaceBillingSettingsPath(slug)
   const isGeneralActive =
     pathname === generalHref || pathname.startsWith(`${generalHref}/`)
 
@@ -74,6 +76,22 @@ export function OrganizationSettingsSidebar() {
                 >
                   <SettingsIcon className="size-4" aria-hidden />
                   <span>General</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === billingHref}
+                tooltip="Billing"
+              >
+                <Link
+                  href={billingHref}
+                  aria-current={pathname === billingHref ? "page" : undefined}
+                  onClick={() => setOpenMobile(false)}
+                >
+                  <CreditCardIcon className="size-4" aria-hidden />
+                  <span>Billing</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
