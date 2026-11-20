@@ -1,5 +1,6 @@
 import { handle } from "hono/vercel"
 import { api } from "@workspace/api"
+import { getApiRequestPath } from "@/lib/api-route-path"
 
 // Without this, Next.js attempts build-time page-data collection which fails
 // because the route module imports @workspace/database → reads DATABASE_URL
@@ -28,8 +29,26 @@ export const dynamic = "force-dynamic"
 // allowlist with Hono CORS). Per-request origin resolution is handled
 // inside the auth handler itself, so no changes are needed in this
 // catch-all.
-export const GET = handle(api)
-export const POST = handle(api)
+const apiHandler = handle(api)
+
+/**
+ * Next rewrites preserve the public URL on the Request passed to a Route
+ * Handler. Hono therefore sees the source path, not the rewrite destination,
+ * and its /api/v1 basePath cannot match it. Normalize the two public aliases
+ * here before handing the request to Hono.
+ */
+const dispatch = (request: Request): Response | Promise<Response> => {
+  const url = new URL(request.url)
+  const normalizedPath = getApiRequestPath(url.pathname)
+  if (normalizedPath !== url.pathname) {
+    url.pathname = normalizedPath
+    return apiHandler(new Request(url, request))
+  }
+  return apiHandler(request)
+}
+
+export const GET = dispatch
+export const POST = dispatch
 
 // Next.js auto-implements OPTIONS for a route handler that does not
 // export one. The auto-implementation answers 204 with an `Allow`
@@ -41,4 +60,4 @@ export const POST = handle(api)
 // Exporting OPTIONS hands the preflight to Hono, whose CORS
 // middleware answers it with `Access-Control-Allow-Origin` and the
 // requested headers.
-export const OPTIONS = handle(api)
+export const OPTIONS = dispatch
