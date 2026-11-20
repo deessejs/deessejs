@@ -13,6 +13,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
 import { getInitials } from "@/lib/initials"
+import { useForm } from "@tanstack/react-form"
 
 const profileAvatarQueryOptions = () =>
   queryOptions({
@@ -48,6 +49,23 @@ export function ProfileHeaderCard() {
   const [submitting, setSubmitting] = useState(false)
   const [saved, setSaved] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const profileForm = useForm({
+    defaultValues: { name: displayName },
+    onSubmit: async ({ value }) => {
+      const nextName = value.name
+      if (!nextName.trim()) return
+      setSubmitting(true)
+      const { error } = await client.auth.updateUser({ name: nextName.trim() })
+      setSubmitting(false)
+      if (error) {
+        toast.error(error.message ?? "Failed to update profile")
+        return
+      }
+      setSaved(true)
+      setDisplayName(nextName)
+      setTimeout(() => setSaved(false), 3000)
+    },
+  })
 
   async function handleAvatarChange(file: File | undefined) {
     if (!file) return
@@ -97,25 +115,6 @@ export function ProfileHeaderCard() {
     } finally {
       setAvatarBusy(false)
     }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!displayName.trim()) return
-
-    setSubmitting(true)
-    const { error } = await client.auth.updateUser({
-      name: displayName.trim(),
-    })
-    setSubmitting(false)
-
-    if (error) {
-      toast.error(error.message ?? "Failed to update profile")
-      return
-    }
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
   }
 
   const name = user?.name ?? ""
@@ -171,19 +170,32 @@ export function ProfileHeaderCard() {
           )}
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void profileForm.handleSubmit()
+        }}
+        className="flex flex-1 flex-col gap-4"
+      >
         <div className="flex flex-col gap-2">
           <label htmlFor="name" className="text-sm font-medium">
             Name
           </label>
-          <Input
-            id="name"
-            name="name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            autoComplete="name"
-            placeholder="Your name"
-          />
+          <profileForm.Field name="name">
+            {(field) => (
+              <Input
+                id="name"
+                name="name"
+                value={field.state.value}
+                onChange={(e) => {
+                  field.handleChange(e.target.value)
+                  setDisplayName(e.target.value)
+                }}
+                autoComplete="name"
+                placeholder="Your name"
+              />
+            )}
+          </profileForm.Field>
         </div>
 
         {saved && (

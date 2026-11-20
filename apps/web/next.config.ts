@@ -6,6 +6,16 @@ import { apiBaseUrl } from "./src/lib/preview-urls"
 const apiUrl = new URL(
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001"
 )
+const apiImageProtocol =
+  apiUrl.protocol === "http:"
+    ? "http"
+    : apiUrl.protocol === "https:"
+      ? "https"
+      : null
+
+if (!apiImageProtocol) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL must use HTTP or HTTPS")
+}
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -26,7 +36,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "picsum.photos" },
       {
-        protocol: apiUrl.protocol.replace(":", "") as "http" | "https",
+        protocol: apiImageProtocol,
         hostname: apiUrl.hostname,
         port: apiUrl.port,
         pathname: "/api/v1/images/**",

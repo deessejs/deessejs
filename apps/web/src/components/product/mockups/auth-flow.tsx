@@ -12,14 +12,13 @@
  * monochrome, matching the rest of the home.
  */
 
-import { useEffect, useState } from "react"
+import { useTypewriter } from "@/hooks/mockups/use-typewriter"
+import { useAuthFlowPhase } from "@/hooks/mockups/use-auth-flow-phase"
 import * as m from "motion/react-m"
 import { AnimatePresence } from "motion/react"
 import { Check, Loader } from "lucide-react"
 
 import { MockupMotionBoundary } from "./motion-boundary"
-
-type AuthPhase = "form" | "loading" | "success"
 
 /** Per-character typing speed for the Auth fields (ms / char). */
 const TYPING_SPEED_MS = 100
@@ -31,19 +30,7 @@ const LOADING_MS = 1400
 const FORM_HOLD_MS = 2300
 
 export function AuthFlowMockup() {
-  const [phase, setPhase] = useState<AuthPhase>("form")
-
-  useEffect(() => {
-    const formTimer = window.setTimeout(() => setPhase("loading"), FORM_HOLD_MS)
-    const loadingTimer = window.setTimeout(
-      () => setPhase("success"),
-      FORM_HOLD_MS + LOADING_MS
-    )
-    return () => {
-      window.clearTimeout(formTimer)
-      window.clearTimeout(loadingTimer)
-    }
-  }, [])
+  const phase = useAuthFlowPhase(FORM_HOLD_MS, LOADING_MS)
 
   return (
     <MockupMotionBoundary>
@@ -148,29 +135,7 @@ function TypingField({
   startMs: number
   speedMs?: number
 }) {
-  const [shown, setShown] = useState("")
-
-  useEffect(() => {
-    let cancelled = false
-    let timer: number | undefined
-
-    const tick = (i: number) => {
-      if (cancelled) return
-      setShown(mask ? "•".repeat(i) : text.slice(0, i))
-      if (i < text.length) {
-        timer = window.setTimeout(() => tick(i + 1), speedMs)
-      }
-    }
-
-    timer = window.setTimeout(() => tick(1), startMs)
-
-    return () => {
-      cancelled = true
-      if (timer !== undefined) {
-        window.clearTimeout(timer)
-      }
-    }
-  }, [text, mask, startMs, speedMs])
+  const shown = useTypewriter(text, startMs, speedMs, mask)
 
   return (
     <div className="flex items-center gap-2 rounded-sm border border-border bg-background px-3 py-1.5">

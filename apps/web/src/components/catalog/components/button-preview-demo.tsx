@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useState } from "react"
+import { useResetAfterInactivity } from "@/hooks/catalog/use-reset-after-inactivity"
 
 import { Button } from "@workspace/ui/components/button"
 
@@ -16,17 +17,17 @@ import { Button } from "@workspace/ui/components/button"
  */
 export function ButtonPreviewDemo() {
   const [clicked, setClicked] = useState(0)
-  // Reset to 0 after 1.5s of inactivity so the label cycles back.
-  useEffect(() => {
-    if (clicked === 0) return
-    const id = window.setTimeout(() => setClicked(0), 1500)
-    return () => window.clearTimeout(id)
-  }, [clicked])
+  const reset = useCallback(() => setClicked(0), [])
+  const scheduleReset = useResetAfterInactivity(reset, 1500)
+  const handleClick = useCallback(() => {
+    setClicked((count) => count + 1)
+    scheduleReset()
+  }, [scheduleReset])
 
   const label =
     clicked === 0
       ? "Click me"
       : `Clicked ${clicked} time${clicked === 1 ? "" : "s"}`
 
-  return <Button onClick={() => setClicked((n) => n + 1)}>{label}</Button>
+  return <Button onClick={handleClick}>{label}</Button>
 }

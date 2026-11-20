@@ -1,0 +1,20 @@
+---
+title: Template catalog
+description: Connect the DeesseJS template catalog as an OAuth-protected Model Context Protocol server.
+---
+
+# Template catalog
+
+DeesseJS provides a remote Model Context Protocol (MCP) server at `MCP_RESOURCE_URL`. It exposes one read-only tool named `list_templates`, backed by the public product template catalog. Sign in through DeesseJS OAuth before using the endpoint. Catalog entries remain public.
+
+**Setup**
+
+Configure `MCP_RESOURCE_URL` in the API deployment with the canonical secure endpoint address and path, such as `https://example.com/api/v1/mcp`. Omit the trailing slash. For local development, use `http://localhost:3001/api/v1/mcp`. Better Auth publishes OAuth issuer and discovery endpoints at `BETTER_AUTH_URL` under `/api/v1/auth`. Apply the committed database migration through the usual deployment process before enabling the endpoint.
+
+**Connect**
+
+Add a custom remote MCP connector in ChatGPT and enter the exact `MCP_RESOURCE_URL`. Complete DeesseJS sign-in and consent when prompted. A supported ChatGPT plan and workspace administrator access enable custom MCP connectors. Plan and workspace settings determine availability.
+
+The consent page identifies the requesting app, its return host, the requested resource, and its account permissions. Review these details before approval. To inspect or revoke a connection later, open **Account settings → Connections → Authorized apps**.
+
+The Storybook docs MCP runs on its own endpoint.

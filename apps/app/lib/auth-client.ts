@@ -2,6 +2,7 @@
 
 import { createAuthClient } from "better-auth/react"
 import type { BetterAuthClientOptions } from "better-auth/client"
+import { oauthProviderClient } from "@better-auth/oauth-provider/client"
 import {
   adminClient,
   deviceAuthorizationClient,
@@ -76,6 +77,7 @@ const authClientOptions = {
     deviceAuthorizationClient(),
     adminClient(),
     organizationClient(),
+    oauthProviderClient(),
     stripeClient({ subscription: true }),
   ],
 } satisfies BetterAuthClientOptions

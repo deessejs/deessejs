@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Open a PR for an implemented issue — reads the spec, opens PR, updates labels, posts comment. Run after /implement #{n}.
+description: Open a PR for an implemented issue — reads the spec, opens PR, updates labels, posts comment. Run after the implementation branch is pushed.
 ---
 
 # `create-pr` Skill
@@ -11,7 +11,7 @@ Open a PR, update issue labels, assign, and post a comment.
 
 **Trigger phrases:** "create-pr #N", "open pr #N", "/create-pr #N".
 
-Run this **after** `/implement #{n}` — the branch must be pushed with the implementation.
+Run this **after implementation is complete and pushed** — the branch must contain the implementation.
 
 ## Workflow overview
 
@@ -59,7 +59,7 @@ git fetch origin "impl/{n}-{slug}" 2>/dev/null && echo "found" || echo "missing"
 
 Refuse if missing:
 
-> "Branch `impl/{n}-{slug}` is not on origin. Run `/implement #{n}` first."
+> "Branch `impl/{n}-{slug}` is not on origin. Push the implementation branch before creating the PR."
 
 **Gate B — no existing open PR**
 
@@ -192,7 +192,7 @@ Confirm with a one-liner: PR number, title, URL, and next step.
 ## Constraints
 
 - **Always return to `staging` first.**
-- **Run after `/implement #{n}`** — the branch must exist and be pushed.
+- **Run after implementation is complete and pushed** — the branch must exist on origin.
 - **PR always targets `staging`.**
 - **A `.changeset/*.md` file must be present** — the release workflow depends on it.
 - Never push to `main`.

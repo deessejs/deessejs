@@ -1,8 +1,9 @@
 "use client"
 
 import { client } from "@/lib/client"
-import { useState, type FormEvent } from "react"
+import { useState } from "react"
 import { queryOptions, useQuery } from "@tanstack/react-query"
+import { useForm } from "@tanstack/react-form"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -48,7 +49,6 @@ export function MemberManagement({
   slug: string
   canManage: boolean
 }) {
-  const [email, setEmail] = useState("")
   const [busyId, setBusyId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -59,34 +59,37 @@ export function MemberManagement({
   const members = query.data?.members ?? []
   const invitations = query.data?.invitations ?? []
   const displayedFailure = failure ?? query.error?.message ?? null
-
-  async function invite(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const address = email.trim()
-    if (!address) return
-    setSubmitting(true)
-    setFailure(null)
-    try {
-      const { error } = await client.auth.organization.inviteMember({
-        email: address,
-        role: "member",
-        organizationId,
-      })
-      if (error) {
-        setFailure(error.message ?? "The invitation could not be sent.")
-        return
+  const inviteForm = useForm({
+    defaultValues: { email: "" },
+    onSubmit: async ({ value }) => {
+      const address = value.email.trim()
+      if (!address) return
+      setSubmitting(true)
+      setFailure(null)
+      try {
+        const { error } = await client.auth.organization.inviteMember({
+          email: address,
+          role: "member",
+          organizationId,
+        })
+        if (error) {
+          setFailure(error.message ?? "The invitation could not be sent.")
+          return
+        }
+        inviteForm.reset()
+        toast.success("Invitation sent")
+        await query.refetch()
+      } catch (error) {
+        setFailure(
+          error instanceof Error
+            ? error.message
+            : "The invitation could not be sent."
+        )
+      } finally {
+        setSubmitting(false)
       }
-      setEmail("")
-      toast.success("Invitation sent")
-      await query.refetch()
-    } catch (error) {
-      setFailure(
-        error instanceof Error ? error.message : "The invitation could not be sent."
-      )
-    } finally {
-      setSubmitting(false)
-    }
-  }
+    },
+  })
 
   async function cancelInvitation(invitationId: string) {
     setBusyId(invitationId)
@@ -103,7 +106,9 @@ export function MemberManagement({
       await query.refetch()
     } catch (error) {
       setFailure(
-        error instanceof Error ? error.message : "The invitation could not be canceled."
+        error instanceof Error
+          ? error.message
+          : "The invitation could not be canceled."
       )
     } finally {
       setBusyId(null)
@@ -128,7 +133,9 @@ export function MemberManagement({
       await query.refetch()
     } catch (error) {
       setFailure(
-        error instanceof Error ? error.message : "The invitation could not be resent."
+        error instanceof Error
+          ? error.message
+          : "The invitation could not be resent."
       )
     } finally {
       setBusyId(null)
@@ -156,18 +163,28 @@ export function MemberManagement({
           <p className="mt-1 text-sm text-muted-foreground">
             They will join as a member after accepting the invitation.
           </p>
-          <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={invite}>
+          <form
+            className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void inviteForm.handleSubmit()
+            }}
+          >
             <div className="flex flex-1 flex-col gap-2">
               <Label htmlFor="member-email">Email address</Label>
-              <Input
-                id="member-email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@example.com"
-              />
+              <inviteForm.Field name="email">
+                {(field) => (
+                  <Input
+                    id="member-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={field.state.value}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder="name@example.com"
+                  />
+                )}
+              </inviteForm.Field>
             </div>
             <Button type="submit" disabled={submitting}>
               {submitting ? "Sending…" : "Send invitation"}
@@ -190,12 +207,19 @@ export function MemberManagement({
         ) : (
           <ul className="divide-y rounded-lg border">
             {members.map((member) => (
-              <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <li
+                key={member.id}
+                className="flex flex-wrap items-center justify-between gap-3 p-4"
+              >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{member.user.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">{member.user.email}</p>
+                  <p className="truncate text-sm font-medium">
+                    {member.user.name}
+                  </p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {member.user.email}
+                  </p>
                 </div>
-                <span className="rounded-full bg-muted px-2.5 py-1 text-xs capitalize text-muted-foreground">
+                <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground capitalize">
                   {member.role}
                 </span>
               </li>
@@ -209,22 +233,36 @@ export function MemberManagement({
           <div>
             <h2 className="text-lg font-semibold">Pending invitations</h2>
             <p className="text-sm text-muted-foreground">
-              Invitations expire after 48 hours. Resending starts a new 48-hour period.
+              Invitations expire after 48 hours. Resending starts a new 48-hour
+              period.
             </p>
           </div>
           {query.isPending ? (
-            <p className="text-sm text-muted-foreground">Loading invitations…</p>
+            <p className="text-sm text-muted-foreground">
+              Loading invitations…
+            </p>
           ) : invitations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">There are no pending invitations.</p>
+            <p className="text-sm text-muted-foreground">
+              There are no pending invitations.
+            </p>
           ) : (
             <ul className="divide-y rounded-lg border">
               {invitations.map((invitation) => {
                 return (
-                  <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+                  <li
+                    key={invitation.id}
+                    className="flex flex-wrap items-center justify-between gap-4 p-4"
+                  >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{invitation.email}</p>
+                      <p className="truncate text-sm font-medium">
+                        {invitation.email}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        Invited by {invitation.inviterName} · Expires {new Date(invitation.expiresAt).toLocaleDateString("en-US", { timeZone: "UTC" })}
+                        Invited by {invitation.inviterName} · Expires{" "}
+                        {new Date(invitation.expiresAt).toLocaleDateString(
+                          "en-US",
+                          { timeZone: "UTC" }
+                        )}
                       </p>
                     </div>
                     <div className="flex gap-2">

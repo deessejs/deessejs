@@ -53,6 +53,168 @@ function checkNamedParameterTypes(context, node) {
   }
 }
 
+function resolveVariable(scope, name) {
+  for (let current = scope; current; current = current.upper) {
+    const found = current.set?.get(name)
+    if (found) return found
+  }
+  return undefined
+}
+
+function importedFromReact(variable, importedNames) {
+  return (
+    variable?.defs?.some((definition) => {
+      const specifier = definition.node
+      if (
+        (definition.parent?.source?.value ??
+          specifier?.parent?.source?.value) !== "react"
+      )
+        return false
+      if (
+        specifier?.type === "ImportNamespaceSpecifier" ||
+        specifier?.type === "ImportDefaultSpecifier"
+      )
+        return true
+      return (
+        specifier?.type === "ImportSpecifier" &&
+        importedNames.includes(
+          specifier.imported?.name ?? specifier.imported?.value
+        )
+      )
+    }) ?? false
+  )
+}
+
+function appHooksDirectory(filename) {
+  const normalized = filename.replaceAll("\\", "/")
+  if (/(?:^|\/)apps\/web\//.test(normalized)) return "apps/web/src/hooks/"
+  if (/(?:^|\/)apps\/app\//.test(normalized)) return "apps/app/hooks/"
+  return null
+}
+
+function isWithinHooksDirectory(filename) {
+  const normalized = filename.replaceAll("\\", "/")
+  const expected = appHooksDirectory(normalized)
+  return (
+    expected !== null &&
+    new RegExp(`(?:^|/)${expected.replaceAll("/", "\\/")}`).test(normalized)
+  )
+}
+
+function hasHookCall(node) {
+  let found = false
+  const visit = (current) => {
+    if (!current || found) return
+    if (current.type === "CallExpression") {
+      const callee = current.callee
+      if (
+        (callee.type === "Identifier" && /^use[A-Z0-9]/.test(callee.name)) ||
+        (callee.type === "MemberExpression" &&
+          !callee.computed &&
+          /^use[A-Z0-9]/.test(callee.property.name))
+      )
+        found = true
+    }
+    for (const [key, value] of Object.entries(current)) {
+      if (["parent", "loc", "range", "tokens", "comments"].includes(key))
+        continue
+      if (Array.isArray(value)) value.forEach(visit)
+      else if (value && typeof value === "object") visit(value)
+    }
+  }
+  visit(node.body)
+  return found
+}
+
+function memberName(expression) {
+  if (!expression.computed && expression.property.type === "Identifier")
+    return expression.property.name
+  if (
+    expression.computed &&
+    expression.property.type === "Literal" &&
+    typeof expression.property.value === "string"
+  )
+    return expression.property.value
+  return null
+}
+
+function isReactNamespaceVariable(variable, scope, visited) {
+  if (!variable || visited.has(variable)) return false
+  visited.add(variable)
+  if (importedFromReact(variable, [])) return true
+  return (
+    variable.defs?.some((definition) => {
+      const declarator = definition.node
+      if (
+        declarator?.type !== "VariableDeclarator" ||
+        declarator.init?.type !== "Identifier"
+      )
+        return false
+      const declarationScope = variable.scope ?? scope
+      return isReactNamespaceVariable(
+        resolveVariable(declarationScope, declarator.init.name),
+        declarationScope,
+        visited
+      )
+    }) ?? false
+  )
+}
+
+function isEffectVariable(variable, scope, visited = new Set()) {
+  if (!variable || visited.has(variable)) return false
+  visited.add(variable)
+  if (importedFromReact(variable, ["useEffect", "useLayoutEffect"])) return true
+  return (
+    variable.defs?.some((definition) => {
+      const declarator = definition.node
+      if (declarator?.type !== "VariableDeclarator" || !declarator.init)
+        return false
+      const declarationScope = variable.scope ?? scope
+      const init = declarator.init
+      if (init.type === "Identifier") {
+        return isEffectVariable(
+          resolveVariable(declarationScope, init.name),
+          declarationScope,
+          visited
+        )
+      }
+      if (
+        init.type === "MemberExpression" &&
+        ["useEffect", "useLayoutEffect"].includes(memberName(init))
+      ) {
+        return (
+          init.object.type === "Identifier" &&
+          isReactNamespaceVariable(
+            resolveVariable(declarationScope, init.object.name),
+            declarationScope,
+            new Set()
+          )
+        )
+      }
+      return false
+    }) ?? false
+  )
+}
+
+function isReactEffectCall(context, node) {
+  const scope = context.sourceCode?.getScope?.(node) ?? context.getScope?.()
+  const callee = node.callee
+  if (callee.type === "Identifier")
+    return isEffectVariable(resolveVariable(scope, callee.name), scope)
+  if (
+    callee.type === "MemberExpression" &&
+    ["useEffect", "useLayoutEffect"].includes(memberName(callee)) &&
+    callee.object.type === "Identifier"
+  ) {
+    return isReactNamespaceVariable(
+      resolveVariable(scope, callee.object.name),
+      scope,
+      new Set()
+    )
+  }
+  return false
+}
+
 const plugin = {
   meta: { name: "project-type-rules", version: "1.0.0" },
   rules: {
@@ -100,7 +262,181 @@ const plugin = {
         }
       },
     },
+    "tanstack-form-required": {
+      meta: {
+        type: "problem",
+        schema: [],
+        docs: {
+          description:
+            "Require TanStack Form for app-managed forms. A native form is allowed only with an action prop that references a server action and no client onSubmit handler.",
+        },
+      },
+      create(context) {
+        const useFormNames = new Set()
+        const functionScopes = []
+
+        function enterFunction(node) {
+          functionScopes.push({ node, usesTanStackForm: false })
+        }
+
+        function leaveFunction() {
+          functionScopes.pop()
+        }
+
+        return {
+          ImportDeclaration(node) {
+            if (node.source.value !== "@tanstack/react-form") return
+            for (const specifier of node.specifiers) {
+              if (
+                specifier.type === "ImportSpecifier" &&
+                specifier.imported.name === "useForm"
+              ) {
+                useFormNames.add(specifier.local.name)
+              }
+            }
+          },
+          FunctionDeclaration: enterFunction,
+          "FunctionDeclaration:exit": leaveFunction,
+          FunctionExpression: enterFunction,
+          "FunctionExpression:exit": leaveFunction,
+          ArrowFunctionExpression: enterFunction,
+          "ArrowFunctionExpression:exit": leaveFunction,
+          CallExpression(node) {
+            if (
+              node.callee.type === "Identifier" &&
+              useFormNames.has(node.callee.name)
+            ) {
+              const currentScope = functionScopes.at(-1)
+              if (currentScope) currentScope.usesTanStackForm = true
+            }
+          },
+          JSXOpeningElement(node) {
+            if (
+              node.name.type !== "JSXIdentifier" ||
+              node.name.name !== "form"
+            ) {
+              return
+            }
+
+            const currentScope = functionScopes.at(-1)
+            if (currentScope?.usesTanStackForm || isServerActionForm(node)) {
+              return
+            }
+
+            context.report({
+              node: node.name,
+              message:
+                "Use @tanstack/react-form for app-managed forms. Native forms are allowed only for server actions via action={serverAction}, without a client onSubmit handler.",
+            })
+          },
+        }
+      },
+    },
+    "no-raw-react-effects": {
+      meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+          raw: "Move React effect synchronization into a purpose-specific hook under the app hooks directory.",
+        },
+      },
+      create(context) {
+        const filename = context.filename ?? context.getFilename?.()
+        if (
+          !/(?:^|[/\\])apps[/\\](?:app|web)[/\\]/.test(filename) ||
+          isWithinHooksDirectory(filename)
+        )
+          return {}
+        return {
+          CallExpression(node) {
+            if (isReactEffectCall(context, node))
+              context.report({ node, messageId: "raw" })
+          },
+        }
+      },
+    },
+    "hooks-location": {
+      meta: {
+        type: "problem",
+        schema: [],
+        messages: {
+          location:
+            "Project-defined hooks that call hooks must live under the app hooks directory.",
+        },
+      },
+      create(context) {
+        const filename = context.filename ?? context.getFilename?.()
+        if (
+          !/(?:^|[/\\])apps[/\\](?:app|web)[/\\]/.test(filename) ||
+          isWithinHooksDirectory(filename)
+        )
+          return {}
+        const check = (node, name) => {
+          if (name && /^use[A-Z0-9]/.test(name) && hasHookCall(node))
+            context.report({ node, messageId: "location" })
+        }
+        return {
+          FunctionDeclaration(node) {
+            check(node, node.id?.name)
+          },
+          VariableDeclarator(node) {
+            if (
+              ["ArrowFunctionExpression", "FunctionExpression"].includes(
+                node.init?.type
+              )
+            )
+              check(node.init, node.id?.name)
+          },
+          MethodDefinition(node) {
+            if (node.kind !== "constructor") check(node.value, node.key?.name)
+          },
+          PropertyDefinition(node) {
+            if (
+              ["ArrowFunctionExpression", "FunctionExpression"].includes(
+                node.value?.type
+              )
+            )
+              check(node.value, node.key?.name)
+          },
+          Property(node) {
+            if (
+              node.method ||
+              ["ArrowFunctionExpression", "FunctionExpression"].includes(
+                node.value?.type
+              )
+            ) {
+              check(node.value, node.key?.name)
+            }
+          },
+        }
+      },
+    },
   },
+}
+
+function isServerActionForm(node) {
+  let hasServerAction = false
+  let hasClientSubmitHandler = false
+
+  for (const attribute of node.attributes ?? []) {
+    if (
+      attribute.type !== "JSXAttribute" ||
+      attribute.name.type !== "JSXIdentifier"
+    )
+      continue
+    if (attribute.name.name === "onSubmit") hasClientSubmitHandler = true
+    if (
+      attribute.name.name === "action" &&
+      attribute.value?.type === "JSXExpressionContainer" &&
+      ["Identifier", "MemberExpression"].includes(
+        attribute.value.expression.type
+      )
+    ) {
+      hasServerAction = true
+    }
+  }
+
+  return hasServerAction && !hasClientSubmitHandler
 }
 
 function reportMemberCount(context, node, maximum) {
