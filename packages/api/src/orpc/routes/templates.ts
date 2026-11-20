@@ -17,6 +17,7 @@ import { base } from "../base.js"
 import { logger } from "../../constants/logger.js"
 import { serverEnv } from "@workspace/env/server"
 import { API_BASE_PATH } from "../../constants/base-path.js"
+import { callerHasActiveOrganizationPro } from "../../core/organization/entitlement.js"
 
 const publicTemplateColumns = {
   slug: templates.slug,
@@ -206,6 +207,7 @@ export const list = base
     if (forced !== null) return forced
 
     try {
+      const hasPro = await callerHasActiveOrganizationPro(context)
       const rows = await db
         .select(publicTemplateColumns)
         .from(templates)
@@ -213,11 +215,20 @@ export const list = base
           templateRepositorySnapshots,
           eq(templates.id, templateRepositorySnapshots.templateId)
         )
-        .where(eq(templates.ownerType, "platform"))
+        .where(
+          hasPro
+            ? eq(templates.ownerType, "platform")
+            : and(
+                eq(templates.ownerType, "platform"),
+                eq(templates.access, "free")
+              )
+        )
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
       return {
-        templates: rows.map((row) => toPublicTemplate({ ...row, readme: null })),
+        templates: rows.map((row) =>
+          toPublicTemplate({ ...row, readme: null })
+        ),
       }
     } catch (error) {
       const message =
@@ -236,7 +247,8 @@ export const list = base
 export const detail = base
   .input(z.object({ slug: z.string().min(1) }))
   .output(TemplateV1.nullable())
-  .handler(async ({ input }): Promise<TemplateV1 | null> => {
+  .handler(async ({ input, context }): Promise<TemplateV1 | null> => {
+    const hasPro = await callerHasActiveOrganizationPro(context)
     const [row] = await db
       .select(publicTemplateDetailColumns)
       .from(templates)
@@ -245,7 +257,11 @@ export const detail = base
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
       .where(
-        and(eq(templates.slug, input.slug), eq(templates.ownerType, "platform"))
+        and(
+          eq(templates.slug, input.slug),
+          eq(templates.ownerType, "platform"),
+          ...(hasPro ? [] : [eq(templates.access, "free")])
+        )
       )
       .limit(1)
     return row ? toPublicTemplate(row as PublicTemplateRow) : null
@@ -263,7 +279,8 @@ export const resolve = base
       })
       .nullable()
   )
-  .handler(async ({ input }) => {
+  .handler(async ({ input, context }) => {
+    const hasPro = await callerHasActiveOrganizationPro(context)
     const [template] = await db
       .select({
         slug: templates.slug,
@@ -276,12 +293,16 @@ export const resolve = base
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
       .where(
-        and(eq(templates.slug, input.slug), eq(templates.ownerType, "platform"))
+        and(
+          eq(templates.slug, input.slug),
+          eq(templates.ownerType, "platform"),
+          ...(hasPro ? [] : [eq(templates.access, "free")])
+        )
       )
       .limit(1)
 
     if (!template) return null
-    return template
+    return { slug: template.slug, owner: template.owner, repo: template.repo }
   })
 
 const community = {

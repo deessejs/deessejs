@@ -17,13 +17,13 @@ const MUTATING_BILLING_ACTIONS = new Set([
   "billing-portal",
 ])
 
-/** Read access is available to every organization member. Mutations are owner/admin only. */
+/** Raw billing records and mutations are restricted to owners and admins. */
 export function canAccessOrganizationBilling(
   role: string,
   action: string
 ): boolean {
-  if (action === "list-subscription") return true
-  if (!MUTATING_BILLING_ACTIONS.has(action)) return false
+  if (action !== "list-subscription" && !MUTATING_BILLING_ACTIONS.has(action))
+    return false
 
   return hasManagingRole(role)
 }

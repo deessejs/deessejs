@@ -8,9 +8,9 @@ of the configuration is rejected during environment validation.
 ## Operator setup
 
 Create the DeesseJS products and recurring prices in Stripe. Supply the resulting
-Pro monthly and annual Price IDs through environment configuration. This code
-does not create products, select amounts, set trial periods, or configure
-per-seat pricing.
+Pro monthly Price ID through environment configuration. V1 is monthly only.
+This code does not create products, select amounts, set trial periods, or
+configure per-seat pricing.
 
 Set these server-only values in each Vercel environment that will use billing:
 
@@ -18,7 +18,6 @@ Set these server-only values in each Vercel environment that will use billing:
 - `STRIPE_WEBHOOK_SECRET`: signing secret for the webhook endpoint configured
   below. Use a different secret for each Stripe endpoint/environment.
 - `STRIPE_PRO_MONTHLY_PRICE_ID`: operator-created monthly Pro Price ID.
-- `STRIPE_PRO_ANNUAL_PRICE_ID`: operator-created annual Pro Price ID.
 
 Configure a Stripe webhook endpoint at
 `https://app.deessejs.com/api/v1/auth/stripe/webhook` (substitute the app host
@@ -52,6 +51,17 @@ its generated schema. Use temporary, non-production Stripe-shaped values only
 for schema generation when operator values are not available. Never commit or
 deploy those temporary values.
 
-This foundation only configures organization subscriptions and webhook
-synchronization. It does not include checkout or billing portal UI, Pro
-entitlement checks, or private template source authorization.
+The Better Auth plugin configures organization subscriptions and webhook
+synchronization. Server-side entitlement checks grant Pro to current
+organization members when the persisted `pro` subscription has the V1 monthly
+interval and a recognized `active` or `trialing` status.
+There is no `past_due` grace period. Cancellation at period end retains access
+through the persisted paid period. Billing managers are owners and admins;
+ordinary members receive only the sanitized Pro-included result, not raw
+subscription records.
+
+The public template and official section APIs gate paid metadata using current
+membership and subscription state. Their source GitHub URLs remain public and
+must not be treated as protected delivery. Do not assign or advertise paid
+source entries as usable until the separate private-source flow issues
+short-lived authorized downloads.

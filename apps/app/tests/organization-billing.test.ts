@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { billingPortal, list, upgrade } = vi.hoisted(() => ({
+const { billingPortal, list, upgrade, proEntitlement } = vi.hoisted(() => ({
   billingPortal: vi.fn(),
   list: vi.fn(),
   upgrade: vi.fn(),
+  proEntitlement: vi.fn(),
 }))
 
 vi.mock("@/lib/client", () => ({
-  client: { auth: { subscription: { billingPortal, list, upgrade } } },
+  client: {
+    auth: { subscription: { billingPortal, list, upgrade } },
+    rpc: { organization: { proEntitlement } },
+  },
 }))
 
 import {
@@ -26,15 +30,41 @@ describe("organization billing", () => {
     vi.clearAllMocks()
   })
 
-  it("scopes list queries to the requested organization", async () => {
+  it("scopes raw billing detail reads to managers", async () => {
     list.mockResolvedValue({ data: [], error: null })
-    const query = organizationSubscriptionsQueryOptions("org-a")
+    const query = organizationSubscriptionsQueryOptions({
+      organizationId: "org-a",
+      organizationSlug: "acme",
+      canManage: true,
+    })
 
-    expect(query.queryKey).toEqual(organizationSubscriptionsQueryKey("org-a"))
+    expect(query.queryKey).toEqual([
+      ...organizationSubscriptionsQueryKey("org-a"),
+      "details",
+    ])
     await query.queryFn?.({} as never)
     expect(list).toHaveBeenCalledWith({
       query: { referenceId: "org-a", customerType: "organization" },
     })
+  })
+
+  it("uses only the sanitized entitlement result for ordinary members", async () => {
+    proEntitlement.mockResolvedValue({
+      data: { proIncluded: true },
+      error: null,
+    })
+    const query = organizationSubscriptionsQueryOptions({
+      organizationId: "org-a",
+      organizationSlug: "acme",
+      canManage: false,
+    })
+
+    await expect(query.queryFn?.({} as never)).resolves.toEqual({
+      kind: "entitlement",
+      proIncluded: true,
+    })
+    expect(proEntitlement).toHaveBeenCalledWith({ slug: "acme" })
+    expect(list).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -45,36 +75,29 @@ describe("organization billing", () => {
     expect(hasManagingRole(role)).toBe(allowed)
   })
 
-  it.each([false, true])(
-    "starts Pro checkout with the resolved org and annual=%s",
-    async (annual) => {
-      upgrade.mockResolvedValue({
-        data: { url: "https://checkout.example" },
-        error: null,
-      })
+  it("starts monthly Pro checkout with the resolved organization", async () => {
+    upgrade.mockResolvedValue({
+      data: { url: "https://checkout.example" },
+      error: null,
+    })
 
-      await expect(
-        startOrganizationCheckout({
-          organizationId: "org-a",
-          annual,
-          successUrl:
-            "https://app.example/acme/settings/billing?billing=success",
-          cancelUrl:
-            "https://app.example/acme/settings/billing?billing=cancelled",
-        })
-      ).resolves.toBe("https://checkout.example")
-      expect(upgrade).toHaveBeenCalledWith({
-        plan: "pro",
-        annual,
-        referenceId: "org-a",
-        customerType: "organization",
+    await expect(
+      startOrganizationCheckout({
+        organizationId: "org-a",
         successUrl: "https://app.example/acme/settings/billing?billing=success",
         cancelUrl:
           "https://app.example/acme/settings/billing?billing=cancelled",
-        disableRedirect: true,
       })
-    }
-  )
+    ).resolves.toBe("https://checkout.example")
+    expect(upgrade).toHaveBeenCalledWith({
+      plan: "pro",
+      referenceId: "org-a",
+      customerType: "organization",
+      successUrl: "https://app.example/acme/settings/billing?billing=success",
+      cancelUrl: "https://app.example/acme/settings/billing?billing=cancelled",
+      disableRedirect: true,
+    })
+  })
 
   it("surfaces checkout and portal errors", async () => {
     upgrade.mockResolvedValue({
@@ -89,7 +112,6 @@ describe("organization billing", () => {
     await expect(
       startOrganizationCheckout({
         organizationId: "org-b",
-        annual: false,
         successUrl: "/billing?billing=success",
         cancelUrl: "/billing?billing=cancelled",
       })

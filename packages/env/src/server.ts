@@ -90,7 +90,6 @@ function getServerEnv(): Readonly<ServerEnv> {
     STRIPE_SECRET_KEY: env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: env.STRIPE_WEBHOOK_SECRET,
     STRIPE_PRO_MONTHLY_PRICE_ID: env.STRIPE_PRO_MONTHLY_PRICE_ID,
-    STRIPE_PRO_ANNUAL_PRICE_ID: env.STRIPE_PRO_ANNUAL_PRICE_ID,
     // Inter-app URL configuration. Read from serverEnv by
     // apps/app's proxy and apps/cli's RPCLink; apps/web reads the
     // NEXT_PUBLIC_* mirror via clientEnv for browser-side code.

@@ -45,18 +45,29 @@ export function OrganizationBilling({
   billingReturn?: string | undefined
 }) {
   const queryClient = useQueryClient()
-  const subscriptions = useOrganizationSubscriptions(organization.id)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const canManage = hasManagingRole(organization.role)
+  const subscriptions = useOrganizationSubscriptions({
+    organizationId: organization.id,
+    organizationSlug: organization.slug,
+    canManage,
+  })
+  const subscriptionCount =
+    subscriptions.data?.kind === "billing"
+      ? subscriptions.data.subscriptions.length
+      : subscriptions.data?.kind === "entitlement" &&
+          subscriptions.data.proIncluded
+        ? 1
+        : 0
   const billingState = organizationBillingState({
     isPending: subscriptions.isPending,
     isError: subscriptions.isError,
-    subscriptionCount: subscriptions.data?.length ?? 0,
+    subscriptionCount,
   })
   const billingPath = workspaceBillingSettingsPath(organization.slug)
 
-  async function startCheckout(annual: boolean) {
+  async function startCheckout() {
     setBusy(true)
     setActionError(null)
     try {
@@ -66,7 +77,6 @@ export function OrganizationBilling({
       cancelUrl.searchParams.set("billing", "cancelled")
       const url = await startOrganizationCheckout({
         organizationId: organization.id,
-        annual,
         successUrl: successUrl.toString(),
         cancelUrl: cancelUrl.toString(),
       })
@@ -137,7 +147,9 @@ export function OrganizationBilling({
         <CardHeader>
           <CardTitle>Organization subscription</CardTitle>
           <CardDescription>
-            Subscription details are shared with organization members.
+            {canManage
+              ? "Manage this organization's monthly Pro subscription."
+              : "See whether DeesseJS Pro is included for this organization."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -162,24 +174,39 @@ export function OrganizationBilling({
             </div>
           ) : billingState === "empty" ? (
             <p className="text-sm text-muted-foreground">
-              No subscription is configured for this organization.
+              {canManage
+                ? "No subscription is configured for this organization."
+                : "This organization does not include DeesseJS Pro."}
             </p>
           ) : (
             <div className="flex flex-col gap-2" aria-live="polite">
-              {(subscriptions.data ?? []).map((subscription) => (
-                <div key={subscription.id} className="rounded-md border p-4">
-                  <p className="font-medium">{subscription.plan}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {subscription.status}
-                    {subscription.cancelAtPeriodEnd
-                      ? " · Cancels at period end"
-                      : ""}
-                    {subscription.periodEnd
-                      ? ` · Period ends ${billingDateFormatter.format(subscription.periodEnd)}`
-                      : ""}
-                  </p>
-                </div>
-              ))}
+              {subscriptions.data?.kind === "entitlement" ? (
+                <p className="text-sm">
+                  {subscriptions.data.proIncluded
+                    ? "DeesseJS Pro is included for this organization."
+                    : "This organization does not include DeesseJS Pro."}
+                </p>
+              ) : (
+                (subscriptions.data?.subscriptions ?? []).map(
+                  (subscription) => (
+                    <div
+                      key={subscription.id}
+                      className="rounded-md border p-4"
+                    >
+                      <p className="font-medium">{subscription.plan}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {subscription.status}
+                        {subscription.cancelAtPeriodEnd
+                          ? " · Cancels at period end"
+                          : ""}
+                        {subscription.periodEnd
+                          ? ` · Period ends ${billingDateFormatter.format(subscription.periodEnd)}`
+                          : ""}
+                      </p>
+                    </div>
+                  )
+                )
+              )}
             </div>
           )}
 
@@ -191,16 +218,9 @@ export function OrganizationBilling({
                   <>
                     <Button
                       disabled={busy}
-                      onClick={() => void startCheckout(false)}
+                      onClick={() => void startCheckout()}
                     >
                       Subscribe monthly
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => void startCheckout(true)}
-                    >
-                      Subscribe annually
                     </Button>
                   </>
                 ) : (

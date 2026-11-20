@@ -26,6 +26,7 @@ export const blockOwnerType = pgEnum("block_owner_type", [
   "organization",
   "platform",
 ])
+export const blockAccess = pgEnum("block_access", ["free", "paid"])
 
 /** A submitted block revision. Descriptor JSON is captured from its pinned source commit. */
 export const blockPublications = pgTable(
@@ -44,6 +45,8 @@ export const blockPublications = pgTable(
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
     category: text("category").notNull(),
+    /** Server-controlled access classification for official sections. */
+    access: blockAccess("access").notNull().default("free"),
     repositoryUrl: text("repository_url").notNull(),
     subdirectory: text("subdirectory").notNull().default(""),
     sourceCommit: text("source_commit").notNull(),

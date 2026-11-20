@@ -8,14 +8,12 @@ export type StripeBillingEnvironment = {
   STRIPE_SECRET_KEY?: string | undefined
   STRIPE_WEBHOOK_SECRET?: string | undefined
   STRIPE_PRO_MONTHLY_PRICE_ID?: string | undefined
-  STRIPE_PRO_ANNUAL_PRICE_ID?: string | undefined
 }
 
 const REQUIRED_STRIPE_CONFIGURATION = [
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_PRO_MONTHLY_PRICE_ID",
-  "STRIPE_PRO_ANNUAL_PRICE_ID",
 ] as const
 
 /**
@@ -32,9 +30,7 @@ export function createStripePlugin(
   const secretKey = env.STRIPE_SECRET_KEY
   const webhookSecret = env.STRIPE_WEBHOOK_SECRET
   const monthlyPriceId = env.STRIPE_PRO_MONTHLY_PRICE_ID
-  const annualPriceId = env.STRIPE_PRO_ANNUAL_PRICE_ID
-
-  if (!secretKey || !webhookSecret || !monthlyPriceId || !annualPriceId) {
+  if (!secretKey || !webhookSecret || !monthlyPriceId) {
     return null
   }
 
@@ -48,7 +44,6 @@ export function createStripePlugin(
         {
           name: "pro",
           priceId: monthlyPriceId,
-          annualDiscountPriceId: annualPriceId,
         },
       ],
       authorizeReference: async ({ user, referenceId, action }) =>
