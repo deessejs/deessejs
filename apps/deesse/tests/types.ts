@@ -229,10 +229,11 @@ void app.api.router.audit
 noConfigPlugin({})
 
 const clientAuthOptions = { plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] } satisfies BetterAuthClientOptions
-const client = createClient<typeof app>({
+const createAppClient = createClient<typeof app>()
+const client = createAppClient({
   auth: clientAuthOptions,
 })
-const linkedClient = createClient<typeof app>()
+const linkedClient = createAppClient()
 const isolatedAuthClient = createAuthClient({ plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] })
 const isolatedUsernameClient = createAuthClient({ plugins: [usernameClient()] })
 const isolatedContributedUsernameClient = createAuthClient({ plugins: [contributedUsernameClient] })

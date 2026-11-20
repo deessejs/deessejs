@@ -67,10 +67,11 @@ const authClientPlugin = {
   ...usernameClient(),
   $InferServerPlugin: {} as ReturnType<typeof username>,
 } satisfies BetterAuthClientPlugin
-const client = createClient<typeof app>({
+const createAppClient = createClient<typeof app>()
+const client = createAppClient({
   auth: { plugins: [authClientPlugin] },
 })
-const simpleClient = createClient<typeof app>()
+const simpleClient = createAppClient()
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
 type PublicZeroOptionClientExact = Assert<Equal<typeof simpleClient.api, RouterClient<typeof app.api.router>>>
 type PublicUsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">

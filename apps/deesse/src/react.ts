@@ -10,12 +10,13 @@ export type { DeesseClientOptions, DeesseClientServer } from "./react-types.js"
 
 export function createClient<
   TServer extends DeesseClientServer = DeesseClientServer,
-  TAuthOptions extends BetterAuthClientOptions = BetterAuthClientOptions,
->(options: DeesseClientOptions<TAuthOptions> = {}): { auth: ReactAuthClient<TAuthOptions>; api: RouterClient<TServer["api"]["router"]> } {
-  const location = (globalThis as { location?: { origin: string } }).location
-  const baseURL = options.baseURL ?? location?.origin ?? "http://localhost"
-  const clientOptions = { baseURL, ...(options.fetch ? { fetch: options.fetch } : {}) }
-  const auth = createAuthClient<TAuthOptions>({ ...options.auth, ...clientOptions } as BetterAuthClientOptions & TAuthOptions)
-  const link = new RPCLink({ url: new URL(DEESSE_RPC_PATH, baseURL).toString(), ...(options.fetch ? { fetch: options.fetch } : {}) })
-  return { auth, api: createORPCClient(link) as RouterClient<TServer["api"]["router"]> }
+>() {
+  return function createBoundClient<TAuthOptions extends BetterAuthClientOptions = BetterAuthClientOptions>(options: DeesseClientOptions<TAuthOptions> = {}) {
+    const location = (globalThis as { location?: { origin: string } }).location
+    const baseURL = options.baseURL ?? location?.origin ?? "http://localhost"
+    const clientOptions = { baseURL, ...(options.fetch ? { fetch: options.fetch } : {}) }
+    const auth = createAuthClient<TAuthOptions>({ ...options.auth, ...clientOptions } as BetterAuthClientOptions & TAuthOptions)
+    const link = new RPCLink({ url: new URL(DEESSE_RPC_PATH, baseURL).toString(), ...(options.fetch ? { fetch: options.fetch } : {}) })
+    return { auth, api: createORPCClient(link) as RouterClient<TServer["api"]["router"]> }
+  }
 }
