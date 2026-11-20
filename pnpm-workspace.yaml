@@ -1,6 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "examples/*/apps/*"
+  - "examples/*/packages/*"
 
 # pnpm 11: explicit allowlist for build scripts
 allowBuilds:
@@ -26,6 +28,7 @@ catalog:
 
   # Auth
   "@better-auth/drizzle-adapter": ^1.7.25
+  "@better-auth/memory-adapter": ^1.7.7
   "@better-auth/stripe": ^1.7.25
   "@better-auth/mcp": ^1.7.25
   "@better-auth/cimd": ^1.7.25
@@ -38,8 +41,9 @@ catalog:
   "@content-collections/mdx": ^0.2.2
   "@content-collections/next": ^0.2.11
   "@deessejs/errors": ^1.1.1
-  "@deessejs/fp": ^1.0.0
+  "@deessejs/fp": ^5.0.1
   "@hookform/resolvers": ^5.0.0
+  clsx: ^2.1.1
 
   # Next.js
   "@orpc/client": ^1.14.7
@@ -48,6 +52,7 @@ catalog:
   "@react-email/components": ^1.0.12
   "@react-email/render": ^2.0.6
   "@shadcn/react": 0.3.1
+  shadcn: ^4.12.0
   "@shikijs/rehype": ^4.3.1
   "@t3-oss/env-core": ^0.13.0
 
@@ -133,6 +138,7 @@ catalog:
   shiki: ^4.3.1
   sonner: ^2.0.7
   tailwind-merge: ^3.6.0
+  tailwindcss: ^4.3.2
   tar: ^7.5.22
   tsup: ^8.3.5
   typescript: ^6.0.3

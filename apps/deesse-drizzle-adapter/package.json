@@ -1,0 +1,53 @@
+{
+  "name": "@deessejs/drizzle-adapter",
+  "version": "0.0.0",
+  "description": "PostgreSQL postgres-js and Drizzle adapter for DeesseJS.",
+  "license": "MIT",
+  "keywords": ["deessejs", "drizzle", "postgres", "postgres-js", "better-auth"],
+  "repository": { "type": "git", "url": "https://github.com/deessejs/deessejs.git", "directory": "apps/deesse-drizzle-adapter" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public", "provenance": true },
+  "bin": { "deesse-drizzle-schema": "./dist/cli.js" },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc && tsc --noEmit -p tsconfig.consumer.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/deesse-drizzle-adapter --deny-warnings",
+    "schema:generate": "node ./dist/cli.js",
+    "test:prepare": "pnpm exec auth generate --config ./tests/fixtures/auth.config.ts --adapter drizzle --dialect postgresql --output ./tests/fixtures/generated/auth.generated.ts --yes && pnpm run schema:generate -- --config ./tests/fixtures/deesse.config.ts --output ./tests/fixtures/generated/deesse.generated.ts && pnpm exec drizzle-kit generate --config ./tests/fixtures/drizzle.config.ts",
+    "test": "pnpm run build && pnpm run test:prepare && vitest run"
+  },
+  "dependencies": {
+    "@deessejs/errors": "catalog:",
+    "@deessejs/fp": "catalog:",
+    "@better-auth/drizzle-adapter": "catalog:"
+  },
+  "peerDependencies": {
+    "deesse": "^0.0.0",
+    "better-auth": "catalog:",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "@workspace/vitest-config": "workspace:*",
+    "deesse": "workspace:*",
+    "auth": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
+    "@types/node": "catalog:",
+    "better-auth": "catalog:",
+    "drizzle-kit": "catalog:",
+    "drizzle-orm": "catalog:",
+    "postgres": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

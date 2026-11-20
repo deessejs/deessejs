@@ -1,0 +1,20 @@
+{
+  "name": "deesse",
+  "version": "0.0.0",
+  "description": "DeesseJS server framework core and typed React client.",
+  "license": "MIT",
+  "keywords": ["deessejs", "framework", "hono", "better-auth", "orpc"],
+  "type": "module",
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public", "provenance": true },
+  "repository": { "type": "git", "url": "https://github.com/deessejs/deessejs.git", "directory": "apps/deesse" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" },
+    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js", "default": "./dist/react.js" },
+    "./next": { "types": "./dist/next.d.ts", "import": "./dist/next.js", "default": "./dist/next.js" }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc -p tsconfig.build.json && tsc --noEmit -p tsconfig.consumer.json", "typecheck": "tsc --noEmit -p tsconfig.json", "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/deesse --deny-warnings", "test": "vitest run" },
+  "dependencies": { "@deessejs/errors": "catalog:", "@deessejs/fp": "catalog:", "@orpc/client": "catalog:", "@orpc/server": "catalog:", "better-auth": "catalog:", "hono": "catalog:", "zod": "catalog:" },
+  "devDependencies": { "@better-auth/memory-adapter": "catalog:", "@workspace/typescript-config": "workspace:*", "@types/node": "catalog:", "@types/react": "catalog:", "typescript": "catalog:", "vitest": "catalog:" }
+}
