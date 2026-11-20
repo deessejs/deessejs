@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import "shadcn/tailwind.css";
+
+@source "../../../../apps/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+:root {
+  --background: oklch(0.99 0.002 260);
+  --foreground: oklch(0.2 0.01 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 260);
+  --primary: oklch(0.32 0.04 260);
+  --primary-foreground: oklch(0.98 0.005 260);
+  --secondary: oklch(0.94 0.01 260);
+  --secondary-foreground: oklch(0.28 0.02 260);
+  --muted: oklch(0.95 0.006 260);
+  --muted-foreground: oklch(0.52 0.015 260);
+  --border: oklch(0.88 0.01 260);
+  --input: oklch(0.88 0.01 260);
+  --ring: oklch(0.57 0.08 260);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+* {
+  border-color: var(--border);
+}
