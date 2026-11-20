@@ -7,7 +7,10 @@ import {
   StreamableHTTPClientTransport,
 } from "@modelcontextprotocol/client"
 import { createMcpProtectedRequestHandler } from "@better-auth/mcp"
-import { createProductMcpHandler } from "@workspace/mcp"
+import {
+  createProductMcpHandler,
+  PRODUCT_MCP_TOOL_POLICIES,
+} from "@workspace/mcp"
 import { serverEnv } from "@workspace/env/server"
 import { api } from "../../src/index.js"
 import { API_BASE_PATH } from "../../src/constants/base-path.js"
@@ -185,10 +188,20 @@ describe("MCP HTTP route", () => {
 
       expect(client.getProtocolEra()).toBe("modern")
       const discovery = await client.listTools()
-      expect(discovery.tools.map((tool) => tool.name).sort()).toEqual([
+      const registeredToolNames = discovery.tools.map((tool) => tool.name)
+      const policyToolNames = Object.values(PRODUCT_MCP_TOOL_POLICIES).map(
+        (policy) => policy.name
+      )
+      expect(registeredToolNames.sort()).toEqual([
         "list_my_organizations",
         "list_templates",
       ])
+      expect([...registeredToolNames].sort()).toEqual(policyToolNames.sort())
+      expect(
+        Object.values(PRODUCT_MCP_TOOL_POLICIES).every(
+          (policy) => policy.scope.length > 0
+        )
+      ).toBe(true)
 
       const templateResult = await client.callTool({
         name: "list_templates",
@@ -208,7 +221,7 @@ describe("MCP HTTP route", () => {
       expect(listTemplates).toHaveBeenCalledOnce()
       expect(listMyOrganizations).toHaveBeenCalledOnce()
     } finally {
-      await client.close()
+      await Promise.all([client.close(), handler.close()])
     }
   })
 
@@ -224,6 +237,26 @@ describe("MCP HTTP route", () => {
         },
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" })
+  })
+
+  it("fails closed when a tool call has no registered scope policy", async () => {
+    const request = new Request(testResource, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 5,
+        method: "tools/call",
+        params: { name: "future_tool", arguments: {} },
+      }),
+    })
+
+    await expect(
+      assertMcpToolScope(request, {
+        userId: "verified-user",
+        scopes: ["templates:read", "organizations:read"],
+      })
+    ).rejects.toMatchObject({ status: 403 })
   })
 
   it("enforces each tool scope through Better Auth and returns a scope challenge", async () => {

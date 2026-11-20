@@ -1,4 +1,6 @@
 import { createInsufficientScopeError } from "better-auth/oauth2"
+import { HTTPException } from "hono/http-exception"
+import { PRODUCT_MCP_TOOL_POLICIES } from "@workspace/mcp"
 import type { McpIdentity } from "./mcp-identity.js"
 
 type JsonObject = Record<string, unknown>
@@ -23,12 +25,16 @@ export async function assertMcpToolScope(
   const params = payload.params
   if (!isJsonObject(params)) return
 
-  const toolName = params.name
-  let requiredScope: string | null = null
-  if (toolName === "list_templates") requiredScope = "templates:read"
-  if (toolName === "list_my_organizations") requiredScope = "organizations:read"
+  const toolPolicy = Object.values(PRODUCT_MCP_TOOL_POLICIES).find(
+    (policy) => policy.name === params.name
+  )
+  if (!toolPolicy) {
+    throw new HTTPException(403, {
+      message: "MCP tool call has no registered scope policy.",
+    })
+  }
 
-  if (requiredScope && !identity.scopes.includes(requiredScope)) {
-    throw createInsufficientScopeError([requiredScope])
+  if (!identity.scopes.includes(toolPolicy.scope)) {
+    throw createInsufficientScopeError([toolPolicy.scope])
   }
 }
