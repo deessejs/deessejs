@@ -4,6 +4,7 @@ import { CookiePolicy } from "@workspace/cookies"
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description: "Learn how DeesseJS uses cookies and optional analytics.",
+  robots: { index: false, follow: false },
 }
 
 export default function CookiesPage() {
