@@ -58,6 +58,7 @@ jobs:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      MCP_RESOURCE_URL: https://ci.example.com/api/v1/mcp
       NEXT_PUBLIC_APP_URL: https://ci.example.com
       # The production superRefine gate requires PARENT_DOMAIN
       # for cross-subdomain cookie sharing. Stubbed in CI so the
@@ -105,6 +106,7 @@ jobs:
       NODE_ENV: production
       BETTER_AUTH_SECRET: ci-test-secret-which-is-long-enough-to-pass-the-32-char-validation
       DATABASE_URL: postgresql://test:test@localhost:5432/test
+      MCP_RESOURCE_URL: https://ci.example.com/api/v1/mcp
       NEXT_PUBLIC_APP_URL: https://ci.example.com
       # Every NEXT_PUBLIC_* URL var is checked against its schema
       # default by `scripts/env-check.ts`. CI stubs all four so the

@@ -5,92 +5,116 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { PasswordInput } from "@/components/auth/password-input"
+import { useForm } from "@tanstack/react-form"
 
 export function PasswordForm() {
-	const [currentPassword, setCurrentPassword] = useState("")
-	const [newPassword, setNewPassword] = useState("")
-	const [confirmPassword, setConfirmPassword] = useState("")
-	const [submitting, setSubmitting] = useState(false)
-	const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const form = useForm({
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+    onSubmit: async ({ value }) => {
+      if (value.newPassword !== value.confirmPassword) {
+        toast.error("Passwords do not match")
+        return
+      }
 
-	async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault()
+      if (value.newPassword.length < 8) {
+        toast.error("Password must be at least 8 characters")
+        return
+      }
 
-		if (newPassword !== confirmPassword) {
-			toast.error("Passwords do not match")
-			return
-		}
+      setSubmitting(true)
+      const { error } = await client.auth.changePassword({
+        currentPassword: value.currentPassword,
+        newPassword: value.newPassword,
+      })
+      setSubmitting(false)
 
-		if (newPassword.length < 8) {
-			toast.error("Password must be at least 8 characters")
-			return
-		}
+      if (error) {
+        toast.error(error.message ?? "Failed to update password")
+        return
+      }
 
-		setSubmitting(true)
-		const { error } = await client.auth.changePassword({
-			currentPassword,
-			newPassword,
-		})
-		setSubmitting(false)
+      setSaved(true)
+      form.reset()
+      setTimeout(() => setSaved(false), 3000)
+    },
+  })
 
-		if (error) {
-			toast.error(error.message ?? "Failed to update password")
-			return
-		}
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        void form.handleSubmit()
+      }}
+      className="flex flex-col gap-4"
+    >
+      {saved && (
+        <p className="text-sm text-green-600 dark:text-green-400">
+          Password updated.
+        </p>
+      )}
 
-		setSaved(true)
-		setCurrentPassword("")
-		setNewPassword("")
-		setConfirmPassword("")
-		setTimeout(() => setSaved(false), 3000)
-	}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="current" className="text-sm font-medium">
+          Current password
+        </label>
+        <form.Field name="currentPassword">
+          {(field) => (
+            <PasswordInput
+              id="current"
+              name="current"
+              autoComplete="current-password"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+          )}
+        </form.Field>
+      </div>
 
-	return (
-		<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-			{saved && (
-				<p className="text-sm text-green-600 dark:text-green-400">
-					Password updated.
-				</p>
-			)}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="new" className="text-sm font-medium">
+          New password
+        </label>
+        <form.Field name="newPassword">
+          {(field) => (
+            <PasswordInput
+              id="new"
+              name="new"
+              autoComplete="new-password"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+          )}
+        </form.Field>
+      </div>
 
-			<div className="flex flex-col gap-2">
-				<label htmlFor="current" className="text-sm font-medium">Current password</label>
-				<PasswordInput
-					id="current"
-					name="current"
-					autoComplete="current-password"
-					value={currentPassword}
-					onChange={(e) => setCurrentPassword(e.target.value)}
-				/>
-			</div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="confirm" className="text-sm font-medium">
+          Confirm new password
+        </label>
+        <form.Field name="confirmPassword">
+          {(field) => (
+            <PasswordInput
+              id="confirm"
+              name="confirm"
+              autoComplete="new-password"
+              value={field.state.value}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+          )}
+        </form.Field>
+      </div>
 
-			<div className="flex flex-col gap-2">
-				<label htmlFor="new" className="text-sm font-medium">New password</label>
-				<PasswordInput
-					id="new"
-					name="new"
-					autoComplete="new-password"
-					value={newPassword}
-					onChange={(e) => setNewPassword(e.target.value)}
-				/>
-			</div>
-
-			<div className="flex flex-col gap-2">
-				<label htmlFor="confirm" className="text-sm font-medium">Confirm new password</label>
-				<PasswordInput
-					id="confirm"
-					name="confirm"
-					autoComplete="new-password"
-					value={confirmPassword}
-					onChange={(e) => setConfirmPassword(e.target.value)}
-				/>
-			</div>
-
-			<div className="flex justify-end">
-				<Button type="submit" disabled={submitting}>
-					{submitting ? "Updating…" : "Update password"}
-				</Button>
-			</div>
-		</form>
-	)
+      <div className="flex justify-end">
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Updating…" : "Update password"}
+        </Button>
+      </div>
+    </form>
+  )
 }

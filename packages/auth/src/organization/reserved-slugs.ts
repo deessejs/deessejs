@@ -24,6 +24,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "onboarding",
   "accept-invitation",
   "api",
+  "oauth",
   "login",
   "signup",
   "forgot-password",

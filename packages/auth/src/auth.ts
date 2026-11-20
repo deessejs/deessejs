@@ -3,7 +3,11 @@ import type { BetterAuthOptions } from "better-auth"
 import { drizzleAdapter } from "@better-auth/drizzle-adapter"
 import { APIError, createAuthMiddleware } from "better-auth/api"
 import { nextCookies } from "better-auth/next-js"
+import { jwt } from "better-auth/plugins"
 import { admin, bearer, deviceAuthorization } from "better-auth/plugins"
+import { mcp } from "@better-auth/mcp"
+import { cimd } from "@better-auth/cimd"
+import { fetchClientMetadataResource } from "@better-auth/cimd/node"
 import { db } from "@workspace/database"
 import * as schema from "@workspace/database"
 import { serverEnv } from "@workspace/env/server"
@@ -286,6 +290,19 @@ const authConfig: BetterAuthOptions = {
   ],
 
   plugins: [
+    jwt({ disableSettingJwtHeader: true }),
+    mcp({
+      resource: serverEnv.MCP_RESOURCE_URL,
+      loginPage: "/oauth/login",
+      consentPage: "/oauth/consent",
+      allowPublicClientPrelogin: true,
+      scopes: ["openid", "profile", "offline_access", "templates:read"],
+      refreshTokenReuseInterval: 0,
+    }),
+    cimd({
+      fetchClientMetadataResource,
+      metadataProfile: "mcp-2026-07-28",
+    }),
     // Device authorization: the device-code flow that lets the CLI obtain
     // a session token without a password. The plugin adds /device/code,
     // /device/token, /device, /device/approve, /device/deny under the
