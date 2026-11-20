@@ -16,15 +16,14 @@ export function organizationSubscriptionsQueryOptions(
   return queryOptions({
     queryKey: [
       ...organizationSubscriptionsQueryKey(input.organizationId),
+      input.organizationSlug,
       input.canManage ? "details" : "entitlement",
     ] as const,
     queryFn: async () => {
       if (!input.canManage) {
-        const { data, error } = await client.rpc.organization.proEntitlement({
+        const data = await client.rpc.organization.proEntitlement({
           slug: input.organizationSlug,
         })
-        if (error || !data)
-          throw new Error(error?.message ?? "Could not load Pro status")
         return { kind: "entitlement" as const, proIncluded: data.proIncluded }
       }
 

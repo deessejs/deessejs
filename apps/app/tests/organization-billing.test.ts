@@ -40,6 +40,7 @@ describe("organization billing", () => {
 
     expect(query.queryKey).toEqual([
       ...organizationSubscriptionsQueryKey("org-a"),
+      "acme",
       "details",
     ])
     await query.queryFn?.({} as never)
@@ -49,10 +50,7 @@ describe("organization billing", () => {
   })
 
   it("uses only the sanitized entitlement result for ordinary members", async () => {
-    proEntitlement.mockResolvedValue({
-      data: { proIncluded: true },
-      error: null,
-    })
+    proEntitlement.mockResolvedValue({ proIncluded: true })
     const query = organizationSubscriptionsQueryOptions({
       organizationId: "org-a",
       organizationSlug: "acme",
@@ -152,7 +150,11 @@ describe("organization billing", () => {
 
   it("turns a failed subscription list into an unavailable state", async () => {
     list.mockResolvedValue({ data: null, error: { message: "Not configured" } })
-    const query = organizationSubscriptionsQueryOptions("org-disabled")
+    const query = organizationSubscriptionsQueryOptions({
+      organizationId: "org-disabled",
+      organizationSlug: "disabled",
+      canManage: true,
+    })
 
     await expect(query.queryFn?.({} as never)).rejects.toThrow("Not configured")
     expect(

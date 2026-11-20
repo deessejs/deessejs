@@ -37,6 +37,104 @@ const billingDateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 })
 
+function BillingDetails({
+  state,
+  canManage,
+  data,
+  onRetry,
+}: {
+  state: ReturnType<typeof organizationBillingState>
+  canManage: boolean
+  data: ReturnType<typeof useOrganizationSubscriptions>["data"]
+  onRetry: () => void
+}) {
+  if (state === "loading")
+    return (
+      <Skeleton className="h-5 w-48" aria-label="Loading billing details" />
+    )
+  if (state === "unavailable")
+    return (
+      <div className="rounded-md border border-destructive p-4" role="alert">
+        <p className="font-medium">Billing is unavailable</p>
+        <p className="text-sm text-muted-foreground">
+          Stripe may not be configured, or the billing service could not be
+          reached. You can retry in a moment.
+        </p>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    )
+  if (state === "empty")
+    return (
+      <p className="text-sm text-muted-foreground">
+        {canManage
+          ? "No subscription is configured for this organization."
+          : "This organization does not include DeesseJS Pro."}
+      </p>
+    )
+  if (data?.kind === "entitlement")
+    return (
+      <p className="text-sm">
+        {data.proIncluded
+          ? "DeesseJS Pro is included for this organization."
+          : "This organization does not include DeesseJS Pro."}
+      </p>
+    )
+  return (
+    <div className="flex flex-col gap-2" aria-live="polite">
+      {(data?.subscriptions ?? []).map((subscription) => (
+        <div key={subscription.id} className="rounded-md border p-4">
+          <p className="font-medium">{subscription.plan}</p>
+          <p className="text-sm text-muted-foreground">
+            {subscription.status}
+            {subscription.cancelAtPeriodEnd ? " · Cancels at period end" : ""}
+            {subscription.periodEnd
+              ? ` · Period ends ${billingDateFormatter.format(subscription.periodEnd)}`
+              : ""}
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BillingActions({
+  canManage,
+  state,
+  busy,
+  onCheckout,
+  onPortal,
+}: {
+  canManage: boolean
+  state: ReturnType<typeof organizationBillingState>
+  busy: boolean
+  onCheckout: () => void
+  onPortal: () => void
+}) {
+  if (!canManage)
+    return (
+      <p className="text-sm text-muted-foreground">
+        Only organization owners and admins can manage billing.
+      </p>
+    )
+  if (state === "loading" || state === "unavailable") return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {state === "empty" ? (
+        <Button disabled={busy} onClick={onCheckout}>
+          Subscribe monthly
+        </Button>
+      ) : (
+        <Button variant="outline" disabled={busy} onClick={onPortal}>
+          <CreditCardIcon className="size-4" aria-hidden />
+          Manage billing
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function OrganizationBilling({
   organization,
   billingReturn,
@@ -153,93 +251,19 @@ export function OrganizationBilling({
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {billingState === "loading" ? (
-            <Skeleton
-              className="h-5 w-48"
-              aria-label="Loading billing details"
-            />
-          ) : billingState === "unavailable" ? (
-            <div
-              className="rounded-md border border-destructive p-4"
-              role="alert"
-            >
-              <p className="font-medium">Billing is unavailable</p>
-              <p className="text-sm text-muted-foreground">
-                Stripe may not be configured, or the billing service could not
-                be reached. You can retry in a moment.
-              </p>
-              <Button variant="outline" size="sm" onClick={retry}>
-                Retry
-              </Button>
-            </div>
-          ) : billingState === "empty" ? (
-            <p className="text-sm text-muted-foreground">
-              {canManage
-                ? "No subscription is configured for this organization."
-                : "This organization does not include DeesseJS Pro."}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2" aria-live="polite">
-              {subscriptions.data?.kind === "entitlement" ? (
-                <p className="text-sm">
-                  {subscriptions.data.proIncluded
-                    ? "DeesseJS Pro is included for this organization."
-                    : "This organization does not include DeesseJS Pro."}
-                </p>
-              ) : (
-                (subscriptions.data?.subscriptions ?? []).map(
-                  (subscription) => (
-                    <div
-                      key={subscription.id}
-                      className="rounded-md border p-4"
-                    >
-                      <p className="font-medium">{subscription.plan}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription.status}
-                        {subscription.cancelAtPeriodEnd
-                          ? " · Cancels at period end"
-                          : ""}
-                        {subscription.periodEnd
-                          ? ` · Period ends ${billingDateFormatter.format(subscription.periodEnd)}`
-                          : ""}
-                      </p>
-                    </div>
-                  )
-                )
-              )}
-            </div>
-          )}
-
-          {canManage &&
-            billingState !== "loading" &&
-            billingState !== "unavailable" && (
-              <div className="flex flex-wrap gap-2">
-                {billingState === "empty" ? (
-                  <>
-                    <Button
-                      disabled={busy}
-                      onClick={() => void startCheckout()}
-                    >
-                      Subscribe monthly
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void openBillingPortal()}
-                  >
-                    <CreditCardIcon className="size-4" aria-hidden />
-                    Manage billing
-                  </Button>
-                )}
-              </div>
-            )}
-          {!canManage && (
-            <p className="text-sm text-muted-foreground">
-              Only organization owners and admins can manage billing.
-            </p>
-          )}
+          <BillingDetails
+            state={billingState}
+            canManage={canManage}
+            data={subscriptions.data}
+            onRetry={retry}
+          />
+          <BillingActions
+            canManage={canManage}
+            state={billingState}
+            busy={busy}
+            onCheckout={() => void startCheckout()}
+            onPortal={() => void openBillingPortal()}
+          />
           {actionError && (
             <p className="text-sm text-destructive" role="alert">
               {actionError}
