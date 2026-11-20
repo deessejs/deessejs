@@ -15,6 +15,7 @@
     "db:push": "pnpm --filter @workspace/database db:push",
     "db:studio": "pnpm --filter @workspace/database db:studio",
     "auth:generate": "pnpm --filter @workspace/auth auth:generate",
+    "deesse:schema:generate": "pnpm --filter @deessejs/drizzle-adapter schema:generate -- --config ../../apps/deesse/examples/deesse.config.ts --output ../../packages/database/src/schema/deesse.generated.ts",
     "env:check": "node --experimental-strip-types scripts/env-check.ts",
     "lint:directives": "node scripts/check-lint-directives.mjs",
     "lint:type-assertions": "node scripts/lint-type-assertions.mjs",

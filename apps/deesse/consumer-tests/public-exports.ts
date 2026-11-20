@@ -10,7 +10,7 @@ import { toNextJsHandler } from "deesse/next"
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
 type Assert<T extends true> = T
 
-const consumerSchema = { posts: { fields: { title: { type: "string", required: true } } } } as const satisfies DeesseDatabaseSchema
+const consumerSchema = { posts: { fields: { title: { type: "string" } } } } as const satisfies DeesseDatabaseSchema
 declare const database: DatabaseAdapter<typeof consumerSchema>
 const auth = { baseURL: "https://consumer.example", plugins: [username()] }
 const router = os.router({

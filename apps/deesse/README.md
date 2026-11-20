@@ -1,6 +1,6 @@
 # deesse
 
-Private internal framework prototype. It is not production-ready or publishable.
+DeesseJS core and its typed React client. This PR adds the first bounded PostgreSQL runtime slice. It is not a complete V1 framework implementation.
 
 ## Executable runtime slice
 
@@ -8,7 +8,7 @@ Private internal framework prototype. It is not production-ready or publishable.
 
 `deesse/next` exports `toNextJsHandler(instance)` as a Hono Vercel/Next host bridge. `deesse/react` creates a Better Auth React client and a router-derived oRPC client with the same `/api/auth` and `/api/rpc` paths. The app supplies application-specific router and Better Auth client types through the existing type-only module augmentation.
 
-Runtime tests use Better Auth's in-memory adapter only as an isolated test double. They prove plugin handler invocation, public and authenticated request-scoped oRPC context, Better Auth route mounting, and the Next host bridge. They do not prove PostgreSQL behavior.
+Runtime tests use Better Auth's in-memory adapter only as an isolated test double for composition and host behavior. The PostgreSQL adapter integration suite uses a real PostgreSQL URL, and proves the operations, transactions, auth persistence and session flow described below when run with the CI PostgreSQL service.
 
 ## Bounded database type contract
 
@@ -16,7 +16,9 @@ The revised RFC's V1 schema and service contract is represented in public types.
 
 Plugin schema contributions are merged with the adapter schema in the inferred instance service type. The compile-time fixture exercises adapter-owned and plugin-owned models through that composed type, and rejects unknown models, fields, query values, invalid limits, and invalid writes. `DatabaseAdapter` pairs the portable service with Better Auth's official database-adapter option type. The portable service does not expose a provider client.
 
-These database operations and schema merges are a type contract only. The prototype does not implement or execute those methods, validate schema conflicts at runtime, connect Drizzle/PostgreSQL, generate or apply migrations, or prove Better Auth persistence against PostgreSQL. Its adapter fixture is structural and does not establish Drizzle compatibility. Startup remains free of database operations and DDL.
+`@deessejs/drizzle-adapter` implements the bounded PostgreSQL service using an app-owned postgres-js Drizzle client and derives Better Auth's official Drizzle adapter from that same client. It implements the declared CRUD/query and transaction behavior, and has a real PostgreSQL integration suite. `pnpm deesse:schema:generate` invokes plugin handlers and emits the Deesse-owned Drizzle schema without database access. Better Auth's CLI remains authoritative for auth schema output. `pnpm db:generate` produces a reviewed migration from both generated schema sources; `pnpm db:migrate` applies it explicitly. Server startup performs schema registration only, never DDL.
+
+The checked-in `packages/database/src/schema/deesse.generated.ts` and `packages/database/src/schema/auth.ts` are tool-owned. Do not edit them by hand. Change plugin declarations or Better Auth configuration, run their respective generators, review the schema and migration diff, then commit the generated outputs. The application owns its postgres-js client and pool lifecycle and passes its configured Drizzle database to the adapter.
 
 ## Type model boundaries
 
@@ -24,4 +26,4 @@ Compile-time assertions preserve `DeesseConfig` and direct `createDeesse({ datab
 
 The oRPC request context type includes the stable database service, request, headers, user, and session; the runtime passes those request-scoped values. Plugin auth schema contributions are collected in the type-only contribution registry. Extension values are checked manually with `PluginExtension`; `requires` does not infer provider-to-consumer extension validation. Runtime dependency ordering and missing/cycle/duplicate checks are implemented, but schema conflict and provider extension compatibility checks are not. The React client plugin list is explicitly supplied by app-level module augmentation and is not derived from server contributions. The contribution registry remains type-only and is not exposed on `DeesseInstance`.
 
-The package build emits declarations and typechecks a consumer fixture through the public `deesse`, `deesse/react`, and `deesse/next` exports. Hono dispatch and client transports are now executable. A production example, schema/migration workflow, PostgreSQL integration, collections, admin, alternate providers/dialects, and broader V1 behavior remain out of scope for this slice.
+The package build emits declarations and typechecks a consumer fixture through the public `deesse`, `deesse/react`, and `deesse/next` exports. The database adapter integration requires a real PostgreSQL service and is exercised in CI. This slice supports postgres-js only, the bounded plugin-declared schema and operations above, and the current installed compatibility baseline. It does not implement general collections or relationship behavior, node-postgres or other dialects, admin, a production example application, or the rest of V1. Runtime detection of incompatible schemas is limited to registration and operation validation; migration review and application remain explicit operator steps.

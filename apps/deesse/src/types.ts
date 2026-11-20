@@ -2,20 +2,22 @@ import { betterAuth, type BetterAuthOptions } from "better-auth"
 import type { BetterAuthPlugin } from "better-auth"
 import type { BetterAuthClientPlugin } from "better-auth/client"
 import type { AnyRouter } from "@orpc/server"
+import type { ErrorInstance } from "@deessejs/errors"
+import type { Result } from "@deessejs/fp"
 import type { input as ZodInput, infer as ZodOutput, ZodType } from "zod"
 
 export type DeesseFieldType = "string" | "text" | "integer" | "boolean" | "timestamp" | "date" | "json"
 export type DeesseJsonValue = string | number | boolean | null | DeesseJsonValue[] | { [key: string]: DeesseJsonValue }
 export type DeesseFieldDefinition = {
-  required?: boolean
   nullable?: boolean
   unique?: boolean
   columnName?: string
 } & (
-  | { type: "string" | "text"; default?: string | null }
-  | { type: "integer"; default?: number | null }
-  | { type: "boolean"; default?: boolean | null }
-  | { type: "timestamp" | "date"; default?: Date | null }
+  | { type: "string" | "text"; default?: string }
+  | { type: "integer"; default?: number }
+  | { type: "boolean"; default?: boolean }
+  | { type: "timestamp"; default?: string }
+  | { type: "date"; default?: string }
   | { type: "json"; default?: DeesseJsonValue }
 )
 export type DeesseIndexDefinition = { name?: string; fields: readonly string[]; unique?: boolean }
@@ -27,18 +29,19 @@ type FieldValue<TField extends DeesseFieldDefinition> =
     : TField["type"] extends "string" | "text" ? string
     : TField["type"] extends "integer" ? number
       : TField["type"] extends "boolean" ? boolean
-        : TField["type"] extends "timestamp" | "date" ? Date
+        : TField["type"] extends "timestamp" ? Date
+          : TField["type"] extends "date" ? string
           : DeesseJsonValue
 type RowFieldValue<TField extends DeesseFieldDefinition> = TField["nullable"] extends true
   ? FieldValue<TField> | null
-  : TField["required"] extends false ? FieldValue<TField> | null : FieldValue<TField>
+  : FieldValue<TField>
 export type DeesseModelRow<TModel extends DeesseModelDefinition> = { id: string } & {
   [TKey in keyof TModel["fields"]]: RowFieldValue<TModel["fields"][TKey]>
 }
 type InsertRequiredKeys<TModel extends DeesseModelDefinition> = {
-  [TKey in keyof TModel["fields"]]-?: TModel["fields"][TKey] extends { required: true }
-    ? TModel["fields"][TKey] extends { default: unknown } ? never : TKey
-    : never
+  [TKey in keyof TModel["fields"]]-?: TModel["fields"][TKey] extends { nullable: true } ? never
+    : TModel["fields"][TKey] extends { default: unknown } ? never
+      : TKey
 }[keyof TModel["fields"]]
 export type DeesseInsert<TModel extends DeesseModelDefinition> =
   Pick<{ [TKey in keyof TModel["fields"]]: FieldValue<TModel["fields"][TKey]> | (TModel["fields"][TKey]["nullable"] extends true ? null : never) }, InsertRequiredKeys<TModel>> &
@@ -48,21 +51,28 @@ type FilterValue<TValue> = TValue | { in: readonly TValue[] }
 export type DeesseFindManyOptions<TRow extends object> = {
   where?: { [TKey in keyof TRow]?: FilterValue<TRow[TKey]> }
   orderBy?: Partial<Record<keyof TRow, "asc" | "desc">>
-  limit: BoundedLimit
+  limit?: BoundedLimit
 }
 type BuildNumericRange<TEnd extends number, TValues extends number[] = []> =
   TValues["length"] extends TEnd ? TValues[number] : BuildNumericRange<TEnd, [...TValues, TValues["length"]]>
 export type BoundedLimit = Exclude<BuildNumericRange<101>, 0>
 
-export type DeesseDatabaseFailure = { code: "CONFLICT" | "UNSUPPORTED_CAPABILITY" | "INFRASTRUCTURE"; cause?: unknown }
-export type DeesseNotFound<TModel extends string = string> = { code: "NOT_FOUND"; model: TModel; id: string }
-export type DeesseResult<TValue, TError = DeesseDatabaseFailure> = { ok: true; value: TValue } | { ok: false; error: TError }
-export type DeesseModelResult<TModel extends string, TValue> = DeesseResult<TValue, DeesseDatabaseFailure | DeesseNotFound<TModel>>
+export type DeesseDatabaseErrorCode = "VALIDATION" | "NOT_FOUND" | "CONFLICT" | "UNSUPPORTED_CAPABILITY" | "INFRASTRUCTURE"
+export type DeesseDatabaseErrorFields =
+  | { code: "NOT_FOUND"; message: string; model: string; id: string }
+  | { code: Exclude<DeesseDatabaseErrorCode, "NOT_FOUND">; message: string; model?: string; id?: string }
+type ModelErrorFields<TModel extends string> = Exclude<DeesseDatabaseErrorFields, { code: "NOT_FOUND" }> |
+  { code: "NOT_FOUND"; message: string; model: TModel; id: string }
+type ErrorForFields<TFields> = TFields extends Record<string, unknown> ? ErrorInstance<TFields> : never
+export type DeesseDatabaseFailure<TModel extends string = string> = ErrorForFields<ModelErrorFields<TModel>>
+export type DeesseNotFound<TModel extends string = string> = ErrorInstance<{ code: "NOT_FOUND"; message: string; model: TModel; id: string }>
+export type DeesseDatabaseResult<TValue> = Result<TValue, DeesseDatabaseFailure>
+export type DeesseModelResult<_TModel extends string, TValue> = DeesseDatabaseResult<TValue>
 export type DeesseDatabaseCapabilities = { transactions: true }
 export type DeesseDatabaseOperations<TSchema extends DeesseDatabaseSchema> = {
   findById<TModel extends keyof TSchema & string>(model: TModel, id: string): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
-  findMany<TModel extends keyof TSchema & string>(model: TModel, options: DeesseFindManyOptions<DeesseModelRow<TSchema[TModel]>>): Promise<DeesseResult<DeesseModelRow<TSchema[TModel]>[]>>
-  insert<TModel extends keyof TSchema & string>(model: TModel, values: DeesseInsert<TSchema[TModel]>): Promise<DeesseResult<DeesseModelRow<TSchema[TModel]>>>
+  findMany<TModel extends keyof TSchema & string>(model: TModel, options?: DeesseFindManyOptions<DeesseModelRow<TSchema[TModel]>>): Promise<DeesseDatabaseResult<DeesseModelRow<TSchema[TModel]>[]>>
+  insert<TModel extends keyof TSchema & string>(model: TModel, values: DeesseInsert<TSchema[TModel]>): Promise<DeesseDatabaseResult<DeesseModelRow<TSchema[TModel]>>>
   updateById<TModel extends keyof TSchema & string>(model: TModel, id: string, patch: DeessePatch<TSchema[TModel]>): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
   deleteById<TModel extends keyof TSchema & string>(model: TModel, id: string): Promise<DeesseModelResult<TModel, DeesseModelRow<TSchema[TModel]>>>
 }
@@ -71,7 +81,7 @@ export type DeesseTransactionService<TSchema extends DeesseDatabaseSchema, TCapa
 export type DeesseDatabaseService<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities> =
   DeesseDatabaseOperations<TSchema> & {
     readonly capabilities: TCapabilities
-    transaction<TValue>(callback: (transaction: DeesseTransactionService<TSchema, TCapabilities>) => Promise<TValue>): Promise<DeesseResult<TValue>>
+    transaction<TValue>(callback: (transaction: DeesseTransactionService<TSchema, TCapabilities>) => Promise<Result<TValue, DeesseDatabaseFailure>>): Promise<Result<TValue, DeesseDatabaseFailure>>
   }
 export type DeesseDatabase = DeesseDatabaseService<never, DeesseDatabaseCapabilities>
 export type DeesseAuthAdapter = NonNullable<BetterAuthOptions["database"]>
@@ -81,10 +91,12 @@ export type DeesseDatabaseAdapter<
 > = {
   readonly database: DeesseDatabaseService<TSchema, TCapabilities>
   readonly authAdapter: DeesseAuthAdapter
+  initializeSchema?(schema: DeesseDatabaseSchema): void
 }
 export type DeesseDatabaseAdapterContract = {
   readonly database: DeesseDatabaseService<never, object>
   readonly authAdapter: DeesseAuthAdapter
+  initializeSchema?(schema: DeesseDatabaseSchema): void
 }
 export type DatabaseAdapter<TSchema extends DeesseDatabaseSchema = never, TCapabilities extends object = DeesseDatabaseCapabilities> =
   DeesseDatabaseAdapter<TSchema, TCapabilities>
@@ -237,4 +249,4 @@ export type ComposedDatabaseSchema<TAdapter extends DeesseDatabaseAdapterContrac
     : never
 
 export type BetterAuthInstance<TOptions extends BetterAuthOptions> = ReturnType<typeof betterAuth<TOptions>>
-export type { AnyRouter, BetterAuthOptions, ZodInput, ZodType }
+export type { AnyRouter, BetterAuthOptions, Result, ZodInput, ZodType }

@@ -316,7 +316,12 @@ jobs:
           --filter=@workspace/auth
           --filter=@workspace/api
           --filter=@workspace/database
+          --filter=deesse
+          --filter=@deessejs/drizzle-adapter
           --filter=@deessejs/cli
+
+      - name: Generate Deesse plugin schema
+        run: pnpm deesse:schema:generate
 
       - name: Generate migrations
         run: pnpm db:generate
@@ -332,7 +337,7 @@ jobs:
         # constraint tests run against this real PostgreSQL service.
         # The package's own suite is a no-op without a database, so the
         # unit job stays green.
-        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database
+        run: pnpm turbo test --filter=@workspace/auth --filter=@workspace/api --filter=@workspace/database --filter=@deessejs/drizzle-adapter
 
       - name: Run avatar HTTP E2E against MinIO
         run: pnpm --filter @workspace/api test:e2e:avatar

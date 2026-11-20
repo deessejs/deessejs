@@ -42,6 +42,12 @@ catalogs:
     '@content-collections/next':
       specifier: ^0.2.11
       version: 0.2.11
+    '@deessejs/errors':
+      specifier: ^1.1.1
+      version: 1.1.1
+    '@deessejs/fp':
+      specifier: ^5.0.1
+      version: 5.0.1
     '@hookform/resolvers':
       specifier: ^5.0.0
       version: 5.9.1
@@ -588,6 +594,12 @@ importers:
 
   apps/deesse:
     dependencies:
+      '@deessejs/errors':
+        specifier: 'catalog:'
+        version: 1.1.1
+      '@deessejs/fp':
+        specifier: 'catalog:'
+        version: 5.0.1
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.14.7
@@ -1177,6 +1189,61 @@ importers:
       pg-mem:
         specifier: ^3.0.0
         version: 3.0.14(kysely@0.29.2)(postgres@3.4.9)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.3.5(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.1))
+
+  packages/drizzle-adapter:
+    dependencies:
+      '@better-auth/drizzle-adapter':
+        specifier: 'catalog:'
+        version: 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.4.3))(jose@6.2.3)(kysely@0.29.2)(nanostores@1.4.0))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9))
+      '@deessejs/errors':
+        specifier: 'catalog:'
+        version: 1.1.1
+      '@deessejs/fp':
+        specifier: 'catalog:'
+        version: 5.0.1
+    devDependencies:
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.14.7
+      '@orpc/server':
+        specifier: 'catalog:'
+        version: 1.14.7(crossws@0.4.12(srvx@1.0.5))(ws@8.22.0)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.2
+      '@workspace/env':
+        specifier: workspace:*
+        version: link:../env
+      '@workspace/database':
+        specifier: workspace:*
+        version: link:../database
+      '@workspace/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@workspace/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      better-auth:
+        specifier: 'catalog:'
+        version: 1.7.7(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9))(next@16.4.3(@playwright/test@1.62.1)(@types/node@24.13.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.22.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.10)
+      deesse:
+        specifier: workspace:*
+        version: link:../../apps/deesse
+      drizzle-kit:
+        specifier: 'catalog:'
+        version: 0.31.10
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(kysely@0.29.2)(pg@8.22.0)(postgres@3.4.9)
+      postgres:
+        specifier: 'catalog:'
+        version: 3.4.9
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.3.5(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.1))
