@@ -1,7 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { createSign, generateKeyPairSync } from "node:crypto"
 import { createServer } from "node:http"
 import { call } from "@orpc/server"
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client"
 import { createMcpProtectedRequestHandler } from "@better-auth/mcp"
 import { createProductMcpHandler } from "@workspace/mcp"
 import { serverEnv } from "@workspace/env/server"
@@ -148,127 +152,64 @@ describe("MCP HTTP route", () => {
     expect(doubled.status).toBe(404)
   })
 
-  it("returns a protocol-valid result for list_templates", async () => {
-    const handler = createProductMcpHandler({
-      listTemplates: async () => ({
-        templates: [],
-      }),
-      listMyOrganizations: async () => ({ organizations: [] }),
-    })
-    const response = await handler.fetch(
-      new Request("https://app.deessejs.com/api/v1/mcp", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-          "mcp-protocol-version": "2026-07-28",
-          "mcp-method": "tools/call",
-          "mcp-name": "list_templates",
+  it("negotiates the protocol, discovers tools, and calls both mocked operations", async () => {
+    const templates = { templates: [] }
+    const organizations = {
+      organizations: [
+        {
+          id: "org-1",
+          name: "Acme",
+          slug: "acme",
+          logo: null,
+          role: "owner",
         },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/call",
-          params: {
-            name: "list_templates",
-            arguments: {},
-            _meta: {
-              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-              "io.modelcontextprotocol/clientCapabilities": {},
-              "io.modelcontextprotocol/clientInfo": {
-                name: "DeesseJS MCP regression test",
-                version: "1.0.0",
-              },
-            },
-          },
-        }),
-      })
+      ],
+    }
+    const listTemplates = vi.fn(async () => templates)
+    const listMyOrganizations = vi.fn(async () => organizations)
+    const handler = createProductMcpHandler({
+      listTemplates,
+      listMyOrganizations,
+    })
+    const transport = new StreamableHTTPClientTransport(
+      new URL("http://test.local/mcp"),
+      { fetch: (url, init) => handler.fetch(new Request(url, init)) }
+    )
+    const client = new Client(
+      { name: "DeesseJS protocol test", version: "1.0.0" },
+      { versionNegotiation: { mode: "auto" } }
     )
 
-    expect(response.status).toBe(200)
-    const body = await response.json()
-    expect(body).toMatchObject({
-      jsonrpc: "2.0",
-      id: 1,
-      result: {
-        resultType: "complete",
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({ templates: [] }),
-          },
-        ],
-      },
-    })
-    expect(body.result).not.toHaveProperty("error")
-  })
+    try {
+      await client.connect(transport)
 
-  it("serves list_my_organizations through the current membership operation", async () => {
-    const handler = createProductMcpHandler({
-      listTemplates: async () => ({ templates: [] }),
-      listMyOrganizations: async () => ({
-        organizations: [
-          {
-            id: "org-1",
-            name: "Acme",
-            slug: "acme",
-            logo: null,
-            role: "owner",
-          },
-        ],
-      }),
-    })
-    const response = await handler.fetch(
-      new Request("https://app.deessejs.com/api/v1/mcp", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-          "mcp-protocol-version": "2026-07-28",
-          "mcp-method": "tools/call",
-          "mcp-name": "list_my_organizations",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/call",
-          params: {
-            name: "list_my_organizations",
-            arguments: {},
-            _meta: {
-              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-              "io.modelcontextprotocol/clientCapabilities": {},
-              "io.modelcontextprotocol/clientInfo": {
-                name: "DeesseJS MCP regression test",
-                version: "1.0.0",
-              },
-            },
-          },
-        }),
+      expect(client.getProtocolEra()).toBe("modern")
+      const discovery = await client.listTools()
+      expect(discovery.tools.map((tool) => tool.name).sort()).toEqual([
+        "list_my_organizations",
+        "list_templates",
+      ])
+
+      const templateResult = await client.callTool({
+        name: "list_templates",
+        arguments: {},
       })
-    )
+      const organizationResult = await client.callTool({
+        name: "list_my_organizations",
+        arguments: {},
+      })
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      result: {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              organizations: [
-                {
-                  id: "org-1",
-                  name: "Acme",
-                  slug: "acme",
-                  logo: null,
-                  role: "owner",
-                },
-              ],
-            }),
-          },
-        ],
-      },
-    })
+      expect(templateResult.content).toEqual([
+        { type: "text", text: JSON.stringify(templates) },
+      ])
+      expect(organizationResult.content).toEqual([
+        { type: "text", text: JSON.stringify(organizations) },
+      ])
+      expect(listTemplates).toHaveBeenCalledOnce()
+      expect(listMyOrganizations).toHaveBeenCalledOnce()
+    } finally {
+      await client.close()
+    }
   })
 
   it("denies organization reads without organizations:read at call time", async () => {
