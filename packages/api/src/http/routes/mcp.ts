@@ -38,6 +38,21 @@ const protectedHandler = auth.$context.then((authContext) =>
 )
 
 export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
-  const path = new URL(resource).pathname.slice(API_BASE_PATH.length)
+  const resourceUrl = new URL(resource)
+  const path = resourceUrl.pathname.slice(API_BASE_PATH.length)
+  const metadataPrefix = "/.well-known/oauth-protected-resource"
+
+  api.get(`${metadataPrefix}/*`, (c) => {
+    if (c.req.path !== `${API_BASE_PATH}${metadataPrefix}${resourceUrl.pathname}`)
+      return c.notFound()
+
+    return c.json({
+      resource,
+      authorization_servers: [authIssuer],
+      bearer_methods_supported: ["header"],
+      scopes_supported: ["templates:read"],
+    })
+  })
+
   api.post(path, async (c) => (await protectedHandler)(c.req.raw))
 }

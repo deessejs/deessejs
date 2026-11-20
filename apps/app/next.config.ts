@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: "/.well-known/oauth-protected-resource/:path*",
+          destination: `${API_BASE_PATH}/.well-known/oauth-protected-resource/:path*`,
+        },
+        {
           source: "/schema/project/v1.json",
           destination: `${API_BASE_PATH}/schema/project/v1.json`,
         },
