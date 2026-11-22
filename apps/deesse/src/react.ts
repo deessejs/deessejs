@@ -3,19 +3,19 @@ import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import type { RouterClient } from "@orpc/server"
 import { DEESSE_RPC_PATH } from "./paths.js"
-import type { DeesseClientOptions, DeesseClientPlugin, DeesseClientServer, DeesseRouterFromClientOptions } from "./react-types.js"
+import type { DeesseClientAuth, DeesseClientOptions, DeesseClientRouter, DeesseServer, DeesseServerReference } from "./react-types.js"
 
-export type { DeesseClientOptions, DeesseClientPlugin, DeesseClientServer, DeesseRouterFromClientOptions } from "./react-types.js"
+export type { DeesseClientOptions, DeesseServer } from "./react-types.js"
 
-export function deesseClient<TServer extends DeesseClientServer>(): DeesseClientPlugin<TServer> {
-  return { id: "deesse-client" } as DeesseClientPlugin<TServer>
+export function deesseServer<TServer extends DeesseServer>(): DeesseServerReference<DeesseServer<TServer>> {
+  return {} as DeesseServerReference<DeesseServer<TServer>>
 }
 
-export function createClient<TOptions extends DeesseClientOptions = DeesseClientOptions>(options: TOptions = {} as TOptions) {
+export function createClient<const TOptions extends DeesseClientOptions>(options: TOptions) {
   const location = (globalThis as { location?: { origin: string } }).location
   const baseURL = options.baseURL ?? location?.origin ?? "http://localhost"
-  const authOptions = { ...options, baseURL } as TOptions
-  const auth = createAuthClient<TOptions>(authOptions)
+  const authOptions = { ...options.auth, baseURL, ...(options.fetch ? { fetch: options.fetch } : {}) } as DeesseClientAuth<TOptions>
+  const auth = createAuthClient<DeesseClientAuth<TOptions>>(authOptions)
   const link = new RPCLink({ url: new URL(DEESSE_RPC_PATH, baseURL).toString(), ...(options.fetch ? { fetch: options.fetch } : {}) })
-  return { auth, api: createORPCClient(link) as RouterClient<DeesseRouterFromClientOptions<TOptions>> }
+  return { auth, api: createORPCClient(link) as RouterClient<DeesseClientRouter<TOptions>> }
 }

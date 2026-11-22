@@ -6,7 +6,7 @@ import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, createPluginApi, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type DeesseRequestUser, type NoArgsRegistration } from "deesse"
-import { createClient, deesseClient } from "deesse/react"
+import { createClient, deesseServer, type DeesseServer } from "deesse/react"
 import { toNextJsHandler } from "deesse/next"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
@@ -68,16 +68,23 @@ const authClientPlugin = {
   ...usernameClient(),
   $InferServerPlugin: {} as ReturnType<typeof username>,
 } satisfies BetterAuthClientPlugin
-const client = createClient({ plugins: [deesseClient<typeof app>(), authClientPlugin] })
-const linkedClient = createClient({ plugins: [deesseClient<typeof app>()] })
+const serverType = deesseServer<typeof app>()
+const client = createClient({ server: serverType, auth: { plugins: [authClientPlugin] } })
+const linkedClient = createClient({ server: deesseServer<typeof app>() })
 const authReference = createAuthClient({ plugins: [authClientPlugin] })
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
 type PublicRouterOnlyClientExact = Assert<Equal<typeof linkedClient.api, RouterClient<typeof app.api.router>>>
+type PublicDeesseServerExact = Assert<Equal<DeesseServer<typeof app>, { readonly api: { readonly router: typeof app.api.router } }>>
 type PublicAuthPluginExact = Assert<Equal<typeof client.auth.isUsernameAvailable, typeof authReference.isUsernameAvailable>>
+// @ts-expect-error the server type reference projects no database adapter
+void serverType.database
+// @ts-expect-error the server type reference projects no Hono handler
+void serverType.handler
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
+const usernameSessionField: string = client.auth.$Infer.Session.user.username
 // @ts-expect-error the Better Auth client plugin keeps its inferred input through createClient
 client.auth.isUsernameAvailable({ username: 42 })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
-void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicRouterOnlyClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
+void [parsedPrefix, apiResult, usernameAvailable, usernameSessionField, nextHandler]
+void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicRouterOnlyClientExact, PublicDeesseServerExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
