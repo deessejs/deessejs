@@ -1,8 +1,5 @@
 import { toNextJsHandler } from "deesse/next"
-import { deesse } from "../../../../deesse.config.ts"
-
-export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+import { deesse } from "@deesse-config"
 
 const handler = toNextJsHandler(deesse)
 

@@ -1,7 +1,5 @@
 import { createClient as createDeesseClient } from "deesse/react"
-import type { deesse } from "../../deesse.config.ts"
+import type { deesse } from "@deesse-config"
 
-const createAppClient = createDeesseClient<typeof deesse>()
-
-export const createClient = () => createAppClient()
+export const createClient = createDeesseClient<typeof deesse>()
 export const client = createClient()

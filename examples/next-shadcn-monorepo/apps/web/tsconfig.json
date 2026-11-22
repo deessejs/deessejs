@@ -4,6 +4,7 @@
     "allowImportingTsExtensions": true,
     "paths": {
       "@/*": ["./src/*"],
+      "@deesse-config": ["./deesse.config.ts"],
       "@deesse-example/ui/globals.css": ["../../packages/ui/src/styles/globals.css"],
       "@deesse-example/ui/*": ["../../packages/ui/src/*"]
     },
