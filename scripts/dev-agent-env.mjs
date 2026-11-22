@@ -33,3 +33,36 @@ export function replaceEnvironmentLines(lines, updates) {
   }
   return replaced
 }
+
+export function testDatabaseIdentity(worktreeId, runId) {
+  if (!/^[a-f0-9]{12}$/.test(worktreeId) || !/^[a-f0-9]{12}$/.test(runId)) {
+    throw new Error("Invalid disposable test database identity.")
+  }
+
+  return {
+    database: `deesse_test_${worktreeId}_${runId}`,
+    role: `deesse_test_${worktreeId}_${runId}`,
+  }
+}
+
+export function validateTestDatabaseUrl(databaseUrl, identity) {
+  let url
+  try {
+    url = new URL(databaseUrl)
+  } catch {
+    throw new Error("Invalid disposable test database URL.")
+  }
+
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "::1"])
+  const hostname = url.hostname.replace(/^\[|\]$/g, "")
+  if (
+    !["postgres:", "postgresql:"].includes(url.protocol) ||
+    !allowedHosts.has(hostname) ||
+    decodeURIComponent(url.username) !== identity.role ||
+    url.pathname !== `/${identity.database}`
+  ) {
+    throw new Error("Test database URL does not match its isolated identity.")
+  }
+
+  return url
+}

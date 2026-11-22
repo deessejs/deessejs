@@ -19,7 +19,16 @@ import net from "node:net"
 import path from "node:path"
 import process from "node:process"
 import { fileURLToPath } from "node:url"
-import { appUrlEnvironment, replaceEnvironmentLines } from "./dev-agent-env.mjs"
+import {
+  appUrlEnvironment,
+  replaceEnvironmentLines,
+  testDatabaseIdentity,
+  validateTestDatabaseUrl,
+} from "./dev-agent-env.mjs"
+import {
+  formatFixtureCredentialHandoff,
+  redactTestOutput,
+} from "./dev-agent-output.mjs"
 
 const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
@@ -264,7 +273,8 @@ function adminPsql(sql, values = {}) {
     } catch {
       fail("DEV_AGENT_PG_ADMIN_URL must be a valid PostgreSQL URL.")
     }
-    if (!["localhost", "127.0.0.1", "::1"].includes(parsed.hostname)) {
+    const adminHost = parsed.hostname.replace(/^\[|\]$/g, "")
+    if (!["localhost", "127.0.0.1", "::1"].includes(adminHost)) {
       fail("DEV_AGENT_PG_ADMIN_URL must connect to localhost or a loopback IP.")
     }
     result = spawnSync(
@@ -275,7 +285,7 @@ function adminPsql(sql, values = {}) {
         encoding: "utf8",
         env: {
           ...process.env,
-          PGHOST: parsed.hostname,
+          PGHOST: adminHost,
           PGPORT: parsed.port || "5432",
           PGUSER: decodeURIComponent(parsed.username),
           PGPASSWORD: decodeURIComponent(parsed.password),
@@ -289,8 +299,8 @@ function adminPsql(sql, values = {}) {
     })
   }
   if (result.error || result.status !== 0) {
-    fail(
-      `Could not use a local PostgreSQL administrator. ${result.stderr?.trim() || result.error?.message || "Check DEV_AGENT_PG_ADMIN_URL or non-interactive sudo access to the postgres account."}`
+    throw new Error(
+      "Could not use a local PostgreSQL administrator. Check DEV_AGENT_PG_ADMIN_URL or non-interactive sudo access to the postgres account."
     )
   }
   return result.stdout.trim()
@@ -340,6 +350,155 @@ function ensureLocalPostgres(values, reset = false) {
   const ownerAfterReset = reset ? "" : databaseOwner
   if (!ownerAfterReset)
     adminPsql(`CREATE DATABASE ${databaseName} OWNER ${databaseRole};`)
+}
+
+function createDisposableTestDatabase(identity, baseValues) {
+  const server = adminPsql("SELECT current_setting('listen_addresses');")
+  const addresses = server.split(",").map((item) => item.trim())
+  const loopbackAddresses = new Set(["localhost", "127.0.0.1", "::1"])
+  if (
+    addresses.length === 0 ||
+    addresses.some((address) => !loopbackAddresses.has(address))
+  ) {
+    fail("PostgreSQL must listen only on loopback for disposable tests.")
+  }
+
+  const existingRole = adminPsql(
+    `SELECT 1 FROM pg_roles WHERE rolname = '${identity.role}';`
+  )
+  const existingOwner = adminPsql(
+    `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+  )
+  if (existingRole || existingOwner) {
+    fail(
+      "Disposable test database identity already exists. Refusing to reuse or remove it."
+    )
+  }
+
+  const databaseUrl = new URL(baseValues.DATABASE_URL)
+  const databaseHost = databaseUrl.hostname.replace(/^\[|\]$/g, "")
+  if (!["localhost", "127.0.0.1", "::1"].includes(databaseHost)) {
+    fail("The development database URL is not loopback. Refusing test setup.")
+  }
+  const password = randomBytes(24).toString("base64url")
+  databaseUrl.username = identity.role
+  databaseUrl.password = password
+  databaseUrl.pathname = `/${identity.database}`
+  databaseUrl.search = ""
+  databaseUrl.hash = ""
+  validateTestDatabaseUrl(databaseUrl.toString(), identity)
+
+  let createdRole = false
+  let createdDatabase = false
+  try {
+    adminPsql(`CREATE ROLE ${identity.role} LOGIN PASSWORD '${password}';`)
+    createdRole = true
+    adminPsql(`CREATE DATABASE ${identity.database} OWNER ${identity.role};`)
+    createdDatabase = true
+    const createdOwner = adminPsql(
+      `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+    )
+    if (createdOwner !== identity.role) {
+      throw new Error("Disposable test database owner verification failed.")
+    }
+  } catch (error) {
+    if (createdDatabase) {
+      const owner = adminPsql(
+        `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+      )
+      if (owner === identity.role) adminPsql(`DROP DATABASE ${identity.database};`)
+    }
+    if (createdRole) {
+      const owner = adminPsql(
+        `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+      )
+      if (!owner) adminPsql(`DROP ROLE ${identity.role};`)
+    }
+    throw error
+  }
+
+  return {
+    url: databaseUrl.toString(),
+    owner: identity.role,
+  }
+}
+
+function removeDisposableTestDatabase(identity, expectedOwner) {
+  const owner = adminPsql(
+    `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+  )
+  if (owner && owner !== expectedOwner) {
+    fail("Disposable test database owner changed. Refusing cleanup.")
+  }
+  if (owner) {
+    adminPsql(
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${identity.database}' AND pid <> pg_backend_pid();`
+    )
+    adminPsql(`DROP DATABASE ${identity.database};`)
+  }
+
+  const roleExists = adminPsql(
+    `SELECT 1 FROM pg_roles WHERE rolname = '${identity.role}';`
+  )
+  if (roleExists) {
+    const remainingOwner = adminPsql(
+      `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
+    )
+    if (remainingOwner) {
+      fail("Disposable test database still exists. Refusing role cleanup.")
+    }
+    adminPsql(`DROP ROLE ${identity.role};`)
+  }
+}
+
+function runCaptured(commandName, commandArgs, env, secretValues) {
+  const result = spawnSync(commandName, commandArgs, {
+    cwd: root,
+    env,
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
+  })
+  const output = redactTestOutput(
+    `${result.stdout ?? ""}${result.stderr ?? ""}`,
+    secretValues
+  )
+  if (output) process.stdout.write(output)
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `${commandName} ${commandArgs.join(" ")} failed${result.status === null ? `: ${result.error?.message ?? "unknown error"}` : ` with exit code ${result.status}`}. Output above was redacted.`
+    )
+  }
+}
+
+function runDisposableTests() {
+  const values = readLocalEnv()
+  if (!values) fail("Run pnpm dev:agent prepare before running isolated tests.")
+
+  const runId = randomBytes(6).toString("hex")
+  const identity = testDatabaseIdentity(worktreeId, runId)
+  const testDatabase = createDisposableTestDatabase(identity, values)
+  const testValues = {
+    ...localEnv(values),
+    DATABASE_URL: testDatabase.url,
+    TEST_DATABASE_URL: testDatabase.url,
+    NODE_ENV: "test",
+  }
+  const secrets = [
+    values.DEV_AGENT_USER_PASSWORD,
+    values.DEV_AGENT_ADMIN_PASSWORD,
+    values.DEV_AGENT_MEMBER_PASSWORD,
+    values.BETTER_AUTH_SECRET,
+    testDatabase.url,
+  ]
+
+  process.stdout.write(`Disposable test database: ${identity.database}\n`)
+  try {
+    runCaptured("pnpm", ["db:migrate"], testValues, secrets)
+    runCaptured("pnpm", ["exec", "turbo", "run", "test"], testValues, secrets)
+  } finally {
+    removeDisposableTestDatabase(identity, testDatabase.owner)
+    process.stdout.write("Disposable test database and role removed.\n")
+  }
 }
 
 function localEnv(values) {
@@ -720,7 +879,7 @@ function persistEnvironment(values) {
 async function main() {
   if (command === "prepare") {
     await prepare({ reset: false })
-    process.stdout.write(`Prepared. Start with pnpm dev:agent.\n`)
+    process.stdout.write(`Prepared. Start with pnpm dev:agent start.\n`)
     return
   }
   if (command === "start") return start()
@@ -778,9 +937,7 @@ async function main() {
   if (command === "credentials") {
     const values = readLocalEnv()
     if (!values) fail("Run pnpm dev:agent prepare first.")
-    process.stdout.write(
-      `Normal user: ${values.DEV_AGENT_USER_EMAIL}\nPassword: ${values.DEV_AGENT_USER_PASSWORD}\nGlobal admin: ${values.DEV_AGENT_ADMIN_EMAIL}\nPassword: ${values.DEV_AGENT_ADMIN_PASSWORD}\nOrganization member: ${values.DEV_AGENT_MEMBER_EMAIL}\nPassword: ${values.DEV_AGENT_MEMBER_PASSWORD}\nOrganization: agent-org-${worktreeId}\n`
-    )
+    process.stdout.write(formatFixtureCredentialHandoff(values, worktreeId))
     return
   }
   if (command === "cli") {
@@ -810,10 +967,13 @@ async function main() {
     return
   }
   fail(
-    `Unknown command '${command}'. Use start, prepare, status, credentials, reset --yes, clean --yes, or cli -- <command>.`
+    `Unknown command '${command}'. Use start, prepare, status, credentials, test, reset --yes, clean --yes, or cli -- <command>.`
   )
 }
 
-main().catch((error) =>
+const running = Promise.resolve().then(() =>
+  command === "test" ? runDisposableTests() : main()
+)
+running.catch((error) =>
   fail(error instanceof Error ? error.message : String(error))
 )
