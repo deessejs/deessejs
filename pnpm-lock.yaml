@@ -51,6 +51,9 @@ catalogs:
     '@hookform/resolvers':
       specifier: ^5.0.0
       version: 5.9.1
+    '@modelcontextprotocol/client':
+      specifier: ^2.4.0
+      version: 2.4.0
     '@modelcontextprotocol/server':
       specifier: ^2.4.0
       version: 2.4.0
@@ -977,6 +980,9 @@ importers:
       '@hono/node-server':
         specifier: 'catalog:'
         version: 1.19.14(hono@4.12.28)
+      '@modelcontextprotocol/client':
+        specifier: 'catalog:'
+        version: 2.4.0
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
@@ -3558,6 +3564,10 @@ packages:
     peerDependencies:
       '@types/react': ^19.3.0
       react: '>=16'
+
+  '@modelcontextprotocol/client@2.4.0':
+    resolution: {integrity: sha512-LgrD2OphHuG12vfKFKz6SOnq7bKHQmhGJIAYdD+MZBn2npHEyry6uD8zvktodtl5CQM85MO0anUyD9JwmUmxww==}
+    engines: {node: '>=20'}
 
   '@modelcontextprotocol/core@2.4.0':
     resolution: {integrity: sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q==}
@@ -13037,6 +13047,16 @@ snapshots:
       '@types/mdx': 2.0.14
       '@types/react': 19.3.0
       react: 19.3.0
+
+  '@modelcontextprotocol/client@2.4.0':
+    dependencies:
+      '@modelcontextprotocol/core': 2.4.0
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.0
+      jose: 6.2.3
+      pkce-challenge: 5.0.1
+      zod: 4.6.5
 
   '@modelcontextprotocol/core@2.4.0':
     dependencies:

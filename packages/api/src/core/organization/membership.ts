@@ -72,3 +72,15 @@ export async function findOrganizationForMemberById(
 
   return rows[0] ?? null
 }
+
+/** Lists current memberships for one user, including each current role. */
+export async function findOrganizationsForMember(
+  userId: string
+): Promise<OrganizationForMember[]> {
+  return db
+    .select(selection)
+    .from(member)
+    .innerJoin(organization, eq(member.organizationId, organization.id))
+    .where(eq(member.userId, userId))
+    .orderBy(organization.name, organization.id)
+}

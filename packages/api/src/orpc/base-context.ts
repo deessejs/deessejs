@@ -15,4 +15,6 @@ export interface BaseContext {
   session: Session | null
   /** Per-request correlation ID, set by the X-Request-Id middleware. */
   requestId: string
+  /** Verified OAuth identity forwarded only by the MCP route. */
+  mcpIdentity?: { userId: string | null; scopes: string[] } | null
 }

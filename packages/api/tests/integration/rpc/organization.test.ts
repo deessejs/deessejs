@@ -26,6 +26,7 @@ import { and, eq, inArray } from "drizzle-orm"
 import postgres from "postgres"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { inject } from "vitest"
+import { call } from "@orpc/server"
 
 import { auth } from "@workspace/auth"
 import { db } from "@workspace/database"
@@ -40,6 +41,7 @@ import {
 import { serverEnv } from "@workspace/env/server"
 
 import { api } from "../../../src/index.js"
+import { appRouter } from "../../../src/orpc/index.js"
 
 const POSTGRES_READY = inject("postgres:ready") === true
 
@@ -697,6 +699,40 @@ describe("the organization's own endpoints", () => {
       // belong to.
       expect(ids).toContain(mine.id)
       expect(ids).not.toContain(theirs.id)
+    })
+
+    it("lists only the verified MCP subject's organizations and current roles", async () => {
+      const mine = await createOrganization("MCP Acme")
+      const theirs = await createOrganization("MCP Beta")
+      const actor = await createActor()
+      const otherActor = await createActor()
+      await addMember(mine.id, actor.id, "admin")
+      await addMember(theirs.id, otherActor.id, "owner")
+
+      const result = await call(appRouter.organization.listMine, undefined, {
+        context: {
+          headers: new Headers(),
+          user: null,
+          session: null,
+          requestId: "mcp-organization-list",
+          mcpIdentity: {
+            userId: actor.id,
+            scopes: ["organizations:read"],
+          },
+        },
+      })
+
+      expect(result).toEqual({
+        organizations: [
+          {
+            id: mine.id,
+            slug: mine.slug,
+            name: "MCP Acme",
+            logo: null,
+            role: "admin",
+          },
+        ],
+      })
     })
 
     it("writes the session's selection", async () => {
