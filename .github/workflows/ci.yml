@@ -172,6 +172,8 @@ jobs:
           team: ${{ vars.TURBO_TEAM }}
       - run: pnpm turbo build
       - run: pnpm turbo test
+      - name: Test local agent worktree URL selection
+        run: pnpm test:dev-agent
 
   cli-init-e2e:
     name: CLI init consumer E2E

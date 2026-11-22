@@ -41,10 +41,19 @@ The `cli` subcommand builds and runs the CLI with a worktree-private home direct
 ```sh
 pnpm dev:agent cli -- auth login --no-open
 pnpm dev:agent cli -- organization list
-pnpm dev:agent cli -- template list --refresh
+pnpm dev:agent cli -- template list
 ```
 
+`template list` calls this worktree's local API when its private CLI catalog
+cache is empty. The namespaced command does not currently accept `--refresh`.
+
 `auth login --no-open` runs the normal device authorization flow and prints the verification URL and user code. Open that URL in the T3 preview browser, sign in as the intended test user if needed, and approve the device. It does not bypass the application's authorization checks. CLI credentials are stored under `.local/cli-home/` with mode `0600`.
+
+## Concurrent worktree validation
+
+This setup was exercised with two separate Git worktrees running at the same time. Each reported a different worktree marker, PostgreSQL database and role, and app port. In one T3 browser profile, the first worktree's signed-in session did not authenticate the second port; after signing into the second worktree, returning to the first still showed the first user's session. The cookie names carried their respective worktree prefixes. The authenticated organization-list CLI command returned only the first worktree's organization, while the second worktree's public `template list` command completed against its own API. The latter is a public catalog request, not an authenticated CLI request. The device authorization flow was not repeated as part of this concurrent run.
+
+For a repeat, keep both worktree servers running and verify each readiness marker and status-derived database/role. Use one browser profile to switch between their `environment-port` previews, checking the signed-in identity after each switch. Run `pnpm dev:agent cli -- organization list` in the authenticated worktree and `pnpm dev:agent cli -- template list` in the other. Do not run `template list --refresh`; that option is not supported by the namespaced command. Clean up only the temporary worktree's derived database and role after verifying ownership, then remove that worktree. Preserve any existing worktree database.
 
 ## Troubleshooting and boundaries
 
@@ -53,4 +62,5 @@ pnpm dev:agent cli -- template list --refresh
 - If readiness is missing or the worktree marker differs, do not attach to that process. Check the app output and start the correct worktree.
 - The app currently prints a Next.js security upgrade notice and asks for one retry. The launcher retries the exact command once after detecting Next.js's retry receipt. It does not upgrade or suppress the notice.
 - A normal successful local curl does not prove T3 browser forwarding. Open the printed port with the T3 preview target kind `environment-port` and inspect the page in that browser.
+- If an authenticated page is stuck on "Loading organizations", verify that the app process is still listening before diagnosing the query. During fallback-port validation, A's app had exited and the preview showed a Chrome error page. Once A was restarted on its persisted port and the page was cleanly navigated, the session and organization-list requests returned 200 and the seeded organization rendered. This was a stopped-server observation, not a reproducible app loading defect.
 - Separate databases and cookie prefixes isolate each worktree's app state. PostgreSQL server resources and dependencies are shared by the host, while database data and CLI credentials are worktree-specific.

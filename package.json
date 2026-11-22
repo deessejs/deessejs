@@ -11,6 +11,7 @@
     "format": "turbo format",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:dev-agent": "node --test scripts/dev-agent-env.test.mjs",
     "db:generate": "pnpm --filter @workspace/database db:generate",
     "db:migrate": "pnpm --filter @workspace/database db:migrate",
     "db:push": "pnpm --filter @workspace/database db:push",

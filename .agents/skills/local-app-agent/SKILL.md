@@ -64,7 +64,7 @@ Use T3's preview/computer-use browser for UI acceptance:
 1. Check preview status and open an agent-owned tab if none is available.
 2. Navigate using target kind `environment-port` and the port printed by `pnpm dev:agent start`. Do not substitute a guessed hostname, port, or Portless URL.
 3. Wait for the page to finish navigation and client rendering. Capture a screenshot and inspect it when visual evidence is part of the task.
-4. For data-driven pages, wait for their required API calls and UI state to settle before concluding that the page is stuck. `DOMContentLoaded` is not a client-query completion signal. Inspect the accessibility tree or DOM, console errors, and the relevant network request statuses. If the page remains loading, diagnose the pending or failed request and its query behavior; do not assert success from a timeout or a separate direct API call.
+4. For data-driven pages, wait for their required API calls and UI state to settle before concluding that the page is stuck. `DOMContentLoaded` is not a client-query completion signal. Inspect the accessibility tree or DOM, console errors, and the relevant network request statuses. If the page remains loading, diagnose the pending or failed request and its query behavior; do not assert success from a timeout or a separate direct API call. First confirm the server process is still listening: a stopped app can leave a preview on a Chrome error page, which is not evidence of an application query defect. After fallback-port validation, A settled after restart and clean navigation, and its session and organization-list requests returned 200.
 
 The preview currently routes a worktree through `http://localhost:<port>`. Browser cookies are scoped to host and path, not port. Better Auth therefore adds a development-only `cookiePrefix` derived from the validated 12-character `DEV_AGENT_WORKTREE_ID`. Local session cookies are HttpOnly, host-only, path `/`, and SameSite Lax; they are not Secure on local HTTP. The prefix is absent when the worktree ID is invalid or outside development. Do not claim that browser forwarding or cross-worktree cookie behavior works unless tested in the actual preview browser.
 
@@ -122,7 +122,7 @@ Then run an API-backed command against this same worktree:
 pnpm dev:agent cli -- organization list
 ```
 
-Confirm that it lists the seeded organization. For public catalog data, `pnpm dev:agent cli -- template list --refresh` also calls the local API. CLI commands that only render help, parse arguments, or inspect local caches are not proof of an authenticated API session.
+Confirm that it lists the seeded organization. For public catalog data, `pnpm dev:agent cli -- template list` calls the local API when this worktree's private CLI catalog cache is empty, as it is in a fresh worktree. The namespaced `template list` command does not currently support `--refresh`. CLI commands that only render help, parse arguments, or inspect local caches are not proof of an API request.
 
 If the device server returns a relative verification URL, the CLI resolves it against the configured API base. Both relative and absolute verification URIs are supported. `--no-open` suppresses the browser opener while retaining the real device flow and printed approval instructions.
 
@@ -152,7 +152,7 @@ Record pass/fail for each step, including the command or browser evidence. Keep 
 | Organization query | Members UI renders all seeded roles after both member and invitation queries settle, with no relevant console/network error. |
 | CLI authorization | CLI device flow is explicitly approved in the browser by the intended signed-in user and login completes. |
 | Authenticated CLI API use | `organization list` returns the seeded organization from the same worktree app. |
-| Isolation guard | Readiness marker, DB identity, cookie prefix, and CLI home are all scoped to this worktree. A true concurrent two-worktree/browser test must be reported separately if not run. |
+| Isolation guard | For concurrent testing, verify different readiness markers, DB identities, cookie prefixes, and CLI homes while both apps run. In a single browser profile, switching ports required separate real UI logins and returning to A retained A's session. A's authenticated organization-list CLI returned only A's slug; B's public `template list` command returned successfully against B's API. B's device authorization flow was not repeated in that concurrent run. |
 
 Report what actually passed, what failed, what was skipped, and any external T3 browser or local PostgreSQL limitation. Never state that concurrent worktree isolation is runtime-verified unless two worktrees were actually exercised concurrently.
 

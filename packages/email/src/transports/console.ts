@@ -20,6 +20,34 @@ import type { MailerTransport, SendArgs } from "../types.js"
 const URL_REGEX = /https?:\/\/[^\s)>"']+/g
 const PREVIEW_LIMIT = 15
 
+function writeDevelopmentMailbox(
+  worktreeRoot: string | undefined,
+  worktreeId: string | undefined,
+  mailboxFile: string | undefined,
+  primaryLink: string | undefined,
+  to: string,
+  subject: string
+) {
+  if (process.env.NODE_ENV !== "development") return false
+  if (!worktreeRoot) return false
+  if (!/^[a-f0-9]{12}$/.test(worktreeId ?? "")) return false
+  if (mailboxFile !== path.join(worktreeRoot, ".local", "mailbox.jsonl")) {
+    return false
+  }
+  if (!primaryLink) return false
+
+  const localDir = path.join(worktreeRoot, ".local")
+  mkdirSync(localDir, { recursive: true, mode: 0o700 })
+  chmodSync(localDir, 0o700)
+  appendFileSync(
+    mailboxFile,
+    `${JSON.stringify({ to, subject, url: primaryLink })}\n`,
+    { mode: 0o600 }
+  )
+  chmodSync(mailboxFile, 0o600)
+  return true
+}
+
 export class ConsoleTransport implements MailerTransport {
   constructor(private readonly opts: { from: string }) {}
 
@@ -58,26 +86,20 @@ export class ConsoleTransport implements MailerTransport {
     // The local agent bootstrap needs to complete Better Auth verification
     // without reading terminal output. Keep this mailbox opt-in, worktree
     // confined, and unavailable outside development.
-    const worktreeRoot = process.env.DEV_AGENT_WORKTREE_ROOT
-    const worktreeId = process.env.DEV_AGENT_WORKTREE_ID
-    const mailboxFile = process.env.DEV_AGENT_MAILBOX_FILE
-    if (
-      process.env.NODE_ENV === "development" &&
-      worktreeRoot &&
-      /^[a-f0-9]{12}$/.test(worktreeId ?? "") &&
-      mailboxFile === path.join(worktreeRoot, ".local", "mailbox.jsonl") &&
-      primaryLink
-    ) {
-      const localDir = path.join(worktreeRoot, ".local")
-      mkdirSync(localDir, { recursive: true, mode: 0o700 })
-      chmodSync(localDir, 0o700)
-      appendFileSync(
-        mailboxFile,
-        `${JSON.stringify({ to, subject: args.subject, url: primaryLink })}\n`,
-        { mode: 0o600 }
-      )
-      chmodSync(mailboxFile, 0o600)
-    }
+    const storedInDevelopmentMailbox = writeDevelopmentMailbox(
+      process.env.DEV_AGENT_WORKTREE_ROOT,
+      process.env.DEV_AGENT_WORKTREE_ID,
+      process.env.DEV_AGENT_MAILBOX_FILE,
+      primaryLink,
+      to,
+      args.subject
+    )
+    const visiblePrimaryLink = storedInDevelopmentMailbox
+      ? undefined
+      : primaryLink
+    const visiblePreview = storedInDevelopmentMailbox
+      ? plainText.replace(URL_REGEX, "[local email link stored privately]")
+      : plainText
 
     const headerLines = [
       `[mailer] ┌─ email ─────────────────────────────────────────`,
@@ -88,12 +110,14 @@ export class ConsoleTransport implements MailerTransport {
         ? `[mailer] │ idempotent: ${args.idempotencyKey}`
         : null,
       tagStr ? `[mailer] │ tags:      ${tagStr}` : null,
-      primaryLink ? `[mailer] │ link:      ${primaryLink}   ← copy me` : null,
+      visiblePrimaryLink
+        ? `[mailer] │ link:      ${visiblePrimaryLink}   ← copy me`
+        : null,
       `[mailer] │`,
       `[mailer] │ preview (first ${PREVIEW_LIMIT} lines):`,
     ].filter((line): line is string => line !== null)
 
-    const previewLines = plainText
+    const previewLines = visiblePreview
       .split("\n")
       .slice(0, PREVIEW_LIMIT)
       .map((line) => `[mailer] │   ${line}`)

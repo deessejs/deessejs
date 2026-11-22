@@ -21,54 +21,72 @@ const env = Object.fromEntries(
 )
 const id = createHash("sha256").update(root).digest("hex").slice(0, 12)
 const databaseUrl = new URL(env.DATABASE_URL)
-if (
-  env.NODE_ENV !== "development" ||
-  env.DEV_AGENT_WORKTREE_ID !== id ||
-  env.DEV_AGENT_DB_NAME !== `deesse_dev_${id}` ||
-  databaseUrl.hostname !== "127.0.0.1" ||
-  databaseUrl.pathname.slice(1) !== env.DEV_AGENT_DB_NAME
-)
-  throw new Error(
-    "Refusing fixtures: the environment is not this worktree's local development database."
-  )
+function assertLocalFixtureEnvironment() {
+  if (env.NODE_ENV !== "development") {
+    throw new Error("Refusing fixtures outside development mode.")
+  }
+  if (env.DEV_AGENT_WORKTREE_ID !== id) {
+    throw new Error("Refusing fixtures for a different worktree identity.")
+  }
+  if (env.DEV_AGENT_DB_NAME !== `deesse_dev_${id}`) {
+    throw new Error("Refusing fixtures for a different worktree database.")
+  }
+  if (databaseUrl.hostname !== "127.0.0.1") {
+    throw new Error("Refusing fixtures unless PostgreSQL is on loopback.")
+  }
+  if (databaseUrl.pathname.slice(1) !== env.DEV_AGENT_DB_NAME) {
+    throw new Error("Refusing fixtures for a mismatched database URL.")
+  }
+}
+assertLocalFixtureEnvironment()
 
 const baseUrl = `http://localhost:${env.DEV_AGENT_PORT}`
 const authUrl = `${baseUrl}${API_AUTH_PATH}`
 const mailboxPath = env.DEV_AGENT_MAILBOX_FILE
 const sql = postgres(env.DATABASE_URL, { max: 1, prepare: false })
 
-function mailboxPosition() {
+function readMailbox() {
   try {
-    return readFileSync(mailboxPath, "utf8").length
-  } catch {
-    return 0
+    return readFileSync(mailboxPath, "utf8")
+  } catch (error) {
+    if (error?.code === "ENOENT") return ""
+    throw error
+  }
+}
+
+function findVerificationUrl(entries, email) {
+  for (const line of entries.split(/\r?\n/).filter(Boolean)) {
+    const message = JSON.parse(line)
+    if (message.to === email && message.subject === "Verify your email") {
+      return message.url
+    }
+  }
+  return null
+}
+
+async function verifyEmailUrl(email, rawUrl) {
+  const url = new URL(rawUrl)
+  if (url.hostname !== "localhost" || url.port !== env.DEV_AGENT_PORT) {
+    throw new Error(
+      "Verification email link did not target this worktree app URL."
+    )
+  }
+  const response = await fetch(url, { redirect: "manual" })
+  if (![200, 302, 303, 307].includes(response.status)) {
+    throw new Error(
+      `Email verification returned HTTP ${response.status} for ${email}.`
+    )
   }
 }
 
 async function waitForVerification(email, startingPosition) {
   const deadline = Date.now() + 15_000
   while (Date.now() < deadline) {
-    let entries = ""
-    try {
-      entries = readFileSync(mailboxPath, "utf8").slice(startingPosition)
-    } catch {}
-    for (const line of entries.split(/\r?\n/).filter(Boolean)) {
-      const message = JSON.parse(line)
-      if (message.to === email && message.subject === "Verify your email") {
-        const url = new URL(message.url)
-        if (url.hostname !== "localhost" || url.port !== env.DEV_AGENT_PORT) {
-          throw new Error(
-            "Verification email link did not target this worktree app URL."
-          )
-        }
-        const response = await fetch(url, { redirect: "manual" })
-        if (![200, 302, 303, 307].includes(response.status)) {
-          throw new Error(
-            `Email verification returned HTTP ${response.status} for ${email}.`
-          )
-        }
-        return
-      }
+    const entries = readMailbox().slice(startingPosition)
+    const verificationUrl = findVerificationUrl(entries, email)
+    if (verificationUrl) {
+      await verifyEmailUrl(email, verificationUrl)
+      return
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
@@ -81,7 +99,7 @@ async function createVerifiedAccount({ email, password, name }) {
   const [existing] =
     await sql`select id, email_verified from "user" where email = ${email}`
   if (existing?.email_verified) return existing.id
-  const position = mailboxPosition()
+  const position = readMailbox().length
   if (existing) {
     await fetch(`${authUrl}/send-verification-email`, {
       method: "POST",

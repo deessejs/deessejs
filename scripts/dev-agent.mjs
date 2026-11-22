@@ -19,6 +19,7 @@ import net from "node:net"
 import path from "node:path"
 import process from "node:process"
 import { fileURLToPath } from "node:url"
+import { appUrlEnvironment, replaceEnvironmentLines } from "./dev-agent-env.mjs"
 
 const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
@@ -342,17 +343,11 @@ function ensureLocalPostgres(values, reset = false) {
 }
 
 function localEnv(values) {
-  const appUrl = `http://localhost:${values.DEV_AGENT_PORT}`
   return {
     ...process.env,
     ...values,
     NODE_ENV: "development",
-    APP_URL: appUrl,
-    API_BASE_URL: appUrl,
-    BETTER_AUTH_URL: appUrl,
-    NEXT_PUBLIC_APP_URL: appUrl,
-    NEXT_PUBLIC_API_BASE_URL: appUrl,
-    ALLOWED_ORIGINS: appUrl,
+    ...appUrlEnvironment(values.DEV_AGENT_PORT),
     PARENT_DOMAIN: "",
   }
 }
@@ -608,7 +603,7 @@ async function start() {
           localEnv(values)
         )
         process.stdout.write(
-          `Ready: ${url}\nBrowser: use T3 preview on environment port ${portNumber}\nAPI: ${url}/api/v1\nCLI: pnpm dev:agent cli -- template list --refresh\nCLI login: pnpm dev:agent cli -- auth login --no-open\n`
+          `Ready: ${url}\nBrowser: use T3 preview on environment port ${portNumber}\nAPI: ${url}/api/v1\nCLI: pnpm dev:agent cli -- template list\nCLI login: pnpm dev:agent cli -- auth login --no-open\n`
         )
         return
       }
@@ -699,9 +694,10 @@ async function reservePort(preferredPort) {
 
 function persistPort(port) {
   const lines = readFileSync(envFile, "utf8").split(/\r?\n/)
-  const updated = lines.map((line) =>
-    line.startsWith("DEV_AGENT_PORT=") ? `DEV_AGENT_PORT=${port}` : line
-  )
+  const updated = replaceEnvironmentLines(lines, {
+    DEV_AGENT_PORT: String(port),
+    ...appUrlEnvironment(port),
+  })
   const temporary = `${envFile}.${process.pid}.tmp`
   writeFileSync(temporary, updated.join("\n"), { mode: 0o600, flag: "wx" })
   chmodSync(temporary, 0o600)
