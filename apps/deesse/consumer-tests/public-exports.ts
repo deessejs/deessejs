@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth"
 import type { BetterAuthClientPlugin } from "better-auth/client"
+import { createAuthClient } from "better-auth/react"
 import { os, type InferRouterInputs, type InferRouterOutputs, type RouterClient } from "@orpc/server"
 import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
@@ -69,12 +70,14 @@ const authClientPlugin = {
 } satisfies BetterAuthClientPlugin
 const client = createClient({ plugins: [deesseClient<typeof app>(), authClientPlugin] })
 const linkedClient = createClient({ plugins: [deesseClient<typeof app>()] })
+const authReference = createAuthClient({ plugins: [authClientPlugin] })
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
 type PublicRouterOnlyClientExact = Assert<Equal<typeof linkedClient.api, RouterClient<typeof app.api.router>>>
-type PublicUsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">
-type PublicAuthPluginExact = Assert<Equal<PublicUsernameClientInput, { username: string }>>
+type PublicAuthPluginExact = Assert<Equal<typeof client.auth.isUsernameAvailable, typeof authReference.isUsernameAvailable>>
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
+// @ts-expect-error the Better Auth client plugin keeps its inferred input through createClient
+client.auth.isUsernameAvailable({ username: 42 })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
 void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicRouterOnlyClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
