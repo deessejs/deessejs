@@ -7,10 +7,10 @@ export type DeesseClientServer = {
   }
 }
 
+declare const deesseServerType: unique symbol
+
 export type DeesseClientPlugin<TServer extends DeesseClientServer> = BetterAuthClientPlugin & {
-  readonly $InferServerPlugin?: {
-    readonly deesse: TServer
-  }
+  readonly [deesseServerType]: TServer
 }
 
 export type DeesseClientOptions = BetterAuthClientOptions & {
@@ -19,9 +19,7 @@ export type DeesseClientOptions = BetterAuthClientOptions & {
 }
 
 type ServerFromClientPlugin<TPlugin> = TPlugin extends {
-  readonly $InferServerPlugin?: {
-    readonly deesse: infer TServer extends DeesseClientServer
-  }
+  readonly [deesseServerType]: infer TServer extends DeesseClientServer
 } ? TServer : never
 
 type ServerFromClientPlugins<TPlugins> = TPlugins extends readonly (infer TPlugin)[]
