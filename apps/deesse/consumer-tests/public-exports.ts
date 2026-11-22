@@ -82,7 +82,7 @@ void serverType.database
 void serverType.handler
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
-const usernameSessionField: string = client.auth.$Infer.Session.user.username
+const usernameSessionField: string | null | undefined = client.auth.$Infer.Session.user.username
 // @ts-expect-error the Better Auth client plugin keeps its inferred input through createClient
 client.auth.isUsernameAvailable({ username: 42 })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
