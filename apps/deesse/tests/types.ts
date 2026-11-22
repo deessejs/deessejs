@@ -236,7 +236,7 @@ declare function singleCallCandidate<
 const candidateClient = singleCallCandidate<typeof app>({ auth: clientAuthOptions })
 type CandidateUsesDefaultAuthOptions = Assert<Equal<typeof candidateClient.auth, ReactAuthClient<BetterAuthClientOptions>>>
 // @ts-expect-error an explicit first type argument applies the default to later generic arguments, so plugin methods are lost
-candidateClient.auth.organization
+void candidateClient.auth.organization
 // @ts-expect-error the current factory requires its server binding before receiving inferred auth options
 createClient<typeof app>({ auth: clientAuthOptions })
 const createAppClient = createClient<typeof app>()
