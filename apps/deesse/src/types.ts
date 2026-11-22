@@ -138,7 +138,7 @@ export type PluginDefinition<
 export type PluginRegistration<TDefinition extends { id: string; handler: (...args: never[]) => unknown }> = {
   id: TDefinition["id"]
   definition: TDefinition
-} & (TDefinition extends { args: infer TSchema extends ZodType } ? { args: ZodOutput<TSchema> } : Record<never, never>)
+} & (TDefinition extends { args: infer TSchema extends ZodType } ? { args: ZodInput<TSchema> } : Record<never, never>)
 
 export type AnyPlugin = PluginRegistration<{ id: string; handler: (...args: never[]) => unknown }>
 

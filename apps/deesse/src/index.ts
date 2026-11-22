@@ -17,7 +17,7 @@ export function plugin<const TId extends string, TSchema extends ZodType, TContr
 ): ((args: ZodInput<TSchema>) => ConfiguredRegistration<typeof definition>) & { definition: typeof definition }
 export function plugin(definition: { id: string; args?: ZodType; handler: ((args: never) => PluginContribution) | (() => PluginContribution) }) {
   const factory = (args?: unknown) => definition.args
-    ? { id: definition.id, args: definition.args.parse(args), definition }
+    ? { id: definition.id, args, definition }
     : { id: definition.id, definition }
   return Object.assign(factory, { definition })
 }

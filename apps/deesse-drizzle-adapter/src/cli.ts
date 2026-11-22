@@ -67,9 +67,15 @@ async function loadPlugins(options: CliOptions): Promise<readonly CliPlugin[]> {
 }
 
 function collectContributions(plugins: readonly CliPlugin[]): PluginContribution[] {
-  return orderPlugins(plugins).map((item) => {
+  const parsedPlugins = orderPlugins(plugins).map((item) => {
+    if (!("args" in item)) return { item, args: undefined }
+    const schema = item.definition.args
+    if (!schema) throw new Error(`Plugin ${item.id} has args but no Zod schema.`)
+    return { item, args: schema.parse(item.args) }
+  })
+  return parsedPlugins.map(({ item, args }) => {
     const handler = item.definition.handler
-    const contribution = "args" in item ? handler(item.args) : handler()
+    const contribution = "args" in item ? handler(args) : handler()
     return { item, contribution }
   })
 }

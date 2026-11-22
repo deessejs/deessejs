@@ -57,7 +57,7 @@ type PublicOutputExact = Assert<Equal<InferRouterOutputs<typeof app.api.router>[
 const registered = feature({ prefix: "hi" })
 type PublicDefinitionAssignable = Assert<typeof feature.definition extends Definition<typeof feature.definition.args, { api: { router: typeof router } }, readonly [], Readonly<Record<never, never>>> ? true : false>
 type PublicConfiguredRegistrationExact = Assert<Equal<typeof registered, ConfiguredRegistration<typeof feature.definition>>>
-const parsedPrefix: string = registered.args.prefix
+const rawPrefix: string | undefined = registered.args.prefix
 // @ts-expect-error raw args accept the optional string field, not another type
 feature({ prefix: 1 })
 const noArgsFeature = plugin({ id: "noargs", handler: () => ({ api: { router } }) })
@@ -86,5 +86,5 @@ const usernameSessionField: string | null | undefined = client.auth.$Infer.Sessi
 // @ts-expect-error the Better Auth client plugin keeps its inferred input through createClient
 client.auth.isUsernameAvailable({ username: 42 })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
-void [parsedPrefix, apiResult, usernameAvailable, usernameSessionField, nextHandler]
+void [rawPrefix, apiResult, usernameAvailable, usernameSessionField, nextHandler]
 void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicRouterOnlyClientExact, PublicDeesseServerExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])

@@ -32,9 +32,16 @@ function orderedPlugins(plugins: readonly RuntimePlugin[]): readonly RuntimePlug
   return ordered
 }
 
-function contributionOf(item: RuntimePlugin): PluginContribution {
+function parsePluginArgs(item: RuntimePlugin): unknown {
+  if (!("args" in item)) return undefined
+  const schema = item.definition.args
+  if (!schema) throw new Error(`Plugin ${item.id} has args but no Zod schema`)
+  return schema.parse(item.args)
+}
+
+function contributionOf(item: RuntimePlugin, parsedArgs: unknown): PluginContribution {
   const handler = item.definition.handler as unknown as (args?: unknown) => PluginContribution
-  return "args" in item ? handler(item.args) : handler()
+  return "args" in item ? handler(parsedArgs) : handler()
 }
 
 function composeDatabaseSchema(contributions: readonly { item: RuntimePlugin; contribution: PluginContribution }[]): DeesseDatabaseSchema {
@@ -117,7 +124,8 @@ export function createRuntime(options: RuntimeOptions): {
   handler: DeesseFetchHandler
 } {
   const plugins = orderedPlugins(options.plugins ?? [])
-  const contributions = plugins.map((item) => ({ item, contribution: contributionOf(item) }))
+  const parsedPlugins = plugins.map((item) => ({ item, args: parsePluginArgs(item) }))
+  const contributions = parsedPlugins.map(({ item, args }) => ({ item, contribution: contributionOf(item, args) }))
   const pluginRouters = Object.fromEntries(contributions.flatMap(({ item, contribution }) =>
     contribution.api?.router ? [[item.id, contribution.api.router]] : []))
   const applicationRouter = options.api?.router ?? {}

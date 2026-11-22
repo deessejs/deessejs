@@ -10,6 +10,7 @@ This is a small integration example, not a production starter. It demonstrates B
 
 - Node.js 24
 - pnpm 11
+- Next.js 16.4.6 from the shared workspace catalog. This is the latest stable 16.4 patch and includes the November 2026 security fixes.
 - A PostgreSQL database the example can create tables in
 
 ## Setup
@@ -35,6 +36,8 @@ Open `http://localhost:3000`. Use the form to create an account, sign in, check 
 
 With the dev server running and the example database migrated, run `pnpm --filter @deesse-example/web smoke` from the repository root to exercise the page, public health route, Better Auth sign-up/session, authenticated plugin context, and persistent post create/read path through the typed Deesse client.
 
+The `Deesse Next example smoke` GitHub Actions workflow repeats this journey against a fresh, disposable PostgreSQL 18 service. It generates schemas with an unreachable database URL, checks Drizzle migration consistency without accepting generated diffs, applies the reviewed migration, builds and starts the production Next server, and compares a normalized PostgreSQL catalog snapshot before and after the server initializes the Deesse route. Only after the no-DDL comparison does it run the auth and oRPC smoke journey. The CI database uses job-local credentials and no repository secrets.
+
 ## Environment
 
 Set these values in `apps/web/.env`:
@@ -59,4 +62,4 @@ The adapter integration tests use a separate fixture database. These example scr
 
 ## Validation boundary
 
-The repository CI build and typecheck include this workspace. The checked-in example does not provision PostgreSQL, apply migrations, or run end-to-end browser tests. To verify data persistence locally, use the setup workflow above and exercise the UI against the dedicated example database.
+The repository CI build and typecheck include this workspace. The dedicated example workflow verifies the production server and its auth/oRPC/persistence path over HTTP, but does not automate browser interaction with the shadcn form. To exercise the UI manually, use the setup workflow above against the dedicated example database.
