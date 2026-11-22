@@ -1,6 +1,8 @@
-import type { ORPCError } from "@orpc/server"
+import { ORPCError } from "@orpc/server"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
+import { MyOrganizationsListResponseV1 } from "@workspace/contracts/v1"
+import { hasOrganizationProEntitlement } from "@workspace/auth/organization/entitlement"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   assertOrganizationName,
@@ -14,6 +16,7 @@ import { authGuard } from "../auth-middleware.js"
 import {
   findOrganizationForMember,
   findOrganizationForMemberById,
+  findOrganizationsForMember,
 } from "../../core/organization/membership.js"
 import {
   OrganizationProvisioningError,
@@ -55,6 +58,28 @@ const invitationSummary = z.object({
   expiresAt: z.string(),
   inviterName: z.string(),
 })
+
+/** OAuth identity is supplied only by the verified MCP request boundary. */
+const mcpOrganizationsGuard = base.middleware(async ({ context, next }) => {
+  const identity = context.mcpIdentity
+  if (!identity?.userId || !identity.scopes.includes("organizations:read")) {
+    throw new ORPCError("FORBIDDEN")
+  }
+  return next({
+    context: {
+      ...context,
+      mcpIdentity: { userId: identity.userId, scopes: identity.scopes },
+    },
+  })
+})
+
+/** Lists only the authenticated user's current memberships and roles. */
+const listMine = base
+  .use(mcpOrganizationsGuard)
+  .output(MyOrganizationsListResponseV1)
+  .handler(async ({ context }) => ({
+    organizations: await findOrganizationsForMember(context.mcpIdentity.userId),
+  }))
 
 /**
  * Reads the organization the caller named, if they belong to it.
@@ -129,6 +154,29 @@ export const settings = base
   })
   .output(organizationSummary)
   .handler(async ({ context }) => context.organization)
+
+/** A sanitized entitlement read for any current organization member. */
+export const proEntitlement = base
+  .input(z.object({ slug: z.string() }))
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED
+    )
+    return options.next({
+      context: { ...options.context, organization: org },
+    })
+  })
+  .output(z.object({ proIncluded: z.boolean() }))
+  .handler(async ({ context }) => ({
+    proIncluded: await hasOrganizationProEntitlement(
+      context.user.id,
+      context.organization.id
+    ),
+  }))
 
 /** Pending invitations are visible to owners and admins only. */
 export const pendingInvitations = base
@@ -397,8 +445,10 @@ export const create = base
   }))
 
 export const organizationRouter = {
+  listMine,
   bySlug,
   settings,
+  proEntitlement,
   pendingInvitations,
   accountInvitations,
   active,

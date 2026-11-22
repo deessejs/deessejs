@@ -41,7 +41,10 @@
       "dependsOn": ["^format"]
     },
     "typecheck": {
-      "dependsOn": ["^build", "^typecheck"]
+      "dependsOn": ["^build", "^typecheck", "content-collections"]
+    },
+    "content-collections": {
+      "outputs": [".content-collections/**"]
     },
     "dev": {
       "cache": false,

@@ -43,6 +43,7 @@ export const createOfficial = adminProcedure
       name: z.string().trim().min(1).max(200),
       description: z.string().trim().max(10000).default(""),
       category: z.string().trim().min(1).max(64),
+      access: z.enum(["free", "paid"]).default("free"),
       repositoryUrl: z.string().url().max(2048),
       subdirectory: z.string().trim().default(""),
     })
@@ -118,6 +119,7 @@ export const createOfficial = adminProcedure
           name: input.name,
           description: input.description,
           category: input.category,
+          access: input.access,
           repositoryUrl,
           subdirectory: cleanDirectory(input.subdirectory),
           sourceCommit: snapshot.revision,

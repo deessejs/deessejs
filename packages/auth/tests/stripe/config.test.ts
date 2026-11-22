@@ -12,7 +12,6 @@ describe("optional Stripe plugin configuration", () => {
       STRIPE_SECRET_KEY: "sk_test_operator_value",
       STRIPE_WEBHOOK_SECRET: "whsec_operator_value",
       STRIPE_PRO_MONTHLY_PRICE_ID: "price_operator_monthly",
-      STRIPE_PRO_ANNUAL_PRICE_ID: "price_operator_annual",
     })
 
     expect(plugin).not.toBeNull()

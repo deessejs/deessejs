@@ -160,7 +160,6 @@ export const serverInputShape = {
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   STRIPE_PRO_MONTHLY_PRICE_ID: z.string().min(1).optional(),
-  STRIPE_PRO_ANNUAL_PRICE_ID: z.string().min(1).optional(),
 
   // Inter-app URL configuration. Server-side mirrors of the
   // NEXT_PUBLIC_* fields on clientSchema. Used by server-side
@@ -239,7 +238,6 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       data.STRIPE_SECRET_KEY,
       data.STRIPE_WEBHOOK_SECRET,
       data.STRIPE_PRO_MONTHLY_PRICE_ID,
-      data.STRIPE_PRO_ANNUAL_PRICE_ID,
     ]
     if (
       stripeConfiguration.some(Boolean) &&
@@ -248,7 +246,7 @@ export const serverSchema = z.object(serverInputShape).superRefine(
       ctx.addIssue({
         code: "custom",
         message:
-          "Stripe billing is optional, but when configured it requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_MONTHLY_PRICE_ID, and STRIPE_PRO_ANNUAL_PRICE_ID together.",
+          "Stripe billing is optional, but when configured it requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and STRIPE_PRO_MONTHLY_PRICE_ID together.",
         path: ["STRIPE_SECRET_KEY"],
       })
     }
