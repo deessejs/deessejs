@@ -6,7 +6,7 @@ import { organization, username } from "better-auth/plugins"
 import { inferAdditionalFields, organizationClient, usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, createPluginApi, plugin, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type DatabaseAdapter, type DeesseAuthAdapter, type DeesseConfig, type DeesseDatabaseAdapter, type DeesseDatabaseResult, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseFieldDefinition, type DeesseInstance, type DeesseJsonValue, type DeesseModelResult, type DeesseModelRow, type DeessePluginContributionRegistry, type DeesseRequestContext, type PluginExtension } from "deesse"
-import { createClient, type DeesseClientOptions, type DeesseClientServer } from "deesse/react"
+import { createClient, deesseClient } from "deesse/react"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
 type Assert<T extends true> = T
@@ -229,21 +229,10 @@ void app.api.router.audit
 noConfigPlugin({})
 
 const clientAuthOptions = { plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] } satisfies BetterAuthClientOptions
-declare function singleCallCandidate<
-  TServer extends DeesseClientServer,
-  TAuthOptions extends BetterAuthClientOptions = BetterAuthClientOptions,
->(options: DeesseClientOptions<TAuthOptions>): { auth: ReactAuthClient<TAuthOptions>; api: RouterClient<TServer["api"]["router"]> }
-const candidateClient = singleCallCandidate<typeof app>({ auth: clientAuthOptions })
-type CandidateUsesDefaultAuthOptions = Assert<Equal<typeof candidateClient.auth, ReactAuthClient<BetterAuthClientOptions>>>
-// @ts-expect-error an explicit first type argument applies the default to later generic arguments, so plugin methods are lost
-void candidateClient.auth.organization
-// @ts-expect-error the current factory requires its server binding before receiving inferred auth options
-createClient<typeof app>({ auth: clientAuthOptions })
-const createAppClient = createClient<typeof app>()
-const client = createAppClient({
-  auth: clientAuthOptions,
-})
-const linkedClient = createAppClient()
+const clientOptions = { plugins: [deesseClient<typeof app>(), ...clientAuthOptions.plugins] }
+const client = createClient(clientOptions)
+const linkedClient = createClient({ plugins: [deesseClient<typeof app>()] })
+const minimalClient = createClient({ plugins: [deesseClient<typeof minimalApp>()] })
 const isolatedAuthClient = createAuthClient({ plugins: [orgClient, contributedUsernameClient, additionalFieldsClient] })
 const isolatedUsernameClient = createAuthClient({ plugins: [usernameClient()] })
 const isolatedContributedUsernameClient = createAuthClient({ plugins: [contributedUsernameClient] })
@@ -253,7 +242,10 @@ void isolatedAuthClient.isUsernameAvailable
 const isolatedTeamCode: string = isolatedAuthClient.$Infer.Session.user.teamCode
 type ClientApiExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
 type LinkedClientApiExact = Assert<Equal<typeof linkedClient.api, RouterClient<typeof app.api.router>>>
-type ClientAuthExact = Assert<Equal<typeof client.auth, ReactAuthClient<typeof clientAuthOptions>>>
+type MinimalClientApiExact = Assert<Equal<typeof minimalClient.api, RouterClient<typeof minimalApp.api.router>>>
+type ClientAuthExact = Assert<Equal<typeof client.auth, ReactAuthClient<typeof clientOptions>>>
+// @ts-expect-error the linked empty application router has no client procedures
+void minimalClient.api.missing
 void app.auth.api.isUsernameAvailable
 const serverTeamCode: string = app.auth.$Infer.Session.user.teamCode
 const pluginResult: Promise<{ title: string }> = client.api.feature.get({ id: "article-1" })
@@ -282,4 +274,4 @@ const organizationPermission: boolean = client.auth.organization.checkRolePermis
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [count, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, ClientAuthExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact, CandidateUsesDefaultAuthOptions])
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, MinimalClientApiExact, ClientAuthExact, EmptyRouterExact, ParsedArgsExact, RawArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, ExtensionContributionExact, UsernameClientInputExact])

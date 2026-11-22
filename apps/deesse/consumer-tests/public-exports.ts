@@ -5,7 +5,7 @@ import { username } from "better-auth/plugins"
 import { usernameClient } from "better-auth/client/plugins"
 import { z } from "zod"
 import { createDeesse, createPluginApi, plugin, type ApiRouter, type BetterAuthInstance, type CapabilitiesOf, type ComposedBetterAuthOptions, type ComposedDatabaseSchema, type ConfiguredRegistration, type DatabaseAdapter, type Definition, type DeesseConfig, type DeesseDatabaseSchema, type DeesseDatabaseService, type DeesseInstance, type DeesseRequestUser, type NoArgsRegistration } from "deesse"
-import { createClient } from "deesse/react"
+import { createClient, deesseClient } from "deesse/react"
 import { toNextJsHandler } from "deesse/next"
 
 type Equal<T, U> = (<V>() => V extends T ? 1 : 2) extends (<V>() => V extends U ? 1 : 2) ? true : false
@@ -67,17 +67,14 @@ const authClientPlugin = {
   ...usernameClient(),
   $InferServerPlugin: {} as ReturnType<typeof username>,
 } satisfies BetterAuthClientPlugin
-const createAppClient = createClient<typeof app>()
-const client = createAppClient({
-  auth: { plugins: [authClientPlugin] },
-})
-const simpleClient = createAppClient()
+const client = createClient({ plugins: [deesseClient<typeof app>(), authClientPlugin] })
+const linkedClient = createClient({ plugins: [deesseClient<typeof app>()] })
 type PublicRouterClientExact = Assert<Equal<typeof client.api, RouterClient<typeof app.api.router>>>
-type PublicZeroOptionClientExact = Assert<Equal<typeof simpleClient.api, RouterClient<typeof app.api.router>>>
+type PublicRouterOnlyClientExact = Assert<Equal<typeof linkedClient.api, RouterClient<typeof app.api.router>>>
 type PublicUsernameClientInput = Omit<Parameters<typeof client.auth.isUsernameAvailable>[0], "fetchOptions">
 type PublicAuthPluginExact = Assert<Equal<PublicUsernameClientInput, { username: string }>>
 const apiResult: Promise<string> = client.api.feature.ping({ count: 3 })
 const usernameResult = client.auth.isUsernameAvailable({ username: "ada" })
 const usernameAvailable: boolean | undefined = (await usernameResult).data?.available
 void [parsedPrefix, apiResult, usernameAvailable, nextHandler]
-void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicZeroOptionClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
+void (null as unknown as [PublicInstanceExact, PublicPluginContextExact, PublicRouterAliasExact, PublicAuthAliasExact, PublicCapabilitiesExact, PublicInputExact, PublicOutputExact, PublicRouterClientExact, PublicRouterOnlyClientExact, PublicAuthPluginExact, PublicDefinitionAssignable, PublicConfiguredRegistrationExact, PublicNoArgsRegistrationExact])
