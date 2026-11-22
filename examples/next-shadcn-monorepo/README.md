@@ -33,6 +33,8 @@ pnpm --filter @deesse-example/web dev
 
 Open `http://localhost:3000`. Use the form to create an account, sign in, check the authenticated API route, load posts, and add a post. The example never applies migrations during server startup.
 
+With the dev server running and the example database migrated, run `pnpm --filter @deesse-example/web smoke` from the repository root to exercise the page, public health route, Better Auth sign-up/session, authenticated plugin context, and persistent post create/read path through the typed Deesse client.
+
 ## Environment
 
 Set these values in `apps/web/.env`:

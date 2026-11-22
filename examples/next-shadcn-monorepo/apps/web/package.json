@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "pnpm run schema:generate && next build",
     "start": "next start",
+    "smoke": "node ./scripts/smoke.mjs",
     "lint": "pnpm --dir ../../../../ exec oxlint --config .oxlintrc.json examples/next-shadcn-monorepo --deny-warnings",
     "typecheck": "pnpm run schema:generate && tsc --noEmit",
     "schema:generate": "pnpm run deesse:schema && pnpm run auth:schema",
