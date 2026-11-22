@@ -1,9 +1,16 @@
 import { existsSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("../../../src/lib/auth/flow/index.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../src/lib/auth/flow/index.js")>()
+  return { ...actual, openVerificationUrl: vi.fn() }
+})
 
 import { loginCommand } from "../../../src/commands/auth/login.js"
+import { openVerificationUrl } from "../../../src/lib/auth/flow/index.js"
 import { AUTH_PATH } from "../../../src/lib/auth/store/store.js"
 
 import {
@@ -105,6 +112,31 @@ describe("deesse auth login", () => {
       )
     })
     rmSync(home, { recursive: true, force: true })
+  })
+
+  it("prints the verification URL and user code without opening a browser when --no-open is set", async () => {
+    const home = join(tmpdir(), `cli-test-${Date.now()}-login-no-open`)
+    const writes: string[] = []
+    vi.mocked(openVerificationUrl).mockClear()
+    const stdout = vi.spyOn(process.stdout, "write")
+    stdout.mockImplementation(((chunk: string | Uint8Array) => {
+      writes.push(String(chunk))
+      return true
+    }) as typeof process.stdout.write)
+    try {
+      await withHome(home, () =>
+        runLogin(["node", "auth", "login", "--no-open"])
+      )
+      const output = writes.join("\n")
+      expect(output).toContain(
+        `"verification_uri": "${fake?.url}/device?user_code=${fake?.state.userCode}"`
+      )
+      expect(output).toContain(`"user_code": "${fake?.state.userCode}"`)
+      expect(openVerificationUrl).not.toHaveBeenCalled()
+    } finally {
+      stdout.mockRestore()
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   it.skip("writes the auth.json file with mode 0o600", () => {

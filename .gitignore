@@ -1,5 +1,14 @@
 # Dependencies
 node_modules/
+**/.turbo/
+/apps/*/dist/
+/packages/*/dist/
+/apps/*/.next/
+
+# Local development secrets, generated sessions, and per-worktree state
+.env.local
+.env.*.local
+.local/
 
 # Local Vale scratch files
 B-RULES.txt

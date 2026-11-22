@@ -6,6 +6,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:agent": "node scripts/dev-agent.mjs",
     "lint": "pnpm lint:directives && pnpm lint:type-assertions && pnpm lint:next-routes && pnpm test:next-routes && pnpm test:react-rules && pnpm lint:guard && turbo lint -- --max-warnings=0",
     "format": "turbo format",
     "typecheck": "turbo typecheck",

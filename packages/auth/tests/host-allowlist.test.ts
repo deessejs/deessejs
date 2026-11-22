@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { isHostAllowed } from "../src/host-allowlist.js"
+let isHostAllowed: typeof import("../src/host-allowlist.js").isHostAllowed
+
+beforeAll(async () => {
+  vi.stubEnv("NODE_ENV", "development")
+  const hostAllowlist = await import("../src/host-allowlist.js")
+  isHostAllowed = hostAllowlist.isHostAllowed
+})
+
+afterAll(() => vi.unstubAllEnvs())
 
 describe("isHostAllowed", () => {
   it("allows first-party hosts and previews belonging to our Vercel projects", () => {
@@ -25,5 +33,16 @@ describe("isHostAllowed", () => {
     expect(
       isHostAllowed("attacker-git-staging-aliiibenns-projects.vercel.app"),
     ).toBe(false)
+  })
+
+  it("allows localhost hosts with a port in development", () => {
+    expect(isHostAllowed("localhost:3001")).toBe(true)
+    expect(isHostAllowed("localhost:43127")).toBe(true)
+    expect(isHostAllowed("notlocalhost:3001")).toBe(false)
+  })
+
+  it("rejects values that are not host names", () => {
+    expect(isHostAllowed("https://localhost:3001")).toBe(false)
+    expect(isHostAllowed("user@localhost:3001")).toBe(false)
   })
 })

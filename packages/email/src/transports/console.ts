@@ -1,4 +1,6 @@
 import { render } from "@react-email/render"
+import { appendFileSync, chmodSync, mkdirSync } from "node:fs"
+import path from "node:path"
 import type { MailerTransport, SendArgs } from "../types.js"
 
 /**
@@ -52,6 +54,30 @@ export class ConsoleTransport implements MailerTransport {
     // CTA button href, which appears first in the plain-text output.
     const links = plainText.match(URL_REGEX) ?? []
     const primaryLink = links[0]
+
+    // The local agent bootstrap needs to complete Better Auth verification
+    // without reading terminal output. Keep this mailbox opt-in, worktree
+    // confined, and unavailable outside development.
+    const worktreeRoot = process.env.DEV_AGENT_WORKTREE_ROOT
+    const worktreeId = process.env.DEV_AGENT_WORKTREE_ID
+    const mailboxFile = process.env.DEV_AGENT_MAILBOX_FILE
+    if (
+      process.env.NODE_ENV === "development" &&
+      worktreeRoot &&
+      /^[a-f0-9]{12}$/.test(worktreeId ?? "") &&
+      mailboxFile === path.join(worktreeRoot, ".local", "mailbox.jsonl") &&
+      primaryLink
+    ) {
+      const localDir = path.join(worktreeRoot, ".local")
+      mkdirSync(localDir, { recursive: true, mode: 0o700 })
+      chmodSync(localDir, 0o700)
+      appendFileSync(
+        mailboxFile,
+        `${JSON.stringify({ to, subject: args.subject, url: primaryLink })}\n`,
+        { mode: 0o600 }
+      )
+      chmodSync(mailboxFile, 0o600)
+    }
 
     const headerLines = [
       `[mailer] ┌─ email ─────────────────────────────────────────`,

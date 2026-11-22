@@ -16,9 +16,7 @@ const PRODUCTION_HOSTS = [
   "deessejs-agent-*-aliiibenns-projects.vercel.app",
 ] as const
 
-const DEV_HOSTS = [
-  "localhost:*",
-] as const
+const DEV_HOSTS = ["localhost:*"] as const
 
 // Vercel exposes both the unique deployment URL and the stable branch
 // alias at runtime. Allow those exact hosts only on Preview deployments so
@@ -27,7 +25,7 @@ const DEV_HOSTS = [
 const VERCEL_PREVIEW_HOSTS =
   process.env.VERCEL_ENV === "preview"
     ? [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL].filter(
-        (host): host is string => typeof host === "string" && host.length > 0,
+        (host): host is string => typeof host === "string" && host.length > 0
       )
     : []
 
@@ -54,11 +52,10 @@ export const HOST_ALLOWLIST = [
  * edits).
  */
 export function isHostAllowed(host: string): boolean {
-  const [hostname] = host.split(":")
-  if (!hostname) return false
+  if (!host || host.includes("/") || host.includes("@")) return false
 
   for (const pattern of HOST_ALLOWLIST) {
-    if (matchHost(pattern, hostname)) return true
+    if (matchHost(pattern, host.toLowerCase())) return true
   }
   return false
 }

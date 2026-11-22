@@ -76,7 +76,9 @@ export function loadDotenvSnapshot(
   filenames.push(`.env.${nodeEnv}`)
   filenames.push(`.env`)
 
-  const snapshot: EnvSnapshot = {}
+  // Host-injected values are authoritative. Start with them so dotenv files
+  // only fill gaps, matching Next.js and the contract documented above.
+  const snapshot: EnvSnapshot = { ...process.env }
 
   // Files are read in ascending precedence order: later files override
   // earlier ones. `dotenv.parse` does NOT mutate any external state.
@@ -86,25 +88,6 @@ export function loadDotenvSnapshot(
     const parsed = dotenv.parse(readFileSync(filepath))
     for (const [key, value] of Object.entries(parsed)) {
       if (snapshot[key] === undefined) snapshot[key] = value
-    }
-  }
-
-  // Fallback to the live process.env. The deployment platform (Vercel,
-  // CI, the host shell) injects runtime values via process.env that do
-  // not appear in any .env file. Without this fallback, the snapshot
-  // would only see values that exist on disk and would miss the
-  // process-level configuration that production environments rely on
-  // (DATABASE_URL, BETTER_AUTH_SECRET, etc.).
-  //
-  // Precedence (first wins, consistent with Next.js docs):
-  //   1. .env.{NODE_ENV}.local
-  //   2. .env.local
-  //   3. .env.{NODE_ENV}
-  //   4. .env
-  //   5. process.env  ← this fallback
-  for (const [key, value] of Object.entries(process.env)) {
-    if (snapshot[key] === undefined && value !== undefined) {
-      snapshot[key] = value
     }
   }
 
