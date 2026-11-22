@@ -1,4 +1,4 @@
-import { createAuthClient, type ReactAuthClient } from "better-auth/react"
+import { createAuthClient } from "better-auth/react"
 import type { BetterAuthClientOptions } from "better-auth/client"
 import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
