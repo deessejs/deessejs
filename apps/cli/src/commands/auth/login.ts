@@ -13,6 +13,71 @@ import { writeAuth } from "../../lib/auth/store/store.js"
 import { CliError } from "../../errors/index.js"
 import { printError, printJson } from "../../output/index.js"
 
+function printVerificationInstructions({
+  json,
+  open,
+  verificationUri,
+  userCode,
+}: {
+  json: boolean
+  open: boolean
+  verificationUri: string
+  userCode: string | null
+}) {
+  if (json) {
+    if (!open) {
+      printJson({
+        event: "device_authorization_pending",
+        verification_uri: verificationUri,
+        user_code: userCode,
+      })
+    }
+    return
+  }
+
+  console.log()
+  console.log(
+    pc.cyan(
+      open
+        ? "Open the following URL in your browser if it doesn't open automatically:"
+        : "Open this URL in the T3 Code browser:"
+    )
+  )
+  console.log(pc.bold(verificationUri))
+  if (userCode) console.log(pc.dim(`User code: ${userCode}`))
+  console.log()
+}
+
+async function waitForApproval(
+  deviceCode: string,
+  expiresBy: number,
+  json: boolean
+) {
+  const pollSpinner = json
+    ? null
+    : ora("Waiting for browser approval...").start()
+  try {
+    const token = await pollForToken(deviceCode, expiresBy)
+    const user = await fetchUserIdentity(token.accessToken)
+    writeAuth({
+      access_token: token.accessToken,
+      user,
+      fetchedAt: new Date().toISOString(),
+    })
+    pollSpinner?.stop()
+    if (json) {
+      printJson({ ok: true, user })
+    } else {
+      console.log()
+      console.log(
+        pc.green("✓ logged in as ") + pc.bold(user.email ?? user.name ?? user.id)
+      )
+    }
+  } finally {
+    pollSpinner?.stop()
+  }
+}
+
 /**
  * deesse auth login.
  *
@@ -53,58 +118,16 @@ export const loginCommand = new Command("login")
       const verificationUri = new URL(issued.url, resolveBaseURL()).toString()
       const verificationUrl = new URL(verificationUri)
       const userCode = verificationUrl.searchParams.get("user_code")
-      if (!opts.open) {
-        if (json) {
-          printJson({
-            event: "device_authorization_pending",
-            verification_uri: verificationUri,
-            user_code: userCode,
-          })
-        } else {
-          console.log()
-          console.log(pc.cyan("Open this URL in the T3 Code browser:"))
-          console.log(pc.bold(verificationUri))
-          if (userCode) console.log(pc.dim(`User code: ${userCode}`))
-          console.log()
-        }
-      } else if (!json) {
-        console.log()
-        console.log(
-          pc.cyan(
-            `Open the following URL in your browser if it doesn't open automatically:`
-          )
-        )
-        console.log(pc.bold(verificationUri))
-        if (userCode) console.log(pc.dim(`User code: ${userCode}`))
-        console.log()
-      }
+      printVerificationInstructions({
+        json,
+        open: !!opts.open,
+        verificationUri,
+        userCode,
+      })
 
-      if (opts.open) await openVerificationUrl(issued.url)
+      if (opts.open) await openVerificationUrl(verificationUri)
 
-      const pollSpinner = json
-        ? null
-        : ora("Waiting for browser approval...").start()
-      try {
-        const token = await pollForToken(issued.deviceCode, issued.expiresBy)
-        const user = await fetchUserIdentity(token.accessToken)
-        writeAuth({
-          access_token: token.accessToken,
-          user,
-          fetchedAt: new Date().toISOString(),
-        })
-        pollSpinner?.stop()
-        if (json) {
-          printJson({ ok: true, user })
-        } else {
-          console.log()
-          console.log(
-            pc.green("✓ logged in as ") +
-              pc.bold(user.email ?? user.name ?? user.id)
-          )
-        }
-      } finally {
-        pollSpinner?.stop()
-      }
+      await waitForApproval(issued.deviceCode, issued.expiresBy, json)
     } catch (e) {
       spinner?.stop()
       if (e instanceof CliError) {

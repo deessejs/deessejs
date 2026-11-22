@@ -91,6 +91,9 @@ describe("deesse auth login", () => {
     await withHome(home, async () => {
       await runLogin(["node", "auth", "login", "--json"])
       expect(existsSync(AUTH_PATH())).toBe(true)
+      expect(openVerificationUrl).toHaveBeenCalledWith(
+        `${fake?.url}/device?user_code=${fake?.state.userCode}`
+      )
       const raw = readFileSync(AUTH_PATH(), "utf8")
       const parsed = JSON.parse(raw) as {
         access_token: string
