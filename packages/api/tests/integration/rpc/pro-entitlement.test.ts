@@ -62,7 +62,7 @@ describe("organization Pro entitlement and public metadata", () => {
       await db.insert(member).values({
         id: `member-${suffix}`,
         organizationId: orgA,
-        userId,
+        memberId: `member-${suffix}`,
         role: "member",
         createdAt: new Date(),
       })
@@ -72,6 +72,7 @@ describe("organization Pro entitlement and public metadata", () => {
         billingInterval: "month",
         referenceId: orgB,
         status: "active",
+        seats: 1,
       })
       await db.insert(templates).values([
         {
@@ -208,7 +209,33 @@ describe("organization Pro entitlement and public metadata", () => {
         billingInterval: "month",
         referenceId: orgA,
         status: "active",
+        seats: 1,
       })
+      await expect(
+        call(
+          appRouter.organization.proEntitlement,
+          { slug: slugA },
+          { context }
+        )
+      ).resolves.toEqual({ proIncluded: false })
+      await expect(
+        call(
+          appRouter.organization.setProSeatAssignment,
+          { slug: slugA, memberId: `member-${suffix}`, assigned: true },
+          { context }
+        )
+      ).rejects.toMatchObject({ code: "ORGANIZATION_ACCESS_DENIED" })
+      await db
+        .update(member)
+        .set({ role: "owner" })
+        .where(eq(member.id, `member-${suffix}`))
+      await expect(
+        call(
+          appRouter.organization.setProSeatAssignment,
+          { slug: slugA, memberId: `member-${suffix}`, assigned: true },
+          { context }
+        )
+      ).resolves.toEqual({ assigned: true })
       const memberEntitlement = await call(
         appRouter.organization.proEntitlement,
         { slug: slugA },

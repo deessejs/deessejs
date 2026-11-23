@@ -82,6 +82,7 @@ describe("organization billing", () => {
     await expect(
       startOrganizationCheckout({
         organizationId: "org-a",
+        seats: 2,
         successUrl: "https://app.example/acme/settings/billing?billing=success",
         cancelUrl:
           "https://app.example/acme/settings/billing?billing=cancelled",
@@ -91,6 +92,7 @@ describe("organization billing", () => {
       plan: "pro",
       referenceId: "org-a",
       customerType: "organization",
+      seats: 2,
       successUrl: "https://app.example/acme/settings/billing?billing=success",
       cancelUrl: "https://app.example/acme/settings/billing?billing=cancelled",
       disableRedirect: true,
@@ -110,6 +112,7 @@ describe("organization billing", () => {
     await expect(
       startOrganizationCheckout({
         organizationId: "org-b",
+        seats: 1,
         successUrl: "/billing?billing=success",
         cancelUrl: "/billing?billing=cancelled",
       })
