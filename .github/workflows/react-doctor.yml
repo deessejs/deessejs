@@ -31,6 +31,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch pull request base commit for comparison
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
+
       - uses: millionco/react-doctor@v2
         with:
           blocking: warning
