@@ -25,7 +25,7 @@ export default function PricingPage() {
     <>
       <Pricing.JsonLd />
       <Pricing.Hero />
-      <Pricing.LicenseTypes />
+      <Pricing.LicenseTypes proHref={signupHref} />
       <Pricing.TechStack />
       <Pricing.Comparison />
       <Pricing.Personas />

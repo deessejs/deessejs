@@ -22,9 +22,11 @@ import { PriceBlock } from "./price-block"
  */
 export function LicenseCell({
   license,
+  hrefOverride,
   isLast = false,
 }: {
   license: LicenseType
+  hrefOverride?: string | undefined
   isLast?: boolean
 }) {
   const isRecommended = license.recommended === true
@@ -65,7 +67,7 @@ export function LicenseCell({
           </p>
         </header>
 
-        <LicenseBody license={license} />
+        <LicenseBody license={license} hrefOverride={hrefOverride} />
       </Cell>
     </div>
   )
@@ -74,7 +76,13 @@ export function LicenseCell({
 /**
  * Card body shared by Community and Pro.
  */
-function LicenseBody({ license }: { license: LicenseType }) {
+function LicenseBody({
+  license,
+  hrefOverride,
+}: {
+  license: LicenseType
+  hrefOverride?: string | undefined
+}) {
   return (
     <>
       <PriceBlock price={license.price} />
@@ -101,11 +109,11 @@ function LicenseBody({ license }: { license: LicenseType }) {
       <div className="mt-auto pt-2">
         {license.cta.external ? (
           <Button asChild size="lg" variant="outline" className="w-full">
-            <a href={license.cta.href}>{license.cta.label}</a>
+            <a href={hrefOverride ?? license.cta.href}>{license.cta.label}</a>
           </Button>
         ) : (
           <Button asChild size="lg" variant="outline" className="w-full">
-            <Link href={license.cta.href}>{license.cta.label}</Link>
+            <Link href={hrefOverride ?? license.cta.href}>{license.cta.label}</Link>
           </Button>
         )}
       </div>

@@ -7,13 +7,14 @@ import { LicenseCell } from "./license-cell"
  * Agency). Renders the three subscription-priced license types from
  * `LICENSE_TYPES` in declaration order.
  */
-export function LicenseTypes() {
+export function LicenseTypes({ proHref }: { proHref: string }) {
   return (
     <div className="grid grid-cols-1 border-b border-border md:grid-cols-2 md:divide-y-0">
       {LICENSE_TYPES.map((license, index, arr) => (
         <LicenseCell
           key={license.id}
           license={license}
+          hrefOverride={license.id === "pro" ? proHref : undefined}
           isLast={index === arr.length - 1}
         />
       ))}
