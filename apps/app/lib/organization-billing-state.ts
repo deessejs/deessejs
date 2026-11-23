@@ -29,13 +29,11 @@ export function organizationProSeatCapacity(
   now = new Date()
 ): number {
   const qualifyingSubscription = subscriptions.find((subscription) => {
-    if (
-      subscription.plan !== "pro" ||
-      subscription.billingInterval !== "month" ||
-      (subscription.seats ?? 0) < 1 ||
-      subscription.endedAt != null ||
-      (subscription.status !== "active" && subscription.status !== "trialing")
-    ) {
+    if (subscription.plan !== "pro") return false
+    if (subscription.billingInterval !== "month") return false
+    if ((subscription.seats ?? 0) < 1) return false
+    if (subscription.endedAt != null) return false
+    if (subscription.status !== "active" && subscription.status !== "trialing") {
       return false
     }
 
