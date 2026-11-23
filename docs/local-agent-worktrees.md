@@ -60,6 +60,14 @@ pnpm dev:agent cli -- template list
 
 `auth login --no-open` retains normal device authorization, prints the verification URL and user code, waits for approval, and stores its token under the worktree-private CLI home. Keep the one-time code private. The normal path is to open the verification URL in T3 preview and approve while signed in as the intended user. If browser controls cannot complete that path in a local automation check, a test harness may sign in to the local API with a fixture account using the correct local `Origin`, then use the existing authenticated `GET /api/v1/auth/device?user_code=...` claim and `POST /api/v1/auth/device/approve` routes with that same session. This is the normal Better Auth device-authorization flow, not an authorization bypass: do not manufacture sessions or call approval without first authenticating and claiming the request. Keep the code and session cookie in ignored local state and out of logs.
 
+After an authenticated API-backed CLI command, sign out with:
+
+```sh
+pnpm dev:agent cli -- auth logout --json
+```
+
+Successful output reports `localTokenCleared: true`, `serverSignOutSucceeded: true`, and the successful HTTP `serverStatus`. The CLI removes its local auth file even when the server returns a non-success response; in that case `serverSignOutSucceeded` is false, so report server revocation as unconfirmed. A `reason: "no_session"` result means no local token was present and no server sign-out request was made. Check for the auth file's absence without opening or displaying it. Never expose its token or related session values.
+
 ## Tests and database isolation
 
 Run the lightweight launcher regression suite without PostgreSQL:

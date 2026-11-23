@@ -26,7 +26,8 @@ This skill covers functional app and CLI testing.
 4. Inspect the seeded organization and member page after its member and invitation queries settle. Verify visible roles and report any missing UI action as a product limitation. Do not remove fixture members just to test permissions.
 5. Run an API-backed CLI command such as `pnpm dev:agent cli -- organization list` and confirm the returned organization belongs to this worktree. If a CLI session is needed, use the real device-authorization flow and approve it as the same authenticated user. Keep its one-time code private; see the operator guide for the browser path and authenticated local automation fallback.
 6. Run `pnpm test:dev-agent` for deterministic launcher helper tests. Run `pnpm dev:agent test` for the full workspace test suite with a separate worktree-derived disposable database. Never set either test database to the normal seeded development database.
-7. Report the commands and evidence actually observed, plus any browser, credential-handoff, or database limitation. Do not infer a settled UI state from curl or an early document snapshot.
+7. After an authenticated CLI command, run the documented CLI logout command. Confirm the local token is cleared and server sign-out succeeded. Check only the command's status output and whether the worktree auth file remains; never read or display token or session values. Report local cleanup separately if server sign-out is not confirmed.
+8. Report the commands and evidence actually observed, plus any browser, credential-handoff, or database limitation. Do not infer a settled UI state from curl or an early document snapshot.
 
 ## Reference
 
