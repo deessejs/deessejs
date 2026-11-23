@@ -5,17 +5,17 @@ description: Register and configure the DeesseJS Vercel Connectable Account inte
 
 # Connect Vercel
 
-DeesseJS can connect one Vercel account or team to an organization, list projects visible to that installation, and map each imported DeesseJS project to one Vercel project. The connection is read-only. It does not deploy, change Vercel projects, read environment variables, or provision resources.
+DeesseJS can connect one Vercel account or team to an organization, list projects visible to that installation, and map each imported DeesseJS project to one Vercel project. The connection reads project data. It can't deploy, change Vercel projects, read environment variables, or provision resources.
 
 ## Register the integration
 
-Create a Vercel integration for DeesseJS and configure it as a Connectable Account. Enable read access for **Project**, **Team**, and **User**. Project read lists projects, while team and user read identify the connected account. Do not enable write access or deployment, environment-variable, domain, or billing permissions. Set the redirect URL to the callback for each deployed app environment:
+Create a Vercel integration for DeesseJS and configure it as a Connectable Account. Enable read access for **Project**, **Team**, and **User**. Project read lists projects, while team and user read identify the connected account. Don't enable write access or deployment, environment-variable, domain, or billing permissions. Configure the redirect URL to point to the callback for each deployed app environment:
 
 ```text
 {APP_URL}/api/v1/vercel/oauth/callback
 ```
 
-`APP_URL` must be the canonical app origin without a trailing slash. The configured Vercel redirect URL must exactly match the URL sent in the OAuth code exchange. Use the integration's generated client ID, client secret, and slug as server environment variables:
+Set `APP_URL` to the canonical app origin without a trailing slash. Make the Vercel redirect URL match the URL that the server sends in the OAuth code exchange. Use the integration's generated client ID, client secret, and slug as server environment variables:
 
 ```text
 VERCEL_CLIENT_ID=
@@ -23,12 +23,12 @@ VERCEL_CLIENT_SECRET=
 VERCEL_INTEGRATION_SLUG=
 ```
 
-Set these values in the server environments that should offer Vercel connections. Keep them in the deployment provider's secret store. Do not commit credentials or expose them through `NEXT_PUBLIC_*` variables. If any of the three variables is set, all three are required.
+Set these values in each server environment that should offer Vercel connections. Keep them in the deployment provider's secret store. Don't commit credentials or expose them through `NEXT_PUBLIC_*` variables. If you set any of the three variables, set all three.
 
 ## Security and lifecycle
 
-Only organization owners and admins can connect or disconnect Vercel, list Vercel projects, and change project mappings. Members can view connection and mapping details. Each callback uses a short-lived signed state cookie bound to the signed-in user and organization. The state is stored as a hash and consumed once in the database, so a callback replay cannot create another connection.
+Organization owners and admins can connect or disconnect Vercel, list Vercel projects, and change project mappings. Members can view connection and mapping details. Each callback uses a short-lived signed state cookie bound to the signed-in user and organization. The server stores a hash of the state and consumes it once in the database, so a callback replay can't create another connection.
 
-DeesseJS stores the Vercel integration configuration ID and account/team identifiers. It does not store the Vercel access token: each server-side Vercel request obtains a short-lived token. Provider credentials never go to the browser.
+DeesseJS stores the Vercel integration configuration ID and account/team identifiers. It doesn't store the Vercel access token. The server requests a short-lived token from Vercel for each API call. Provider credentials never go to the browser.
 
-Disconnecting removes the local connection and all project mappings. It does not uninstall the integration from Vercel. To revoke Vercel's installation access as well, uninstall DeesseJS from the Vercel dashboard. If Vercel access is revoked or disabled, project listing and mapping requests fail and the account must be reconnected.
+Disconnecting removes the local connection and all project mappings. It doesn't uninstall the integration from Vercel. To revoke Vercel's installation access as well, uninstall DeesseJS from the Vercel dashboard. If an admin revokes or disables Vercel access, project listing and mapping requests fail. Reconnect the account to restore access.

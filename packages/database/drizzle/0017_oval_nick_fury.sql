@@ -30,7 +30,7 @@ CREATE TABLE "vercel_project_mapping" (
 --> statement-breakpoint
 ALTER TABLE "vercel_oauth_state" ADD CONSTRAINT "vercel_oauth_state_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vercel_oauth_state" ADD CONSTRAINT "vercel_oauth_state_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "vercel_organization_connection" ADD CONSTRAINT "vercel_organization_connection_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vercel_organization_connection" ADD CONSTRAINT "vercel_connection_org_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vercel_organization_connection" ADD CONSTRAINT "vercel_organization_connection_linked_by_user_id_user_id_fk" FOREIGN KEY ("linked_by_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vercel_project_mapping" ADD CONSTRAINT "vercel_project_mapping_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vercel_project_mapping" ADD CONSTRAINT "vercel_project_mapping_project_id_github_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."github_project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

@@ -2888,8 +2888,8 @@
         }
       },
       "foreignKeys": {
-        "vercel_organization_connection_organization_id_organization_id_fk": {
-          "name": "vercel_organization_connection_organization_id_organization_id_fk",
+        "vercel_connection_org_fk": {
+          "name": "vercel_connection_org_fk",
           "tableFrom": "vercel_organization_connection",
           "tableTo": "organization",
           "columnsFrom": [

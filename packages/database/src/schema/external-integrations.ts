@@ -1,4 +1,5 @@
 import {
+  foreignKey,
   index,
   pgTable,
   text,
@@ -30,9 +31,7 @@ export const vercelOrganizationConnection = pgTable(
   "vercel_organization_connection",
   {
     id: text("id").primaryKey(),
-    organizationId: text("organization_id")
-      .notNull()
-      .references(() => organization.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").notNull(),
     configurationId: text("configuration_id").notNull(),
     teamId: text("team_id"),
     accountId: text("account_id").notNull(),
@@ -47,6 +46,11 @@ export const vercelOrganizationConnection = pgTable(
       .notNull(),
   },
   (table) => [
+    foreignKey({
+      name: "vercel_connection_org_fk",
+      columns: [table.organizationId],
+      foreignColumns: [organization.id],
+    }).onDelete("cascade"),
     uniqueIndex("vercel_connection_organization_uidx").on(table.organizationId),
     uniqueIndex("vercel_connection_configuration_uidx").on(
       table.configurationId
