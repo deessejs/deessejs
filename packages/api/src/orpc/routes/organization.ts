@@ -251,7 +251,7 @@ export const setProSeatAssignment = base
         .limit(1)
       if (!membership) throw new ORPCError("NOT_FOUND")
 
-      const [activeSubscription] = await tx
+      const subscriptions = await tx
         .select({
           plan: subscription.plan,
           status: subscription.status,
@@ -263,7 +263,10 @@ export const setProSeatAssignment = base
         })
         .from(subscription)
         .where(eq(subscription.referenceId, context.organization.id))
-      if (!activeSubscription || !subscriptionGrantsPro(activeSubscription)) {
+      const activeSubscription = subscriptions.find((row) =>
+        subscriptionGrantsPro(row)
+      )
+      if (!activeSubscription) {
         throw new ORPCError("PRECONDITION_FAILED", {
           message: "An active Pro subscription is required to assign seats.",
         })
