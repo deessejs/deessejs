@@ -1,0 +1,6 @@
+.next/
+.turbo/
+apps/web/.env
+apps/web/.env.*
+!apps/web/.env.example
+apps/web/src/server/schema/*.generated.ts
