@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import type { ReactNode } from "react"
@@ -42,16 +43,16 @@ function AdminDashboard({ name, path }: { name: string; path: string }) {
   return (
     <main className="deesse-admin-frame">
       <aside className="deesse-admin-sidebar" aria-label="Admin navigation">
-        <a className="deesse-admin-brand" href="/admin">
+        <Link className="deesse-admin-brand" href="/admin">
           DeesseJS Admin
-        </a>
-        <a
+        </Link>
+        <Link
           className="deesse-admin-nav-link"
           aria-current={path === "/" ? "page" : undefined}
           href="/admin"
         >
           Overview
-        </a>
+        </Link>
       </aside>
       <section className="deesse-admin-content">
         <header className="deesse-admin-header">
@@ -80,7 +81,7 @@ function AccessDenied() {
         <p className="deesse-admin-eyebrow">403</p>
         <h1>Admin access required</h1>
         <p>Your account is signed in but does not have the admin role.</p>
-        <a href="/">Return to the application</a>
+        <Link href="/">Return to the application</Link>
       </section>
     </main>
   )
