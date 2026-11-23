@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { logoutCommand } from "../../../src/commands/auth/logout.js"
 
@@ -88,14 +88,25 @@ describe("deesse auth logout", () => {
     await fake?.close()
     fake = undefined
     delete process.env.DEESSEJS_API_URL
+    vi.restoreAllMocks()
   })
 
   it("exits 0 silently when no auth.json exists", async () => {
     const home = join(tmpdir(), `cli-test-${Date.now()}-logout-empty`)
     await withFakeHome(home, async () => {
+      const stdout = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true)
       expect(existsSync(join(home, ".deessejs", "auth.json"))).toBe(false)
       await runLogout(["node", "auth", "logout", "--json"])
       expect(fake?.state.counters.signOutRequests).toBe(0)
+      expect(JSON.parse(String(stdout.mock.calls[0]?.[0]))).toEqual({
+        ok: true,
+        reason: "no_session",
+        localTokenCleared: false,
+        serverSignOutSucceeded: null,
+        serverStatus: null,
+      })
     })
     rmSync(home, { recursive: true, force: true })
   })
@@ -103,11 +114,21 @@ describe("deesse auth logout", () => {
   it("clears the local file when sign-out succeeds", async () => {
     const home = join(tmpdir(), `cli-test-${Date.now()}-logout-ok`)
     await withFakeHome(home, async () => {
+      const stdout = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true)
       seedAuth(home, "tok_test_seed")
       expect(existsSync(join(home, ".deessejs", "auth.json"))).toBe(true)
       await runLogout(["node", "auth", "logout", "--json"])
       expect(existsSync(join(home, ".deessejs", "auth.json"))).toBe(false)
       expect(fake?.state.counters.signOutRequests).toBe(1)
+      expect(fake?.state.lastSignOutBody).toEqual({})
+      expect(JSON.parse(String(stdout.mock.calls[0]?.[0]))).toEqual({
+        ok: true,
+        localTokenCleared: true,
+        serverSignOutSucceeded: true,
+        serverStatus: 200,
+      })
     })
     rmSync(home, { recursive: true, force: true })
   })
@@ -115,6 +136,9 @@ describe("deesse auth logout", () => {
   it("clears the local file even when the server returns an error", async () => {
     const home = join(tmpdir(), `cli-test-${Date.now()}-logout-err`)
     await withFakeHome(home, async () => {
+      const stdout = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true)
       seedAuth(home, "tok_test_seed")
       fake?.setBehaviour({ serverErrors: true })
       await runLogout(["node", "auth", "logout", "--json"])
@@ -124,6 +148,13 @@ describe("deesse auth logout", () => {
       // The server was hit once, even though it returned
       // 500. There is no retry, no second call.
       expect(fake?.state.counters.signOutRequests).toBe(1)
+      expect(fake?.state.lastSignOutBody).toEqual({})
+      expect(JSON.parse(String(stdout.mock.calls[0]?.[0]))).toEqual({
+        ok: true,
+        localTokenCleared: true,
+        serverSignOutSucceeded: false,
+        serverStatus: 500,
+      })
     })
     rmSync(home, { recursive: true, force: true })
   })
