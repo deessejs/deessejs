@@ -25,6 +25,13 @@ const api = new Hono<ApiEnv>().basePath(API_BASE_PATH)
 api.onError(onApiError)
 api.use("*", requestId())
 api.use("*", secureHeaders())
+const devAgentWorktreeId = process.env.DEV_AGENT_WORKTREE_ID
+if (process.env.NODE_ENV === "development" && devAgentWorktreeId) {
+  api.use("*", (c, next) => {
+    c.header("X-Deesse-Worktree", devAgentWorktreeId)
+    return next()
+  })
+}
 // CORS allowlist — same shape as better-auth's `allowedHosts` via
 // `@workspace/auth/host-allowlist`. The function form echoes the
 // requesting `Origin` header when the host is permitted (required

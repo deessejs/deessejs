@@ -65,7 +65,25 @@ export function loadDotenvSnapshot(
 ): EnvSnapshot {
   if (cachedSnapshot) return cachedSnapshot
 
-  const nodeEnv = process.env.NODE_ENV ?? "development"
+  cachedSnapshot = loadDotenvSnapshotFrom(repoRoot, process.env)
+  return cachedSnapshot
+}
+
+/**
+ * Build an environment snapshot without mutating process.env. The local
+ * agent launcher passes the complete allowed worktree environment, so its
+ * child processes must not fill unset values from root dotenv files.
+ */
+export function loadDotenvSnapshotFrom(
+  repoRoot: string,
+  processEnvironment: NodeJS.ProcessEnv
+): EnvSnapshot {
+  const snapshot: EnvSnapshot = { ...processEnvironment }
+  if (processEnvironment.DEV_AGENT_LOCAL_RUNTIME === "true") {
+    return snapshot
+  }
+
+  const nodeEnv = processEnvironment.NODE_ENV ?? "development"
   const isTest = nodeEnv === "test"
 
   const filenames: string[] = []
@@ -75,8 +93,6 @@ export function loadDotenvSnapshot(
   }
   filenames.push(`.env.${nodeEnv}`)
   filenames.push(`.env`)
-
-  const snapshot: EnvSnapshot = {}
 
   // Files are read in ascending precedence order: later files override
   // earlier ones. `dotenv.parse` does NOT mutate any external state.
@@ -89,27 +105,7 @@ export function loadDotenvSnapshot(
     }
   }
 
-  // Fallback to the live process.env. The deployment platform (Vercel,
-  // CI, the host shell) injects runtime values via process.env that do
-  // not appear in any .env file. Without this fallback, the snapshot
-  // would only see values that exist on disk and would miss the
-  // process-level configuration that production environments rely on
-  // (DATABASE_URL, BETTER_AUTH_SECRET, etc.).
-  //
-  // Precedence (first wins, consistent with Next.js docs):
-  //   1. .env.{NODE_ENV}.local
-  //   2. .env.local
-  //   3. .env.{NODE_ENV}
-  //   4. .env
-  //   5. process.env  ← this fallback
-  for (const [key, value] of Object.entries(process.env)) {
-    if (snapshot[key] === undefined && value !== undefined) {
-      snapshot[key] = value
-    }
-  }
-
-  cachedSnapshot = snapshot
-  return cachedSnapshot
+  return snapshot
 }
 
 /**

@@ -7,6 +7,26 @@ import { clearAuth, readAuth } from "../../lib/auth/store/store.js"
 import { internal } from "../../errors/index.js"
 import { printJson } from "../../output/index.js"
 
+function reportLogoutOutcome(
+  json: boolean,
+  serverSignOutSucceeded: boolean,
+  serverStatus: number
+): void {
+  if (json) {
+    printJson({
+      ok: true,
+      localTokenCleared: true,
+      serverSignOutSucceeded,
+      serverStatus,
+    })
+    return
+  }
+
+  console.log(
+    pc.green(serverSignOutSucceeded ? "✓ signed out" : "✓ local token cleared")
+  )
+}
+
 /**
  * deesse auth logout.
  *
@@ -39,7 +59,13 @@ export const logoutCommand = new Command("logout")
     const stored = readAuth()
     if (!stored) {
       if (json) {
-        printJson({ ok: true, reason: "no_session" })
+        printJson({
+          ok: true,
+          reason: "no_session",
+          localTokenCleared: false,
+          serverSignOutSucceeded: null,
+          serverStatus: null,
+        })
       }
       return
     }
@@ -49,34 +75,27 @@ export const logoutCommand = new Command("logout")
       const res = await bearerFetch("sign-out", stored.access_token, {
         method: "POST",
         headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
       })
-      // We deliberately do NOT throw on a non-2xx here:
-      // the local cache cleanup is the user-facing
-      // outcome. A server-side failure (e.g. token
-      // already revoked) is logged but the local file
-      // is cleared regardless. The user's machine is
-      // now in a "no session" state either way.
-      if (res.status !== 200 && res.status !== 204) {
-        spinner?.stop()
-        if (!json) {
-          console.log(
-            pc.yellow(
-              `Server returned HTTP ${res.status} on sign-out; clearing the local token file anyway.`
-            )
+      const serverSignOutSucceeded = res.ok
+      // Local credentials are cleared even when the server cannot
+      // revoke the session. Report those outcomes separately.
+      spinner?.stop()
+      if (!serverSignOutSucceeded && !json) {
+        console.log(
+          pc.yellow(
+            `Server returned HTTP ${res.status} on sign-out; server sign-out was not confirmed.`
           )
-        }
-      } else {
-        spinner?.stop()
+        )
       }
       clearAuth()
-      if (json) {
-        printJson({ ok: true })
-      } else {
-        console.log(pc.green("✓ signed out"))
-      }
+      reportLogoutOutcome(json, serverSignOutSucceeded, res.status)
     } catch (e) {
       spinner?.stop()
       clearAuth()
-      throw internal(e instanceof Error ? e.message : String(e))
+      const detail = e instanceof Error ? e.message : String(e)
+      throw internal(
+        `Server sign-out was not confirmed. The local token was cleared. ${detail}`
+      )
     }
   })
