@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@deesse-admin-example/ui/components",
+    "utils": "@deesse-admin-example/ui/lib/utils",
+    "ui": "@deesse-admin-example/ui/components",
+    "lib": "@deesse-admin-example/ui/lib",
+    "hooks": "@deesse-admin-example/ui/hooks"
+  }
+}
