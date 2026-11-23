@@ -2,7 +2,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import type { ComponentType, ReactNode } from "react"
-import type { DeesseAdminPageContext, DeesseAdminPageRegistration } from "deesse"
+import { normalizeAdminPath, resolveAdminPage, type AdminConfig, type AdminPageContext } from "./index.js"
 import { resolveAdminAccess } from "./access.js"
 
 type AdminSession = {
@@ -16,17 +16,18 @@ type AdminRuntime = {
       getSession: (input: { headers: Headers }) => Promise<AdminSession | null>
     }
   }
-  admin: { pages: readonly DeesseAdminPageRegistration[] }
 }
 
 export type AdminPageProps = {
   runtime: AdminRuntime
+  config: AdminConfig
   path?: string
   signInPath?: string
 }
 
 export async function AdminPage({
   runtime,
+  config,
   path = "/",
   signInPath = "/",
 }: AdminPageProps): Promise<ReactNode> {
@@ -37,14 +38,14 @@ export async function AdminPage({
   if (access === "unauthenticated") redirect(signInPath)
   if (access === "forbidden" || !session) return <AccessDenied />
 
-  const currentPath = normalizePath(path)
-  const page = runtime.admin.pages.find((item) => normalizePath(item.path) === currentPath)
+  const currentPath = normalizeAdminPath(path)
+  const page = resolveAdminPage(config, currentPath)
   if (!page) notFound()
 
   if (page.authorize) {
     const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost"
     const protocol = requestHeaders.get("x-forwarded-proto") ?? "http"
-    const context: DeesseAdminPageContext = {
+    const context: AdminPageContext = {
       user: session.user,
       session: session.session,
       request: new Request(`${protocol}://${host}/admin/${currentPath}`, { headers: requestHeaders }),
@@ -59,19 +60,11 @@ export async function AdminPage({
     <AdminDashboard
       name={session.user.name ?? "Administrator"}
       path={currentPath}
-      pages={runtime.admin.pages}
+      pages={config.pages}
       title={page.title}
       component={page.component}
     />
   )
-}
-
-function normalizePath(path: string): string {
-  if (path === "/") return ""
-  let normalized = path
-  while (normalized.startsWith("/")) normalized = normalized.slice(1)
-  while (normalized.endsWith("/")) normalized = normalized.slice(0, -1)
-  return normalized
 }
 
 function AdminDashboard({
@@ -83,7 +76,7 @@ function AdminDashboard({
 }: {
   name: string
   path: string
-  pages: readonly DeesseAdminPageRegistration[]
+  pages: AdminConfig["pages"]
   title: string
   component: unknown
 }) {

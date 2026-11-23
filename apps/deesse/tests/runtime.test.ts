@@ -2,7 +2,7 @@ import { memoryAdapter } from "@better-auth/memory-adapter"
 import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import { os, type RouterClient } from "@orpc/server"
-import { admin, username } from "better-auth/plugins"
+import { username } from "better-auth/plugins"
 import { Hono } from "hono"
 import { z } from "zod"
 import { describe, expect, it, vi } from "vitest"
@@ -236,25 +236,22 @@ describe("Deesse runtime composition", () => {
     expect(initializeSchema).not.toHaveBeenCalled()
   })
 
-  it("merges app and plugin Better Auth server plugins into the owned instance", () => {
+  it("composes generic Better Auth server plugins into the owned instance", () => {
     const database = {
       database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
       authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
     } satisfies DatabaseAdapter
-    const contributing = plugin({ id: "admin-extension", handler: () => ({ auth: { serverPlugins: [admin()] } }) })
+    const contributing = plugin({ id: "auth-extension", handler: () => ({ auth: { serverPlugins: [username()] } }) })
     const app = createDeesse({
       database,
       auth: {
         baseURL: "http://localhost",
         secret: "deesse-auth-contribution-secret-long-enough",
-        plugins: [username()],
       },
       plugins: [contributing()],
     })
-    expect(app.auth.options.plugins?.map(({ id }) => id)).toContain("username")
-    expect(app.auth.options.plugins?.map(({ id }) => id)).toContain("admin")
+    expect((app.auth.options.plugins as { id: string }[]).map(({ id }) => id)).toContain("username")
     expect(app.auth.api).toHaveProperty("isUsernameAvailable")
-    expect(app.auth.api).toHaveProperty("listUsers")
   })
 
   it("serializes invalid oRPC input and keeps request users isolated", async () => {

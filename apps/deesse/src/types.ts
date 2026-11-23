@@ -119,24 +119,9 @@ export type PluginContribution = {
     schema?: BetterAuthPlugin["schema"]
   }
   api?: { router: AnyRouter }
-  admin?: { pages: readonly DeesseAdminPageRegistration[] }
   extensions?: Readonly<Record<string, unknown>>
 }
 
-export type DeesseAdminPageContext = {
-  readonly user: DeesseRequestUser
-  readonly session: object
-  readonly request: Request
-  readonly params: Readonly<Record<string, string | string[]>>
-}
-export type DeesseAdminPageRegistration = {
-  readonly path: string
-  readonly title: string
-  readonly component: unknown
-  readonly group?: string
-  readonly order?: number
-  readonly authorize?: (context: DeesseAdminPageContext) => "allow" | "unauthenticated" | "forbidden" | Promise<"allow" | "unauthenticated" | "forbidden">
-}
 
 export type PluginDefinition<
   TSchema extends ZodType,
@@ -228,15 +213,9 @@ export type DeessePluginContributionRegistry<TPlugins extends readonly AnyPlugin
     readonly schema: DeesseAuthSchema<TPlugins>
   }
   readonly api: PluginRouters<TPlugins>
-  readonly admin: { readonly pages: readonly ComposedAdminPages<TPlugins>[] }
   readonly extensions: MergeContributionObjects<ExtensionContribution<ContributionOf<TPlugins>>>
 }
 
-type PluginAdminPages<TPlugin> = TPlugin extends { definition: { handler: (...args: never[]) => infer TContribution } }
-  ? TContribution extends { admin: { pages: readonly (infer TPage)[] } } ? TPage : never
-  : never
-export type ComposedAdminPages<TPlugins extends readonly AnyPlugin[]> =
-  TPlugins[number] extends infer TPlugin ? PluginAdminPages<TPlugin> : never
 
 export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
   (TApi extends { router: infer TRouter extends AnyRouter } ? TRouter : Record<never, never>) & PluginRouters<TPlugins>
@@ -260,7 +239,6 @@ export type DeesseInstance<
   readonly database: DeesseDatabaseService<ComposedDatabaseSchema<TAdapter, TPlugins>, CapabilitiesOf<TAdapter>>
   readonly auth: TAuth
   readonly api: { readonly router: TApiRouter }
-  readonly admin: { readonly pages: readonly ComposedAdminPages<TPlugins>[] }
   readonly handler: DeesseFetchHandler
 }
 

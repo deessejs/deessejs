@@ -1,12 +1,14 @@
 import "dotenv/config"
 import { os } from "@orpc/server"
 import { createDeesse } from "deesse"
+import { admin } from "@deessejs/admin"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import { drizzleAdapter } from "@deessejs/drizzle-adapter"
 import * as authSchema from "./src/server/database/schema/auth.ts"
 import * as deesseSchema from "./src/server/database/schema/deesse.ts"
-import { plugins } from "./plugins/index.ts"
+import { postsAdminPages } from "./plugins/posts/admin/page.tsx"
+import { postsPlugin } from "./plugins/posts.ts"
 
 const client = postgres(
   process.env.DATABASE_URL ??
@@ -18,6 +20,7 @@ const client = postgres(
 )
 
 const database = drizzle(client, { schema: { ...authSchema, ...deesseSchema } })
+export const adminConfig = admin({ pages: [...postsAdminPages] })
 
 export const deesse = createDeesse({
   database: drizzleAdapter(database),
@@ -32,5 +35,5 @@ export const deesse = createDeesse({
       health: os.handler(() => ({ status: "ok" as const })),
     }),
   },
-  plugins: [...plugins],
+  plugins: [postsPlugin(), adminConfig.plugin],
 })

@@ -1,5 +1,5 @@
 import { AdminPage } from "@deessejs/admin/next"
-import { deesse } from "@deesse-config"
+import { adminConfig, deesse } from "@deesse-config"
 
 export default async function AdminRoute({
   params,
@@ -7,5 +7,5 @@ export default async function AdminRoute({
   params: Promise<{ slug?: string[] }>
 }) {
   const { slug } = await params
-  return <AdminPage runtime={deesse} path={slug?.join("/") ?? "/"} signInPath="/" />
+  return <AdminPage runtime={deesse} config={adminConfig} path={slug?.join("/") ?? "/"} signInPath="/" />
 }

@@ -2,7 +2,7 @@
 
 This private example keeps the existing `next-shadcn-monorepo` example intact and adds the `@deessejs/admin` package to a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
 
-The app registers `admin()` beside the posts plugin in its single Deesse runtime. The posts plugin statically contributes a nested Posts page, while the admin plugin contributes the Overview root page. A single optional catch-all Server Component serves `/admin` and `/admin/posts`; `AdminPage` resolves both from the composed runtime registry, guards each route with the shared Better Auth session and `admin` role, and uses Next.js `notFound()` for unknown paths. The normal app shell still demonstrates sign-up, sign-in, and the typed posts API.
+The app composes `postsPlugin()` and the admin package's Better Auth plugin into one Deesse runtime. The posts feature plugin stays admin-agnostic; its optional adapter at `plugins/posts/admin/page.tsx` exports statically included page definitions that the application supplies to `admin({ pages })`. The application exports that admin config beside the runtime for the optional catch-all Server Component, which serves `/admin` and `/admin/posts`. The admin package owns page matching, navigation, unknown-path not-found behavior, and server-side session and role checks. The normal app shell still demonstrates sign-up, sign-in, and the typed posts API.
 
 ## Requirements
 

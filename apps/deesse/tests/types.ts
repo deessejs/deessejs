@@ -94,15 +94,6 @@ const contextualRouter = contextualOs.router({
   }),
 })
 const contextualApp = createDeesse({ database, auth, api: { router: contextualRouter } })
-const ReportsAdminPage = () => "reports"
-const reportsAdminPlugin = plugin({
-  id: "reports-admin",
-  requires: ["admin"] as const,
-  handler: () => ({
-    admin: { pages: [{ path: "reports", title: "Reports", component: ReportsAdminPage }] as const },
-  }),
-})
-const adminApp = createDeesse({ database, auth, plugins: [reportsAdminPlugin()] as const })
 const noConfigRegistration = noConfigPlugin()
 const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>
 const app = createDeesse(config)
@@ -131,9 +122,6 @@ type DatabaseAdapterShapeExact = Assert<Equal<keyof DeesseDatabaseAdapter<typeof
 type ContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
 type InferredPluginRouterOutputExact = Assert<Equal<InferRouterOutputs<typeof inferredPluginRouter>["articleContext"], { email: string | undefined; service: true }>>
 type ContextualRouterKeysExact = Assert<Equal<keyof typeof contextualApp.api.router, "articleById">>
-type AdminPagePathExact = Assert<Equal<typeof adminApp.admin.pages[number]["path"], "reports">>
-type AdminPageTitleExact = Assert<Equal<typeof adminApp.admin.pages[number]["title"], "Reports">>
-type AdminPageComponentExact = Assert<Equal<typeof adminApp.admin.pages[number]["component"], typeof ReportsAdminPage>>
 type NoConfigArgsOmitted = Assert<Equal<keyof typeof noConfigRegistration, "id" | "definition">>
 type NoConfigContributionExact = Assert<Equal<keyof ReturnType<typeof noConfigRegistration.definition.handler>["database"]["schema"], "noConfig">>
 type NoConfigRequiresExact = Assert<Equal<typeof noConfigRegistration.definition.requires, readonly ["feature"]>>
@@ -289,8 +277,8 @@ const usernameResponse = await usernameAvailable
 const availability: boolean | undefined = usernameResponse.data?.available
 const clientTeamCode: string = client.auth.$Infer.Session.user.teamCode
 const clientUsername: ReturnType<typeof client.auth.useSession> = client.auth.useSession()
-const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "admin" })
+const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "member" })
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [parsedCount, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, minimalSessionUserId, organizationPermission, incompatibleDashboardMetric]
-void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, AdminPagePathExact, AdminPageTitleExact, AdminPageComponentExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, MinimalClientApiExact, ClientAuthExact, BuiltInAuthExact, DeesseServerKeysExact, DeesseServerRouterExact, EmptyRouterExact, RegistrationArgsExact, RawArgsExact, ParsedHandlerArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])
+void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, MinimalClientApiExact, ClientAuthExact, BuiltInAuthExact, DeesseServerKeysExact, DeesseServerRouterExact, EmptyRouterExact, RegistrationArgsExact, RawArgsExact, ParsedHandlerArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])

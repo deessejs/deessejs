@@ -1,8 +1,6 @@
 import { ORPCError } from "@orpc/server"
-import { adminPage } from "@deessejs/admin"
 import { createPluginApi, plugin } from "deesse"
 import { z } from "zod"
-import { PostsAdminPage } from "./posts-admin-page.ts"
 
 export const postsSchema = {
   posts: {
@@ -42,12 +40,8 @@ const postsRouter = postsRpc.router({
 
 export const postsPlugin = plugin({
   id: "posts",
-  requires: ["admin"],
   handler: () => ({
     database: { schema: postsSchema },
     api: { router: postsRouter },
-    admin: {
-      pages: [adminPage({ path: "posts", title: "Posts", component: PostsAdminPage })],
-    },
   }),
 })
