@@ -30,7 +30,7 @@
     "@better-auth/drizzle-adapter": "catalog:"
   },
   "peerDependencies": {
-    "deesse": "^0.0.0",
+    "deesse": "^0.2.13 || ^0.3.0",
     "better-auth": "catalog:",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9"

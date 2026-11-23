@@ -1,6 +1,6 @@
 {
   "name": "deesse",
-  "version": "0.0.0",
+  "version": "0.2.13",
   "description": "DeesseJS server framework core and typed React client.",
   "license": "MIT",
   "keywords": ["deessejs", "framework", "hono", "better-auth", "orpc"],
