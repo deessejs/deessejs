@@ -2,7 +2,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import type { ComponentType, ReactNode } from "react"
-import { normalizeAdminPath, resolveAdminPage, type AdminConfig, type AdminPageContext } from "./index.js"
+import { admin, normalizeAdminPath, resolveAdminPage, type AdminPageContext, type AdminPluginOutput } from "./index.js"
 import { resolveAdminAccess } from "./access.js"
 
 type AdminSession = {
@@ -16,21 +16,25 @@ type AdminRuntime = {
       getSession: (input: { headers: Headers }) => Promise<AdminSession | null>
     }
   }
+  plugins: { get(id: typeof admin.definition.id): AdminPluginOutput | undefined }
 }
 
 export type AdminPageProps = {
   runtime: AdminRuntime
-  config: AdminConfig
   path?: string
   signInPath?: string
 }
 
 export async function AdminPage({
   runtime,
-  config,
   path = "/",
   signInPath = "/",
 }: AdminPageProps): Promise<ReactNode> {
+  const adminOutput = runtime.plugins.get(admin.definition.id)
+  if (!adminOutput || !Array.isArray(adminOutput.pages)) {
+    throw new Error(`AdminPage requires the ${admin.definition.id} plugin in the Deesse runtime.`)
+  }
+
   const requestHeaders = await headers()
   const session = await runtime.auth.api.getSession({ headers: requestHeaders })
   const access = resolveAdminAccess(session?.user ?? null)
@@ -39,7 +43,7 @@ export async function AdminPage({
   if (access === "forbidden" || !session) return <AccessDenied />
 
   const currentPath = normalizeAdminPath(path)
-  const page = resolveAdminPage(config, currentPath)
+  const page = resolveAdminPage(adminOutput.pages, currentPath)
   if (!page) notFound()
 
   if (page.authorize) {
@@ -60,7 +64,7 @@ export async function AdminPage({
     <AdminDashboard
       name={session.user.name ?? "Administrator"}
       path={currentPath}
-      pages={config.pages}
+      pages={adminOutput.pages}
       title={page.title}
       component={page.component}
     />
@@ -76,7 +80,7 @@ function AdminDashboard({
 }: {
   name: string
   path: string
-  pages: AdminConfig["pages"]
+  pages: AdminPluginOutput["pages"]
   title: string
   component: unknown
 }) {

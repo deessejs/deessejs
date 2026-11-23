@@ -20,7 +20,7 @@ const client = postgres(
 )
 
 const database = drizzle(client, { schema: { ...authSchema, ...deesseSchema } })
-export const adminConfig = admin({ pages: [...postsAdminPages] })
+const adminPlugin = admin({ pages: [...postsAdminPages] })
 
 export const deesse = createDeesse({
   database: drizzleAdapter(database),
@@ -35,5 +35,5 @@ export const deesse = createDeesse({
       health: os.handler(() => ({ status: "ok" as const })),
     }),
   },
-  plugins: [postsPlugin(), adminConfig.plugin],
+  plugins: [postsPlugin(), adminPlugin],
 })

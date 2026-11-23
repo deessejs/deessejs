@@ -122,11 +122,13 @@ export function createRuntime(options: RuntimeOptions): {
   database: RuntimeOptions["database"]["database"]
   auth: unknown
   api: { router: AnyRouter }
+  plugins: { get(id: string): unknown }
   handler: DeesseFetchHandler
 } {
   const plugins = orderedPlugins(options.plugins ?? [])
   const parsedPlugins = plugins.map((item) => ({ item, args: parsePluginArgs(item) }))
   const contributions = parsedPlugins.map(({ item, args }) => ({ item, contribution: contributionOf(item, args) }))
+  const outputById = new Map(contributions.map(({ item, contribution }) => [item.id, Object.freeze({ ...contribution })]))
   const pluginRouters = Object.fromEntries(contributions.flatMap(({ item, contribution }) =>
     contribution.api?.router ? [[item.id, contribution.api.router]] : []))
   const applicationRouter = options.api?.router ?? {}
@@ -160,6 +162,7 @@ export function createRuntime(options: RuntimeOptions): {
     database: options.database.database,
     auth: auth as unknown,
     api: { router },
+    plugins: Object.freeze({ get: (id: string) => outputById.get(id) }),
     handler: async (request) => app.fetch(request),
   }
 }

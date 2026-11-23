@@ -1,6 +1,7 @@
 import { admin as betterAuthAdmin } from "better-auth/plugins"
 import type { ComponentType } from "react"
-import { plugin, type NoArgsRegistration, type PluginContribution } from "deesse"
+import { plugin, type PluginContribution, type PluginDefinition } from "deesse"
+import { z } from "zod"
 import { AdminOverview } from "./overview.js"
 
 export type AdminPageAccess = "allow" | "unauthenticated" | "forbidden"
@@ -13,33 +14,54 @@ export type AdminPageContext = {
 }
 
 export type AdminPageDefinition = {
-  path: string
-  title: string
-  component: ComponentType
-  group?: string
-  order?: number
-  authorize?: (context: AdminPageContext) => AdminPageAccess | Promise<AdminPageAccess>
+  readonly path: string
+  readonly title: string
+  readonly component: ComponentType
+  readonly group?: string
+  readonly order?: number
+  readonly authorize?: (context: AdminPageContext) => AdminPageAccess | Promise<AdminPageAccess>
 }
 
 export function adminPage<TPage extends AdminPageDefinition>(page: TPage): TPage {
   return page
 }
 
-const definition: { id: "admin"; handler: () => PluginContribution } = {
+const adminOptionsSchema = z.object({
+  pages: z.array(z.custom<AdminPageDefinition>()).default([]),
+})
+
+function composePages(configuredPages: readonly AdminPageDefinition[]): readonly AdminPageDefinition[] {
+  const pages = [
+    adminPage({ path: "", title: "Overview", component: AdminOverview }),
+    ...configuredPages.map((page) => ({ ...page, path: normalizeAdminPath(page.path) })),
+  ]
+  const paths = new Set<string>()
+  for (const page of pages) {
+    if (typeof page.title !== "string" || !page.title.trim() || typeof page.component !== "function") {
+      throw new Error("Invalid admin page definition")
+    }
+    const path = normalizeAdminPath(page.path)
+    if (paths.has(path)) throw new Error(`Duplicate admin page path: ${path || "/"}`)
+    paths.add(path)
+  }
+  return Object.freeze(pages.map((page) => Object.freeze(page)))
+}
+
+const definition: PluginDefinition<
+  typeof adminOptionsSchema,
+  PluginContribution & { readonly pages: readonly AdminPageDefinition[] },
+  readonly [],
+  Readonly<Record<never, never>>
+> & { readonly id: "admin" } = {
   id: "admin",
-  handler: () => ({ auth: { serverPlugins: [betterAuthAdmin()] } }),
-} as const
-
-export type AdminPlugin = NoArgsRegistration<typeof definition>
-
-export type AdminConfig = {
-  readonly plugin: AdminPlugin
-  readonly pages: readonly AdminPageDefinition[]
+  args: adminOptionsSchema,
+  handler: ({ pages }) => ({
+    auth: { serverPlugins: [betterAuthAdmin()] },
+    pages: composePages(pages),
+  }),
 }
 
-export type AdminOptions = {
-  pages?: readonly AdminPageDefinition[]
-}
+export type AdminOptions = z.input<typeof adminOptionsSchema>
 
 export function normalizeAdminPath(path: string): string {
   if (typeof path !== "string" || path.includes("\\") || path.includes("?") || path.includes("#")) {
@@ -54,24 +76,15 @@ export function normalizeAdminPath(path: string): string {
   return normalized
 }
 
-export function resolveAdminPage(config: AdminConfig, path: string): AdminPageDefinition | undefined {
+export function resolveAdminPage(pages: readonly AdminPageDefinition[], path: string): AdminPageDefinition | undefined {
   const normalizedPath = normalizeAdminPath(path)
-  return config.pages.find((page) => normalizeAdminPath(page.path) === normalizedPath)
+  return pages.find((page) => normalizeAdminPath(page.path) === normalizedPath)
 }
 
-export function admin(options: AdminOptions = {}): AdminConfig {
-  const pages = [
-    adminPage({ path: "", title: "Overview", component: AdminOverview }),
-    ...(options.pages ?? []).map((page) => adminPage({ ...page, path: normalizeAdminPath(page.path) })),
-  ]
-  const paths = new Set<string>()
-  for (const page of pages) {
-    if (typeof page.title !== "string" || !page.title.trim() || typeof page.component !== "function") {
-      throw new Error("Invalid admin page definition")
-    }
-    const path = normalizeAdminPath(page.path)
-    if (paths.has(path)) throw new Error(`Duplicate admin page path: ${path || "/"}`)
-    paths.add(path)
-  }
-  return { plugin: plugin(definition)(), pages }
-}
+const createAdminPlugin = plugin(definition)
+
+export type AdminPluginOutput = ReturnType<typeof definition.handler>
+
+export const admin = Object.assign((options: AdminOptions = {}) => {
+  return createAdminPlugin(options)
+}, { definition })

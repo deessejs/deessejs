@@ -4,15 +4,15 @@ import { AdminPage } from "@deessejs/admin/next"
 
 declare const database: DatabaseAdapter
 
-const adminConfig = admin()
+const adminPlugin = admin()
 const runtime = createDeesse({
   database,
   auth: {
     baseURL: "https://example.test",
     secret: "consumer-test-secret-that-is-long-enough",
   },
-  plugins: [adminConfig.plugin],
+  plugins: [adminPlugin],
 })
 
-const page = <AdminPage runtime={runtime} config={adminConfig} path="/" signInPath="/login" />
+const page = <AdminPage runtime={runtime} path="/" signInPath="/login" />
 void page

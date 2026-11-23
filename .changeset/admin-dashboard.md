@@ -1,5 +1,6 @@
 ---
 "@deessejs/admin": minor
+"deesse": minor
 ---
 
-Add the first DeesseJS admin dashboard package with an application-owned page registry and a separate Next.js Tailwind/shadcn example.
+Add the first DeesseJS admin dashboard package and a generic typed runtime accessor for processed plugin outputs.

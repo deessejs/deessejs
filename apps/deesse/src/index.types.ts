@@ -1,13 +1,13 @@
-import type { PluginContribution, PluginDefinition, PluginRegistration, ZodType } from "./types.js"
+import type { PluginDefinition, PluginOutput, PluginRegistration, ZodType } from "./types.js"
 
 export type Definition<
   TSchema extends ZodType,
-  TContribution extends PluginContribution,
+  TContribution extends PluginOutput,
   TRequires extends readonly string[],
   TPoints extends Readonly<Record<string, unknown>>,
 > = PluginDefinition<TSchema, TContribution, TRequires, TPoints>
 
-export type NoArgsRegistration<TDefinition extends { id: string; handler: () => PluginContribution }> = {
+export type NoArgsRegistration<TDefinition extends { id: string; handler: () => PluginOutput }> = {
   id: TDefinition["id"]
   definition: TDefinition
 }

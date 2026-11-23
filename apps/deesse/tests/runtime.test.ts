@@ -14,6 +14,31 @@ type RequestContext = DeesseRequestContext<never, DeesseDatabaseCapabilities, { 
 const base = os.$context<RequestContext>()
 
 describe("Deesse runtime composition", () => {
+  it("retains each processed plugin output by id after one parsed handler call", () => {
+    const handler = vi.fn(({ amount }: { amount: number }) => ({ amount, label: amount.toFixed(2) }))
+    const configured = plugin({
+      id: "configured-output",
+      args: z.object({ amount: z.string().transform(Number) }),
+      handler,
+    })
+    const database = {
+      database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
+      authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    } satisfies DatabaseAdapter
+    const runtime = createDeesse({
+      database,
+      auth: { baseURL: "http://localhost", secret: "deesse-output-test-secret-long-enough" },
+      plugins: [configured({ amount: "12" })],
+    })
+    const output = runtime.plugins.get("configured-output")
+
+    expect(output).toEqual({ amount: 12, label: "12.00" })
+    expect(Object.isFrozen(output)).toBe(true)
+    expect(runtime.plugins.get("unknown-plugin")).toBeUndefined()
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith({ amount: 12 })
+  })
+
   it("runs plugin handlers once and serves public and authenticated oRPC calls through Hono", async () => {
     const identity = base.handler(({ context }) => {
       const transactions: true = context.database.capabilities.transactions
