@@ -8,6 +8,7 @@ import {
   mkdirSync,
   openSync,
   readdirSync,
+  lstatSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -26,7 +27,7 @@ import {
   validateTestDatabaseUrl,
 } from "./dev-agent-env.mjs"
 import {
-  formatFixtureCredentialHandoff,
+  formatFixtureCredentials,
   redactTestOutput,
 } from "./dev-agent-output.mjs"
 
@@ -169,6 +170,15 @@ function readLocalEnv() {
     )
   }
   return values
+}
+
+function isOwnedPrivateFile(fileStat) {
+  return [
+    fileStat.isFile(),
+    !fileStat.isSymbolicLink(),
+    (fileStat.mode & 0o777) === 0o600,
+    typeof process.getuid !== "function" || fileStat.uid === process.getuid(),
+  ].every(Boolean)
 }
 
 function writeLocalEnv() {
@@ -406,7 +416,8 @@ function createDisposableTestDatabase(identity, baseValues) {
       const owner = adminPsql(
         `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${identity.database}';`
       )
-      if (owner === identity.role) adminPsql(`DROP DATABASE ${identity.database};`)
+      if (owner === identity.role)
+        adminPsql(`DROP DATABASE ${identity.database};`)
     }
     if (createdRole) {
       const owner = adminPsql(
@@ -835,7 +846,9 @@ async function reservePort(preferredPort) {
         unlinkSync(lockPath)
       } catch (error) {
         if (error?.code !== "ENOENT") {
-          fail(`Could not release occupied-port reservation ${lockPath}: ${error.message}`)
+          fail(
+            `Could not release occupied-port reservation ${lockPath}: ${error.message}`
+          )
         }
       }
       continue
@@ -935,9 +948,48 @@ async function main() {
     return
   }
   if (command === "credentials") {
+    let credentialFile
+    try {
+      credentialFile = lstatSync(envFile)
+    } catch {
+      fail("Run pnpm dev:agent prepare first.")
+    }
+    if (!isOwnedPrivateFile(credentialFile)) {
+      fail(
+        "Fixture credentials require an owned, mode-0600 local environment file."
+      )
+    }
     const values = readLocalEnv()
     if (!values) fail("Run pnpm dev:agent prepare first.")
-    process.stdout.write(formatFixtureCredentialHandoff(values, worktreeId))
+    const listenAddresses = adminPsql(
+      "SELECT current_setting('listen_addresses');"
+    )
+      .split(",")
+      .map((address) => address.trim())
+    if (
+      listenAddresses.length === 0 ||
+      listenAddresses.some(
+        (address) => !["localhost", "127.0.0.1", "::1"].includes(address)
+      )
+    ) {
+      fail(
+        "Fixture credentials are available only with loopback-only PostgreSQL."
+      )
+    }
+    const databaseOwner = adminPsql(
+      `SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${databaseName}';`
+    )
+    if (databaseOwner !== databaseRole) {
+      fail("Fixture credentials require this worktree's database and owner.")
+    }
+    process.stdout.write(
+      formatFixtureCredentials(values, {
+        worktreeId,
+        root,
+        databaseName,
+        databaseRole,
+      })
+    )
     return
   }
   if (command === "cli") {

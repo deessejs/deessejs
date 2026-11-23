@@ -25,15 +25,15 @@ pnpm dev:agent reset --yes
 pnpm dev:agent clean --yes
 ```
 
-The local files `.env.development.local` and `.local/` hold database credentials, fixture passwords, verification mail, port locks, and CLI state. They are ignored by Git. Do not copy them between worktrees or print their contents.
+The local files `.env.development.local` and `.local/` hold database credentials, fixture passwords, verification mail, port locks, and CLI state. They are ignored by Git. Do not copy them between worktrees or print the env file itself. The credentials command below prints only its allowlisted fixture values.
 
 ## Fixture credentials and browser login
 
 The seeder creates a verified normal owner, a global administrator who is also an organization admin, and a second organization member. The organization slug is `agent-org-<worktree-id>`. Global admin permission comes from the global user role, not the organization role.
 
-`pnpm dev:agent credentials` prints account emails, the organization slug, and a private handoff instruction. It never prints a password. The generated passwords remain in `.env.development.local` with mode `0600`. A human who owns the T3 environment must open that file in a private local editor and enter a selected password directly into the real `/login` form. Do not use `cat`, put the value in a shell command, or include it in a message or screenshot.
+`pnpm dev:agent credentials` prints the usernames and generated passwords for this worktree's normal owner, global administrator, and organization member. It is allowed to print only after validating the owned, non-symlink, mode-0600 `.env.development.local`, `NODE_ENV=development`, exact worktree path and derived database identity, a loopback database URL, loopback-only PostgreSQL listener and correct database owner, local app/auth/API/web/docs URLs, console mail transport, the three expected `example.test` usernames, and generated fixture-password format. It prints no database URL/password, auth secret, or unrelated env-file values. Use it only for the isolated local fixture setup. The fixture passwords are disposable and may appear in captured T3 command output; never use this command with shared or production credentials.
 
-T3 Code's private secret request accepts user-entered secrets and can deliver a one-use reference to compatible tools or a private file for a shell command. The installed preview `type` action accepts literal `text` only; it has no secret-reference or private clipboard input. Its upload action selects a file for a page file input and cannot populate a password field. Therefore shell secret delivery does not provide a safe unattended browser-login path. If a human cannot enter the fixture password directly, mark browser authentication blocked rather than passing the value through browser automation.
+The installed T3 preview `type` action accepts literal text and has no secret-reference or private clipboard input. For these disposable worktree fixtures, it is acceptable to enter the password printed by the guarded credentials command into the real `/login` form with that action. Do not use literal browser input for production, shared, or other non-fixture credentials. T3 Code's private secret request instead accepts a secret through a private card and can deliver a one-use reference to compatible tools or a private file for shell commands; the preview typing action does not accept that reference. The upload action selects a file for a page file input and cannot populate a password field.
 
 The official T3 description of secret requests is in [T3 Code secrets documentation](https://github.com/pingdotgg/t3code/blob/main/docs/user/secrets.md#when-an-agent-asks-for-a-secret). The tool schema available in this environment documents `secretRef` and private-file delivery. The preview tool schema exposes literal text and no secure input counterpart.
 
@@ -43,7 +43,7 @@ Open the app through T3 preview using target kind `environment-port` and the sel
 
 The preview uses `localhost:<port>`. Cookies are scoped to hostname and path, not port, so Better Auth uses a development-only cookie prefix derived from `DEV_AGENT_WORKTREE_ID`. Inspect cookie names and safe attributes only. Never report cookie values or full session JSON.
 
-The organization page and member settings route use the seeded worktree slug. The roster includes owner, admin, and member roles. The current members UI lists the roster and invitation management controls; it does not provide a member-removal action. `/admin/home` is protected by the global user role. Verify admin access and normal-user denial through the real UI when safe credentials are available.
+The organization page and member settings route use the seeded worktree slug. The roster includes owner, admin, and member roles. The current members UI lists the roster and invitation management controls; it does not provide a member-removal action. `/admin/home` is protected by the global user role. Use the guarded fixture command for real UI login checks, and verify admin access and normal-user denial separately.
 
 T3 preview reachability has been exercised with environment-port URLs. Portless and branch-host routing have not been verified or integrated. Do not infer that a branch hostname reaches the browser from local server readiness.
 
@@ -58,7 +58,7 @@ pnpm dev:agent cli -- template list
 
 `organization list` requires an authenticated device-flow session and calls this worktree's API. `template list` is public and calls this worktree's API when the private CLI cache is empty. The namespaced command does not support `--refresh`.
 
-`auth login --no-open` retains normal device authorization, prints the verification URL and user code, waits for approval, and stores its token under the worktree-private CLI home. Do not use an unauthenticated route or bypass authorization. In environments where shell output is captured, the code can appear in tool activity. Do not start this flow unless a human can keep the approval details private and approve as the same signed-in user. The available preview action cannot accept a private secret reference or paste the code without exposing its literal input.
+`auth login --no-open` retains normal device authorization, prints the verification URL and user code, waits for approval, and stores its token under the worktree-private CLI home. Keep the one-time code private. The normal path is to open the verification URL in T3 preview and approve while signed in as the intended user. If browser controls cannot complete that path in a local automation check, a test harness may sign in to the local API with a fixture account using the correct local `Origin`, then use the existing authenticated `GET /api/v1/auth/device?user_code=...` claim and `POST /api/v1/auth/device/approve` routes with that same session. This is the normal Better Auth device-authorization flow, not an authorization bypass: do not manufacture sessions or call approval without first authenticating and claiming the request. Keep the code and session cookie in ignored local state and out of logs.
 
 ## Tests and database isolation
 
@@ -85,7 +85,7 @@ CI runs `pnpm turbo test` and `pnpm test:dev-agent` separately. The local `dev:a
 - Two distinct Git worktrees were previously run at the same time. They used distinct worktree markers, databases, roles, app ports, and cookie prefixes. In one browser profile, switching ports required separate real UI logins; returning to the first worktree retained its session.
 - The authenticated organization-list command returned only its own worktree's organization. The other worktree's public `template list` completed against its own API. This does not prove concurrent authenticated CLI sessions.
 - A second authenticated device-authorization flow was not run concurrently for the second worktree. Multiple simultaneous T3 agents were not tested. Portless or branch-host routing was not tested.
-- Automated browser password entry is not safe with the installed T3 preview action. UI login checks require a human password handoff.
+- The preview typing action records literal input. Use it only with the disposable passwords from this worktree's guarded fixture command, never with shared or production credentials.
 
 These are functional startup and app/CLI checks. Deep security, performance, and architecture auditing are separate work.
 
@@ -95,4 +95,4 @@ These are functional startup and app/CLI checks. Deep security, performance, and
 - If PostgreSQL setup fails, verify loopback-only `listen_addresses`, non-interactive administrator access, and ownership reported by `pnpm dev:agent status`. Do not substitute a remote database.
 - If readiness is missing or its worktree marker differs, do not attach the browser or CLI to that process. Inspect the launcher output and port-lock owner.
 - If the selected port differs from the preferred port, use the URL printed by the launcher and confirm all persisted URLs with `status` and readiness before opening the preview.
-- A successful readiness request does not prove browser forwarding, UI hydration, login, or API-backed CLI authorization. Test each through its actual interface when safe credentials are available.
+- A successful readiness request does not prove browser forwarding, UI hydration, login, or API-backed CLI authorization. Test each through its actual interface with the guarded local fixture credentials.

@@ -7,7 +7,7 @@ import {
   validateTestDatabaseUrl,
 } from "./dev-agent-env.mjs"
 import {
-  formatFixtureCredentialHandoff,
+  formatFixtureCredentials,
   redactTestOutput,
 } from "./dev-agent-output.mjs"
 
@@ -32,7 +32,10 @@ test("port selection replaces stale worktree URLs and adds missing URL values", 
   const result = replaceEnvironmentLines(lines, updates)
 
   for (const [key, value] of Object.entries(updates)) {
-    assert.ok(result.includes(`${key}=${value}`), `${key} follows selected port`)
+    assert.ok(
+      result.includes(`${key}=${value}`),
+      `${key} follows selected port`
+    )
   }
   assert.ok(result.includes("PRIVATE_FIXTURE_VALUE=keep-without-reading"))
 })
@@ -53,7 +56,11 @@ test("test database URLs require the exact worktree-run identity and loopback ho
     "[::1]"
   )
   assert.throws(
-    () => validateTestDatabaseUrl("postgresql://shared:private@remote/db", identity),
+    () =>
+      validateTestDatabaseUrl(
+        "postgresql://shared:private@remote/db",
+        identity
+      ),
     /isolated identity/
   )
   assert.throws(
@@ -70,26 +77,76 @@ test("test database URLs require the exact worktree-run identity and loopback ho
   )
 })
 
-test("fixture credential output names accounts without rendering secrets", () => {
-  const markerPassword = "fixture-password-marker"
-  const markerDeviceCode = "fixture-code-marker"
-  const output = formatFixtureCredentialHandoff(
-    {
-      DEV_AGENT_USER_EMAIL: "owner@example.test",
-      DEV_AGENT_ADMIN_EMAIL: "admin@example.test",
-      DEV_AGENT_MEMBER_EMAIL: "member@example.test",
-      DEV_AGENT_USER_PASSWORD: markerPassword,
-      DEV_AGENT_ADMIN_PASSWORD: markerPassword,
-      DEV_AGENT_MEMBER_PASSWORD: markerPassword,
-      DEV_AGENT_DEVICE_CODE: markerDeviceCode,
-    },
-    "0123456789ab"
-  )
+test("fixture credential command output is restricted to local worktree fixtures", () => {
+  const identity = {
+    worktreeId: "0123456789ab",
+    root: "/tmp/deesse-worktree",
+    databaseName: "deesse_dev_0123456789ab",
+    databaseRole: "deesse_0123456789ab",
+  }
+  const values = {
+    NODE_ENV: "development",
+    DEV_AGENT_WORKTREE_ID: identity.worktreeId,
+    DEV_AGENT_WORKTREE_ROOT: identity.root,
+    DEV_AGENT_DB_NAME: identity.databaseName,
+    DEV_AGENT_DB_ROLE: identity.databaseRole,
+    DEV_AGENT_PORT: "48888",
+    DATABASE_URL: `postgresql://${identity.databaseRole}:db-secret@127.0.0.1:5432/${identity.databaseName}`,
+    BETTER_AUTH_URL: "http://localhost:48888",
+    APP_URL: "http://localhost:48888",
+    API_BASE_URL: "http://localhost:48888",
+    WEB_URL: "http://localhost:48888",
+    DOCS_URL: "http://localhost:48888",
+    NEXT_PUBLIC_APP_URL: "http://localhost:48888",
+    NEXT_PUBLIC_WEB_URL: "http://localhost:48888",
+    NEXT_PUBLIC_DOCS_URL: "http://localhost:48888",
+    NEXT_PUBLIC_API_BASE_URL: "http://localhost:48888",
+    ALLOWED_ORIGINS: "http://localhost:48888",
+    MAIL_TRANSPORT: "console",
+    DEV_AGENT_USER_EMAIL: `agent-${identity.worktreeId}@example.test`,
+    DEV_AGENT_USER_PASSWORD: "owner-fixture-pass-marker-123456",
+    DEV_AGENT_ADMIN_EMAIL: `admin-${identity.worktreeId}@example.test`,
+    DEV_AGENT_ADMIN_PASSWORD: "admin-fixture-pass-marker-123456",
+    DEV_AGENT_MEMBER_EMAIL: `member-${identity.worktreeId}@example.test`,
+    DEV_AGENT_MEMBER_PASSWORD: "member-fixture-pass-marker-12345",
+    DEV_AGENT_DEVICE_CODE: "device-code-marker",
+    PRODUCTION_API_KEY: "never-print-this",
+  }
 
-  assert.equal(output.includes(markerPassword), false)
-  assert.equal(output.includes(markerDeviceCode), false)
-  assert.match(output, /Normal user: owner@example\.test/)
-  assert.match(output, /human must enter a password/)
+  const output = formatFixtureCredentials(values, identity)
+
+  for (const key of [
+    "DEV_AGENT_USER_EMAIL",
+    "DEV_AGENT_USER_PASSWORD",
+    "DEV_AGENT_ADMIN_EMAIL",
+    "DEV_AGENT_ADMIN_PASSWORD",
+    "DEV_AGENT_MEMBER_EMAIL",
+    "DEV_AGENT_MEMBER_PASSWORD",
+  ]) {
+    assert.ok(output.includes(values[key]))
+  }
+  for (const secret of [
+    "db-secret",
+    values.DEV_AGENT_DEVICE_CODE,
+    values.PRODUCTION_API_KEY,
+  ]) {
+    assert.equal(output.includes(secret), false)
+  }
+
+  for (const [key, invalidValue] of [
+    ["NODE_ENV", "production"],
+    ["DATABASE_URL", "postgresql://shared:password@db.example.com/shared"],
+    ["MAIL_TRANSPORT", "resend"],
+    ["DEV_AGENT_DB_NAME", "shared_database"],
+    ["DEV_AGENT_WORKTREE_ROOT", "/another/worktree"],
+    ["APP_URL", "https://app.example.com"],
+  ]) {
+    assert.throws(
+      () =>
+        formatFixtureCredentials({ ...values, [key]: invalidValue }, identity),
+      /local development configuration/
+    )
+  }
 })
 
 test("test log redaction removes fixture passwords and device authorization values", () => {
