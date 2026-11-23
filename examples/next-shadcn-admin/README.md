@@ -2,7 +2,7 @@
 
 This private example keeps the existing `next-shadcn-monorepo` example intact and adds the `@deessejs/admin` package to a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
 
-The app registers `admin()` beside the existing posts plugin in its single Deesse runtime. The `/admin` Server Component passes that runtime to `AdminPage`; the package reads request headers, resolves the Better Auth session, redirects anonymous requests to `/`, and denies signed-in users without the `admin` role. The normal app shell still demonstrates sign-up, sign-in, and the typed posts API. Admin pages are intentionally empty in this first slice.
+The app registers `admin()` beside the posts plugin in its single Deesse runtime. The posts plugin statically contributes a nested Posts page, while the admin plugin contributes the Overview root page. A single optional catch-all Server Component serves `/admin` and `/admin/posts`; `AdminPage` resolves both from the composed runtime registry, guards each route with the shared Better Auth session and `admin` role, and uses Next.js `notFound()` for unknown paths. The normal app shell still demonstrates sign-up, sign-in, and the typed posts API.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ With the server running and the example database migrated, exercise the protecte
 pnpm --filter @deesse-admin-example/web smoke
 ```
 
-The smoke script checks the anonymous redirect, denial for an authenticated non-admin, Better Auth session, and the authenticated Deesse posts API path. No migration runs during server startup.
+The smoke script checks anonymous redirects and authenticated non-admin denial on both the root and nested admin routes, plus the Better Auth session and authenticated Deesse posts API path. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
 
 ## Environment
 

@@ -1,5 +1,6 @@
 ---
 "@deessejs/admin": minor
+"deesse": minor
 ---
 
-Add the first DeesseJS admin dashboard package with a server-side Better Auth role guard and a separate Next.js shadcn example.
+Add the first DeesseJS admin dashboard package with server-composed plugin pages, runtime route resolution, and a separate Next.js Tailwind/shadcn example.

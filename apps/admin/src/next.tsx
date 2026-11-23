@@ -1,19 +1,22 @@
 import Link from "next/link"
 import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import type { ReactNode } from "react"
+import { notFound, redirect } from "next/navigation"
+import type { ComponentType, ReactNode } from "react"
+import type { DeesseAdminPageContext, DeesseAdminPageRegistration } from "deesse"
 import { resolveAdminAccess } from "./access.js"
+
+type AdminSession = {
+  session: object
+  user: { id: string; email: string; role?: unknown; name?: string }
+}
 
 type AdminRuntime = {
   auth: {
     api: {
-      getSession: (input: {
-        headers: Headers
-      }) => Promise<{
-        user: { role?: unknown; name?: string; email?: string }
-      } | null>
+      getSession: (input: { headers: Headers }) => Promise<AdminSession | null>
     }
   }
+  admin: { pages: readonly DeesseAdminPageRegistration[] }
 }
 
 export type AdminPageProps = {
@@ -32,43 +35,93 @@ export async function AdminPage({
   const access = resolveAdminAccess(session?.user ?? null)
 
   if (access === "unauthenticated") redirect(signInPath)
-  if (access === "forbidden") return <AccessDenied />
+  if (access === "forbidden" || !session) return <AccessDenied />
+
+  const currentPath = normalizePath(path)
+  const page = runtime.admin.pages.find((item) => normalizePath(item.path) === currentPath)
+  if (!page) notFound()
+
+  if (page.authorize) {
+    const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost"
+    const protocol = requestHeaders.get("x-forwarded-proto") ?? "http"
+    const context: DeesseAdminPageContext = {
+      user: session.user,
+      session: session.session,
+      request: new Request(`${protocol}://${host}/admin/${currentPath}`, { headers: requestHeaders }),
+      params: {},
+    }
+    const pageAccess = await page.authorize(context)
+    if (pageAccess === "unauthenticated") redirect(signInPath)
+    if (pageAccess === "forbidden") return <AccessDenied />
+  }
 
   return (
-    <AdminDashboard name={session?.user.name ?? "Administrator"} path={path} />
+    <AdminDashboard
+      name={session.user.name ?? "Administrator"}
+      path={currentPath}
+      pages={runtime.admin.pages}
+      title={page.title}
+      component={page.component}
+    />
   )
 }
 
-function AdminDashboard({ name, path }: { name: string; path: string }) {
+function normalizePath(path: string): string {
+  if (path === "/") return ""
+  let normalized = path
+  while (normalized.startsWith("/")) normalized = normalized.slice(1)
+  while (normalized.endsWith("/")) normalized = normalized.slice(0, -1)
+  return normalized
+}
+
+function AdminDashboard({
+  name,
+  path,
+  pages,
+  title,
+  component: PageComponent,
+}: {
+  name: string
+  path: string
+  pages: readonly DeesseAdminPageRegistration[]
+  title: string
+  component: unknown
+}) {
+  const Page = PageComponent as ComponentType
+  const orderedPages = pages.toSorted((left, right) => (left.order ?? 0) - (right.order ?? 0))
+
   return (
-    <main className="deesse-admin-frame">
-      <aside className="deesse-admin-sidebar" aria-label="Admin navigation">
-        <Link className="deesse-admin-brand" href="/admin">
+    <main className="flex min-h-screen bg-background text-foreground">
+      <aside className="flex w-60 shrink-0 flex-col gap-8 border-r border-border bg-card p-5" aria-label="Admin navigation">
+        <Link className="text-sm font-semibold tracking-tight text-card-foreground" href="/admin">
           DeesseJS Admin
         </Link>
-        <Link
-          className="deesse-admin-nav-link"
-          aria-current={path === "/" ? "page" : undefined}
-          href="/admin"
-        >
-          Overview
-        </Link>
+        <nav className="grid gap-1">
+          {orderedPages.map((page) => {
+            const href = page.path ? `/admin/${page.path}` : "/admin"
+            const active = page.path === path
+            return (
+              <Link
+                key={page.path}
+                className={`rounded-md px-3 py-2 text-sm ${active ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                aria-current={active ? "page" : undefined}
+                href={href}
+              >
+                {page.title}
+              </Link>
+            )
+          })}
+        </nav>
       </aside>
-      <section className="deesse-admin-content">
-        <header className="deesse-admin-header">
-          <div>
-            <p className="deesse-admin-eyebrow">Dashboard</p>
-            <h1>Welcome, {name}</h1>
+      <section className="flex min-w-0 flex-1 flex-col gap-8 p-6 md:p-10">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
+          <div className="grid gap-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dashboard</p>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           </div>
-          <span className="deesse-admin-account">
-            Signed in as an administrator
-          </span>
+          <span className="text-sm text-muted-foreground">Signed in as {name}</span>
         </header>
-        <div className="deesse-admin-empty-state">
-          <p className="deesse-admin-eyebrow">Your workspace</p>
-          <h2>Your admin dashboard is ready</h2>
-          <p>Admin pages from your Deesse plugins will appear here.</p>
-        </div>
+        <Page />
       </section>
     </main>
   )
@@ -76,12 +129,16 @@ function AdminDashboard({ name, path }: { name: string; path: string }) {
 
 function AccessDenied() {
   return (
-    <main className="deesse-admin-message">
-      <section>
-        <p className="deesse-admin-eyebrow">403</p>
-        <h1>Admin access required</h1>
-        <p>Your account is signed in but does not have the admin role.</p>
-        <Link href="/">Return to the application</Link>
+    <main className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
+      <section className="grid max-w-lg gap-3 rounded-xl border border-border bg-card p-8 text-card-foreground shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">403</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Admin access required</h1>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Your account is signed in but does not have the admin role.
+        </p>
+        <Link className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline" href="/">
+          Return to the application
+        </Link>
       </section>
     </main>
   )

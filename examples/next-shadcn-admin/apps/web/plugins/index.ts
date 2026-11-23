@@ -1,3 +1,4 @@
+import { admin } from "@deessejs/admin"
 import { postsPlugin } from "./posts.ts"
 
-export const plugins = [postsPlugin()] as const
+export const plugins = [admin(), postsPlugin()] as const

@@ -3,7 +3,6 @@ import { os } from "@orpc/server"
 import { createDeesse } from "deesse"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
-import { admin } from "@deessejs/admin"
 import { drizzleAdapter } from "@deessejs/drizzle-adapter"
 import * as authSchema from "./src/server/database/schema/auth.ts"
 import * as deesseSchema from "./src/server/database/schema/deesse.ts"
@@ -33,5 +32,5 @@ export const deesse = createDeesse({
       health: os.handler(() => ({ status: "ok" as const })),
     }),
   },
-  plugins: [...plugins, admin()],
+  plugins: [...plugins],
 })

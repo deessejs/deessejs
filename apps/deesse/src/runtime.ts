@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth"
 import { RPCHandler } from "@orpc/server/fetch"
 import { Hono } from "hono"
 import { DEESSE_AUTH_PATH, DEESSE_RPC_PATH } from "./paths.js"
-import type { AnyRouter, DeesseDatabaseSchema, DeesseFetchHandler, DeesseFieldDefinition, DeesseModelDefinition, PluginContribution } from "./types.js"
+import type { AnyRouter, DeesseAdminPageRegistration, DeesseDatabaseSchema, DeesseFetchHandler, DeesseFieldDefinition, DeesseModelDefinition, PluginContribution } from "./types.js"
 import type { RuntimeOptions, RuntimePlugin } from "./runtime-types.js"
 
 function orderedPlugins(plugins: readonly RuntimePlugin[]): readonly RuntimePlugin[] {
@@ -54,6 +54,32 @@ function composeDatabaseSchema(contributions: readonly { item: RuntimePlugin; co
     }
   }
   return models
+}
+
+function composeAdminPages(contributions: readonly { item: RuntimePlugin; contribution: PluginContribution }[]): readonly DeesseAdminPageRegistration[] {
+  const paths = new Set<string>()
+  return contributions.flatMap(({ item, contribution }) =>
+    (contribution.admin?.pages ?? []).map((page) => composeAdminPage(item.id, page, paths)))
+}
+
+function composeAdminPage(pluginId: string, page: DeesseAdminPageRegistration, paths: Set<string>): DeesseAdminPageRegistration {
+  if (typeof page.path !== "string" || typeof page.title !== "string" || !page.title.trim() || typeof page.component !== "function") {
+    throw new Error(`Plugin ${pluginId} contributes an invalid admin page`)
+  }
+  let path = page.path
+  while (path.startsWith("/")) path = path.slice(1)
+  while (path.endsWith("/")) path = path.slice(0, -1)
+  const segments = path.split("/")
+  if (path.length === 0 && page.path !== "/") throwInvalidAdminPagePath(pluginId, page.path)
+  if (path && segments.some((segment) => !segment || segment === "." || segment === "..")) throwInvalidAdminPagePath(pluginId, page.path)
+  if (path.includes("\\") || path.includes("?") || path.includes("#")) throwInvalidAdminPagePath(pluginId, page.path)
+  if (paths.has(path)) throw new Error(`Plugin ${pluginId} contributes a duplicate admin page path: ${path || "/"}`)
+  paths.add(path)
+  return { ...page, path }
+}
+
+function throwInvalidAdminPagePath(pluginId: string, path: string): never {
+  throw new Error(`Plugin ${pluginId} contributes an invalid admin page path: ${path}`)
 }
 
 function validateModel(pluginId: string, modelName: string, model: DeesseModelDefinition): void {
@@ -121,6 +147,7 @@ export function createRuntime(options: RuntimeOptions): {
   database: RuntimeOptions["database"]["database"]
   auth: unknown
   api: { router: AnyRouter }
+  admin: { pages: readonly DeesseAdminPageRegistration[] }
   handler: DeesseFetchHandler
 } {
   const plugins = orderedPlugins(options.plugins ?? [])
@@ -134,6 +161,7 @@ export function createRuntime(options: RuntimeOptions): {
     throw new Error(`Deesse plugin router namespace conflicts with application router key: ${collisions.join(", ")}`)
   }
   const schema = composeDatabaseSchema(contributions)
+  const adminPages = composeAdminPages(contributions)
   options.database.initializeSchema?.(schema)
   const serverPlugins = contributions.flatMap(({ contribution }) => contribution.auth?.serverPlugins ?? [])
   const router = { ...applicationRouter, ...pluginRouters } as AnyRouter
@@ -159,6 +187,7 @@ export function createRuntime(options: RuntimeOptions): {
     database: options.database.database,
     auth: auth as unknown,
     api: { router },
+    admin: { pages: adminPages },
     handler: async (request) => app.fetch(request),
   }
 }

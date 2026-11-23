@@ -13,6 +13,17 @@ if (
     `anonymous admin request was not redirected to sign-in: ${anonymousAdmin.status}`
   )
 }
+const anonymousNestedAdmin = await fetch(`${baseURL}/admin/posts`, {
+  redirect: "manual",
+})
+if (
+  anonymousNestedAdmin.status !== 307 ||
+  new URL(anonymousNestedAdmin.headers.get("location"), baseURL).pathname !== "/"
+) {
+  throw new Error(
+    `anonymous nested admin request was not redirected to sign-in: ${anonymousNestedAdmin.status}`
+  )
+}
 
 const email = `smoke-${crypto.randomUUID()}@example.test`
 const password = "local-smoke-password-123"
@@ -39,6 +50,17 @@ if (
 ) {
   throw new Error(
     `non-admin session was not denied by the server-rendered dashboard: ${memberAdmin.status}`
+  )
+}
+const memberNestedAdmin = await fetch(`${baseURL}/admin/posts`, {
+  headers: { cookie: cookies },
+})
+if (
+  !memberNestedAdmin.ok ||
+  !(await memberNestedAdmin.text()).includes("Admin access required")
+) {
+  throw new Error(
+    `non-admin nested route was not denied by the server-side guard: ${memberNestedAdmin.status}`
   )
 }
 
@@ -79,7 +101,9 @@ console.log(
   JSON.stringify({
     page: page.status,
     anonymousAdmin: anonymousAdmin.status,
+    anonymousNestedAdmin: anonymousNestedAdmin.status,
     signedInNonAdmin: memberAdmin.status,
+    signedInNonAdminNested: memberNestedAdmin.status,
     signup: signup.status,
     session: authSession.status,
     publicHealth: health.status,
