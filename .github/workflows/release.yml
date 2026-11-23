@@ -6,21 +6,23 @@ name: Release
 #
 # Two publish channels, both handled by this single workflow:
 #   - @latest: push to main (Tier 3). Publishes the source-recorded CLI
-#     version when it is not yet on npm, then creates a stable GitHub Release.
+#     version and stable Deesse framework/adapter versions when they are not
+#     yet on npm, then creates package-specific GitHub Releases.
 #   - @canary: push to staging (Tier 2), or on-demand workflow_dispatch
 #     with `canary: true`. Synthetic version string (date+SHA);
-#     npm publish --tag canary; GitHub Release marked as prerelease.
+#     currently publishes the CLI only. Framework/adapter canaries are
+#     deferred until their prerelease peer dependency contract is defined.
 #
-# Both channels share the same npm trusted publisher entry (release.yml);
-# npm Trusted Publishing allows only one trusted publisher per package,
-# keyed on this workflow file's path. Adding staging to the push triggers
-# does not require a second trusted publisher entry.
+# Each npm package has its own Trusted Publisher configuration for this
+# workflow. Stable and canary runs use the same workflow identity, so they do
+# not need separate configurations per channel.
 # See the inter-app-URL config rationale and the auto-canary trigger
 # design for the chosen channel layout.
 #
-# First-ever publish of @deessejs/cli is manual from a maintainer's machine
-# (npm has no "pending publisher" feature). See the
-# cli-publish-verify procedure on Nuclino for the equivalent setup walkthrough.
+# The first @deessejs/drizzle-adapter publish uses npm staged publishing via
+# a temporary stage-only NPM_DRIZZLE_BOOTSTRAP_TOKEN secret. The maintainer
+# approves the staged version on npm, then records its GitHub Release here.
+# Trusted Publishing is added before a later real adapter release.
 
 on:
   push:
@@ -29,6 +31,16 @@ on:
     inputs:
       canary:
         description: 'Publish a @canary build from the current commit (instead of @latest).'
+        type: boolean
+        required: true
+        default: false
+      bootstrap_adapter:
+        description: 'Stage the first @deessejs/drizzle-adapter version for npm approval.'
+        type: boolean
+        required: true
+        default: false
+      record_adapter_release:
+        description: 'Create the tag and GitHub Release after approving the staged adapter version on npm.'
         type: boolean
         required: true
         default: false
@@ -100,6 +112,31 @@ jobs:
             echo "version_source=manifest" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate manual release options
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.canary }}" != "true" ] && [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Stable workflow_dispatch runs must use main. Select canary mode to publish from staging."
+            exit 1
+          fi
+          if [ "${{ inputs.bootstrap_adapter }}" = "true" ] && [ "${{ inputs.canary }}" = "true" ]; then
+            echo "::error::Adapter bootstrap is a stable main-only publish. Do not combine it with canary mode."
+            exit 1
+          fi
+          if [ "${{ inputs.record_adapter_release }}" = "true" ] && [ "${{ inputs.canary }}" = "true" ]; then
+            echo "::error::Recording the adapter's initial stable release cannot run in canary mode."
+            exit 1
+          fi
+          if [ "${{ inputs.bootstrap_adapter }}" = "true" ] && [ "${{ inputs.record_adapter_release }}" = "true" ]; then
+            echo "::error::Stage the adapter or record its approved release in separate workflow runs."
+            exit 1
+          fi
+          if { [ "${{ inputs.bootstrap_adapter }}" = "true" ] || [ "${{ inputs.record_adapter_release }}" = "true" ]; } && [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "::error::Adapter bootstrap must run from main."
+            exit 1
+          fi
+
       - name: Check whether stable CLI release is needed
         id: stable-release
         if: steps.channel.outputs.dist_tag == 'latest'
@@ -135,6 +172,129 @@ jobs:
           fi
           echo "release_needed=true" >> "$GITHUB_OUTPUT"
           echo "Stable CLI release needed: $LOCAL_VERSION is ahead of npm latest $LATEST_VERSION."
+
+      # These are independent public package versions. On the first stable
+      # run, deesse uses its configured npm Trusted Publisher. The adapter is
+      # skipped until it exists on npm, unless a maintainer explicitly stages
+      # its first version from main with a temporary stage-only token.
+      - name: Check stable framework and adapter releases
+        id: stable-packages
+        if: steps.channel.outputs.dist_tag == 'latest'
+        run: |
+          set -euo pipefail
+
+          check_registered_package() {
+            local output_prefix="$1"
+            local package_name="$2"
+            local manifest_path="$3"
+            local registered=true
+            local local_version latest exact order
+
+            local_version=$(node -e "console.log(require('./${manifest_path}').version)")
+            if ! npm view "$package_name" name >/dev/null 2>"$RUNNER_TEMP/npm-view-error"; then
+              if grep -q 'E404' "$RUNNER_TEMP/npm-view-error"; then
+                registered=false
+              else
+                cat "$RUNNER_TEMP/npm-view-error" >&2
+                echo "::error::Could not determine whether $package_name exists on npm."
+                return 1
+              fi
+            fi
+
+            echo "${output_prefix}_version=$local_version" >> "$GITHUB_OUTPUT"
+            echo "${output_prefix}_registered=$registered" >> "$GITHUB_OUTPUT"
+
+            if [ "$registered" = false ]; then
+              PACKAGE_REGISTERED=false
+              PACKAGE_RELEASE_NEEDED=true
+              echo "${output_prefix}_release_needed=true" >> "$GITHUB_OUTPUT"
+              return 0
+            fi
+            PACKAGE_REGISTERED=true
+
+            latest=$(npm view "$package_name" dist-tags.latest 2>/dev/null || true)
+            exact=$(npm view "${package_name}@${local_version}" version 2>/dev/null || true)
+            if [ -n "$exact" ]; then
+              PACKAGE_RELEASE_NEEDED=false
+              echo "${output_prefix}_release_needed=false" >> "$GITHUB_OUTPUT"
+              echo "$package_name@$local_version is already published."
+              return 0
+            fi
+
+            if [ -z "$latest" ]; then
+              PACKAGE_RELEASE_NEEDED=true
+              echo "${output_prefix}_release_needed=true" >> "$GITHUB_OUTPUT"
+              echo "$package_name has no latest tag; publishing source version $local_version."
+              return 0
+            fi
+
+            order=$(LOCAL_VERSION="$local_version" LATEST_VERSION="$latest" node -e '
+              const parse = (version) => {
+                const match = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(version)
+                if (!match) throw new Error(`Expected stable X.Y.Z versions, got ${version}`)
+                return match.slice(1).map(Number)
+              }
+              const local = parse(process.env.LOCAL_VERSION)
+              const latest = parse(process.env.LATEST_VERSION)
+              for (let i = 0; i < 3; i++) {
+                if (local[i] !== latest[i]) {
+                  process.stdout.write(local[i] > latest[i] ? "ahead" : "behind")
+                  process.exit(0)
+                }
+              }
+              process.stdout.write("equal")
+            ')
+
+            if [ "$order" = behind ]; then
+              echo "::error::$package_name source version $local_version is behind npm latest $latest. Refusing a stable release."
+              return 1
+            fi
+
+            if [ "$order" = equal ]; then
+              PACKAGE_RELEASE_NEEDED=false
+              echo "${output_prefix}_release_needed=false" >> "$GITHUB_OUTPUT"
+            else
+              PACKAGE_RELEASE_NEEDED=true
+              echo "${output_prefix}_release_needed=true" >> "$GITHUB_OUTPUT"
+            fi
+          }
+
+          check_registered_package deesse deesse apps/deesse/package.json
+          deesse_registered="$PACKAGE_REGISTERED"
+          deesse_release_needed="$PACKAGE_RELEASE_NEEDED"
+          check_registered_package adapter @deessejs/drizzle-adapter apps/deesse-drizzle-adapter/package.json
+          adapter_registered="$PACKAGE_REGISTERED"
+          adapter_release_needed="$PACKAGE_RELEASE_NEEDED"
+
+          if [ "${{ inputs.record_adapter_release }}" = "true" ]; then
+            if [ "$adapter_registered" != "true" ] || [ "$adapter_release_needed" = "true" ]; then
+              echo "::error::The manifest version is not published yet. Approve the staged npm version before recording its GitHub release."
+              exit 1
+            fi
+            echo "adapter_mode=record" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.bootstrap_adapter }}" = "true" ]; then
+            if [ "$adapter_registered" = "true" ]; then
+              echo "::error::The adapter already exists on npm. Use its Trusted Publisher for subsequent releases."
+              exit 1
+            fi
+            echo "adapter_mode=stage" >> "$GITHUB_OUTPUT"
+          elif [ "$adapter_registered" = "false" ]; then
+            echo "adapter_mode=skip" >> "$GITHUB_OUTPUT"
+            echo "::notice::The adapter is not on npm yet. Stage its first version with bootstrap_adapter=true."
+          elif [ "$adapter_release_needed" = "true" ]; then
+            echo "adapter_mode=trusted" >> "$GITHUB_OUTPUT"
+          else
+            echo "adapter_mode=skip" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$deesse_registered" = "false" ]; then
+            echo "::error::The deesse package must already exist on npm before its Trusted Publisher can release it."
+            exit 1
+          elif [ "$deesse_release_needed" = "true" ]; then
+            echo "deesse_mode=trusted" >> "$GITHUB_OUTPUT"
+          else
+            echo "deesse_mode=skip" >> "$GITHUB_OUTPUT"
+          fi
 
       # Tier 2 — @canary version computation (synthetic, no changesets).
       # We deliberately do NOT run `pnpm changeset version` on the canary
@@ -378,6 +538,133 @@ jobs:
           tag_name: release/v${{ steps.version.outputs.version }}
           name: "Release v${{ steps.version.outputs.version }}"
           prerelease: ${{ steps.channel.outputs.release_type == 'prerelease' }}
+          generate_notes: true
+          fail_on_unmatched_files: true
+
+      # Stable releases for the public framework and PostgreSQL adapter.
+      # These packages use independent source versions and package-specific
+      # GitHub tags. They intentionally do not join the CLI's staging canary
+      # channel until the adapter's prerelease peer range is designed.
+      - name: Build Deesse framework and adapter
+        if: >-
+          steps.channel.outputs.dist_tag == 'latest' &&
+          (steps.stable-packages.outputs.deesse_release_needed == 'true' ||
+           steps.stable-packages.outputs.adapter_mode == 'trusted' ||
+           steps.stable-packages.outputs.adapter_mode == 'stage')
+        run: pnpm turbo build --filter=deesse --filter=@deessejs/drizzle-adapter --force
+
+      - name: Pack and verify Deesse framework
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.deesse_mode == 'trusted'
+        run: |
+          set -euo pipefail
+          pnpm --dir apps/deesse pack
+          TARBALL=$(find apps/deesse -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          node scripts/verify-npm-tarball.mjs \
+            "$TARBALL" \
+            deesse \
+            "${{ steps.stable-packages.outputs.deesse_version }}" \
+            package/dist/index.js \
+            package/dist/react.js \
+            package/dist/next.js \
+            package/README.md \
+            package/LICENSE
+
+      - name: Publish Deesse framework to npm
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.deesse_mode == 'trusted'
+        run: |
+          set -euo pipefail
+          TARBALL=$(find apps/deesse -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          npm publish "$TARBALL" --tag latest --provenance --no-git-checks
+
+      - name: Tag Deesse framework release
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.deesse_mode == 'trusted'
+        env:
+          RELEASE_VERSION: ${{ steps.stable-packages.outputs.deesse_version }}
+        run: |
+          set -euo pipefail
+          git tag -f "deesse/v${RELEASE_VERSION}"
+          git push --force origin "deesse/v${RELEASE_VERSION}"
+
+      - name: Create Deesse framework GitHub Release
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.deesse_mode == 'trusted'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: deesse/v${{ steps.stable-packages.outputs.deesse_version }}
+          name: "deesse v${{ steps.stable-packages.outputs.deesse_version }}"
+          prerelease: false
+          generate_notes: true
+          fail_on_unmatched_files: true
+
+      - name: Pack and verify Drizzle adapter
+        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.adapter_mode == 'trusted' || steps.stable-packages.outputs.adapter_mode == 'stage')
+        run: |
+          set -euo pipefail
+          pnpm --dir apps/deesse-drizzle-adapter pack
+          TARBALL=$(find apps/deesse-drizzle-adapter -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          node scripts/verify-npm-tarball.mjs \
+            "$TARBALL" \
+            @deessejs/drizzle-adapter \
+            "${{ steps.stable-packages.outputs.adapter_version }}" \
+            package/dist/index.js \
+            package/dist/cli.js \
+            package/README.md \
+            package/LICENSE
+
+      - name: Confirm Deesse peer version is published
+        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.adapter_mode == 'trusted' || steps.stable-packages.outputs.adapter_mode == 'stage')
+        env:
+          DEESSE_VERSION: ${{ steps.stable-packages.outputs.deesse_version }}
+        run: npm view "deesse@${DEESSE_VERSION}" version
+
+      - name: Publish Drizzle adapter to npm with Trusted Publishing
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.adapter_mode == 'trusted'
+        run: |
+          set -euo pipefail
+          TARBALL=$(find apps/deesse-drizzle-adapter -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          npm publish "$TARBALL" --tag latest --provenance --no-git-checks
+
+      - name: Install npm CLI with staged publishing support
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.adapter_mode == 'stage'
+        run: npm install --global 'npm@^11.15.0'
+
+      # npm cannot attach Trusted Publishing to a package that is not on the
+      # registry. Stage the first real version with a temporary stage-only
+      # token, inspect and approve it on npm, then run the record option below.
+      # A new package gets a public 0.0.0-stage placeholder while its staged
+      # version and contents remain unavailable until approval.
+      - name: Stage first Drizzle adapter version for npm approval
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.adapter_mode == 'stage'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_DRIZZLE_BOOTSTRAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "::error::Set the temporary stage-only NPM_DRIZZLE_BOOTSTRAP_TOKEN Actions secret before staging the adapter."
+            exit 1
+          fi
+          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npmrc"
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          chmod 600 "$NPM_CONFIG_USERCONFIG"
+          TARBALL=$(find apps/deesse-drizzle-adapter -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          NPM_CONFIG_USERCONFIG="$NPM_CONFIG_USERCONFIG" npm stage publish "$TARBALL"
+          echo "Review the staged package on npm, approve it with 2FA, then run release.yml from main with record_adapter_release=true."
+
+      - name: Tag Drizzle adapter release
+        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.adapter_mode == 'trusted' || steps.stable-packages.outputs.adapter_mode == 'record')
+        env:
+          RELEASE_VERSION: ${{ steps.stable-packages.outputs.adapter_version }}
+        run: |
+          set -euo pipefail
+          git tag -f "drizzle-adapter/v${RELEASE_VERSION}"
+          git push --force origin "drizzle-adapter/v${RELEASE_VERSION}"
+
+      - name: Create Drizzle adapter GitHub Release
+        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.adapter_mode == 'trusted' || steps.stable-packages.outputs.adapter_mode == 'record')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: drizzle-adapter/v${{ steps.stable-packages.outputs.adapter_version }}
+          name: "@deessejs/drizzle-adapter v${{ steps.stable-packages.outputs.adapter_version }}"
+          prerelease: false
           generate_notes: true
           fail_on_unmatched_files: true
 
