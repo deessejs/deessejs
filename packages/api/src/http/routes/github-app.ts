@@ -31,6 +31,10 @@ import {
   getGitHubUserAccessToken,
   saveGitHubUserConnection,
 } from "../../core/github-app/user-connection.js"
+import {
+  GitHubAppRequestError,
+  requestGitHubAppJson,
+} from "../../core/github-app/request.js"
 import type { ApiEnv } from "../env.js"
 
 const GITHUB_API_VERSION = "2022-11-28"
@@ -329,21 +333,30 @@ async function fetchGitHubInstallation(
 
   do {
     url.searchParams.set("page", String(page))
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": GITHUB_API_VERSION,
-      },
-      cache: "no-store",
-    })
-    if (!response.ok) {
-      throw new Error(`GitHub installations request failed: ${response.status}`)
+    let data: unknown
+    try {
+      const result = await requestGitHubAppJson(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        },
+        cache: "no-store",
+      })
+      data = result.data
+    } catch (error) {
+      if (error instanceof GitHubAppRequestError && error.status) {
+        throw new Error(`GitHub installations request failed: ${error.status}`)
+      }
+      throw new Error("GitHub installations request failed")
     }
 
-    const parsed = installationListResponseSchema.parse(await response.json())
-    totalPages = Math.ceil(parsed.total_count / 100)
-    const installation = parsed.installations.find(
+    const parsed = installationListResponseSchema.safeParse(data)
+    if (!parsed.success) {
+      throw new Error("GitHub installations response was invalid")
+    }
+    totalPages = Math.ceil(parsed.data.total_count / 100)
+    const installation = parsed.data.installations.find(
       (item) => String(item.id) === installationId
     )
     if (installation) return installation

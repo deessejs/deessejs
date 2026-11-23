@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { GitHubAppRequestError, requestGitHubAppJson } from "./request.js"
 
 const GITHUB_API_VERSION = "2022-11-28"
 const REPOSITORIES_PER_PAGE = 30
@@ -41,21 +42,26 @@ export async function listGitHubInstallationRepositories(input: {
   url.searchParams.set("per_page", String(REPOSITORIES_PER_PAGE))
   url.searchParams.set("page", String(input.page))
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${input.accessToken}`,
-      "X-GitHub-Api-Version": GITHUB_API_VERSION,
-    },
-    cache: "no-store",
-  })
-
-  if (!response.ok) {
-    throw new GitHubRepositoryRequestError(response.status)
+  let data: unknown
+  try {
+    const result = await requestGitHubAppJson(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${input.accessToken}`,
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+      cache: "no-store",
+    })
+    data = result.data
+  } catch (error) {
+    throw new GitHubRepositoryRequestError(
+      error instanceof GitHubAppRequestError && error.status
+        ? error.status
+        : 502
+    )
   }
 
-  const payload = await response.json()
-  const parsed = repositoryPageSchema.safeParse(payload)
+  const parsed = repositoryPageSchema.safeParse(data)
   if (!parsed.success) {
     throw new GitHubRepositoryRequestError(502)
   }
