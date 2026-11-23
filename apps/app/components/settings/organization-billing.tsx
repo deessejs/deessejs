@@ -22,7 +22,10 @@ import {
   organizationSubscriptionsQueryKey,
   useOrganizationSubscriptions,
 } from "@/hooks/organizations/use-organization-subscriptions"
-import { organizationBillingState } from "@/lib/organization-billing-state"
+import {
+  organizationBillingState,
+  organizationProSeatCapacity,
+} from "@/lib/organization-billing-state"
 import { workspaceBillingSettingsPath } from "@/lib/workspace-paths"
 import { client } from "@/lib/client"
 import { Input } from "@workspace/ui/components/input"
@@ -391,9 +394,9 @@ export function OrganizationBilling({
               organization={organization}
               capacity={
                 subscriptions.data?.kind === "billing"
-                  ? (subscriptions.data.subscriptions.find(
-                      (item) => item.plan === "pro" && item.status === "active"
-                    )?.seats ?? 0)
+                  ? organizationProSeatCapacity(
+                      subscriptions.data.subscriptions
+                    )
                   : 0
               }
             />

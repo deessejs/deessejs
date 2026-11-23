@@ -22,7 +22,10 @@ import {
   organizationSubscriptionsQueryKey,
   organizationSubscriptionsQueryOptions,
 } from "@/hooks/organizations/use-organization-subscriptions"
-import { organizationBillingState } from "@/lib/organization-billing-state"
+import {
+  organizationBillingState,
+  organizationProSeatCapacity,
+} from "@/lib/organization-billing-state"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 
 describe("organization billing", () => {
@@ -71,6 +74,56 @@ describe("organization billing", () => {
     ["member", false],
   ])("allows billing mutations for %s role: %s", (role, allowed) => {
     expect(hasManagingRole(role)).toBe(allowed)
+  })
+
+  it("shows seat capacity for a qualifying trialing Pro subscription", () => {
+    const now = new Date("2026-11-23T12:00:00.000Z")
+
+    expect(
+      organizationProSeatCapacity(
+        [
+          {
+            plan: "pro",
+            status: "trialing",
+            billingInterval: "month",
+            seats: 3,
+            cancelAtPeriodEnd: true,
+            periodEnd: new Date("2026-11-24T12:00:00.000Z"),
+          },
+        ],
+        now
+      )
+    ).toBe(3)
+  })
+
+  it.each([
+    ["ended", { endedAt: new Date("2026-11-22T12:00:00.000Z") }],
+    [
+      "past cancellation period",
+      {
+        cancelAtPeriodEnd: true,
+        periodEnd: new Date("2026-11-22T12:00:00.000Z"),
+      },
+    ],
+    [
+      "missing cancellation period end",
+      { cancelAtPeriodEnd: true, periodEnd: null },
+    ],
+  ] as const)("does not expose Pro seat capacity for a trial that is %s", (_, extra) => {
+    expect(
+      organizationProSeatCapacity(
+        [
+          {
+            plan: "pro",
+            status: "trialing",
+            billingInterval: "month",
+            seats: 3,
+            ...extra,
+          },
+        ],
+        new Date("2026-11-23T12:00:00.000Z")
+      )
+    ).toBe(0)
   })
 
   it("starts monthly Pro checkout with the resolved organization", async () => {
