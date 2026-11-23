@@ -4,7 +4,7 @@ This guide is the source of truth for the local worktree environment, credential
 
 ## Prerequisites and startup
 
-- The repository pins Node.js 24.x and pnpm 11.0.0. On Linux x64 the launcher can install its checksum-verified Node.js 24.22.3 runtime under the ignored `.local/` directory when the active Node major differs. Other platforms need Node 24.x already on `PATH`.
+- `package.json` `engines.node` is the Node runtime source of truth. No second patch-version pin is maintained. If the active runtime does not satisfy that engine, Linux x64 resolves the newest stable patch for the pinned major from the official Node.js distribution index, downloads its archive, and verifies it against that release's official `SHASUMS256.txt` before installation under ignored `.local/`. A newly created worktree can resolve a newer patch than an older worktree whose runtime is already cached. Other platforms need a compatible runtime on `PATH`. The pinned package manager is pnpm 11.0.0.
 - PostgreSQL must listen on loopback only. The launcher uses non-interactive `sudo -n -u postgres psql` or a `DEV_AGENT_PG_ADMIN_URL` pointing to a loopback PostgreSQL administrator that can create roles and databases.
 - The canonical start command is `pnpm dev:agent start`. `pnpm dev:agent` and `pnpm dev:agent --` are aliases for `start`. `pnpm dev:agent prepare` installs/configures/migrates/builds without starting the app.
 
@@ -26,6 +26,14 @@ pnpm dev:agent clean --yes
 ```
 
 The local files `.env.development.local` and `.local/` hold database credentials, fixture passwords, verification mail, port locks, and CLI state. They are ignored by Git. Do not copy them between worktrees or print the env file itself. The credentials command below prints only its allowlisted fixture values.
+
+## Child-process environment and local services
+
+The launcher constructs an explicit environment for app, migration, seed, test, CLI, and dependency-install children. It keeps runtime essentials and worktree-local settings, uses a private `.local/runtime-home`, and does not inherit arbitrary host variables. It also scans root and app dotenv files and inserts blank values for their otherwise-unset keys before Next starts. `packages/env` skips dotenv loading when `DEV_AGENT_LOCAL_RUNTIME=true`; Next's own loader gives existing `process.env` values precedence over dotenv values. This prevents root or app dotenv credentials from silently enabling a remote service in the launched app.
+
+R2 avatar storage is unavailable in the default local runtime because all `R2_*` values are blank. Avatar upload/read/delete and avatar cleanup were not part of the local functional acceptance. The cleanup endpoint returns its not-configured response because `CRON_SECRET` is blank. Resend and Stripe credentials are blank; mail uses the console transport. GitHub OAuth/App credentials and `GITHUB_TOKEN` are blank. Public template metadata enrichment still calls GitHub anonymously when invoked, so it is an external read-only dependency. No runtime Redis/cache client or queue worker was found; Upstash values occur only in generated CLI setup text. CI's avatar integration E2E uses MinIO, but regular local startup does not provision MinIO or pass its E2E credentials. Supporting local avatar storage requires a deliberate MinIO/service-adapter option.
+
+`pnpm install` also runs with the sanitized child environment and private home. The checked-in `.npmrc` contains only workspace hoisting settings and no registry credential keys. Dependency lifecycle scripts still execute package code and can access the repository and configured package registry; dependency installation therefore remains a package supply-chain trust boundary, not an isolated sandbox. Proxy and arbitrary registry-auth environment variables are not inherited.
 
 ## Fixture credentials and browser login
 

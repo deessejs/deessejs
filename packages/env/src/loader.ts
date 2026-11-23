@@ -65,7 +65,25 @@ export function loadDotenvSnapshot(
 ): EnvSnapshot {
   if (cachedSnapshot) return cachedSnapshot
 
-  const nodeEnv = process.env.NODE_ENV ?? "development"
+  cachedSnapshot = loadDotenvSnapshotFrom(repoRoot, process.env)
+  return cachedSnapshot
+}
+
+/**
+ * Build an environment snapshot without mutating process.env. The local
+ * agent launcher passes the complete allowed worktree environment, so its
+ * child processes must not fill unset values from root dotenv files.
+ */
+export function loadDotenvSnapshotFrom(
+  repoRoot: string,
+  processEnvironment: NodeJS.ProcessEnv
+): EnvSnapshot {
+  const snapshot: EnvSnapshot = { ...processEnvironment }
+  if (processEnvironment.DEV_AGENT_LOCAL_RUNTIME === "true") {
+    return snapshot
+  }
+
+  const nodeEnv = processEnvironment.NODE_ENV ?? "development"
   const isTest = nodeEnv === "test"
 
   const filenames: string[] = []
@@ -75,10 +93,6 @@ export function loadDotenvSnapshot(
   }
   filenames.push(`.env.${nodeEnv}`)
   filenames.push(`.env`)
-
-  // Host-injected values are authoritative. Start with them so dotenv files
-  // only fill gaps, matching Next.js and the contract documented above.
-  const snapshot: EnvSnapshot = { ...process.env }
 
   // Files are read in ascending precedence order: later files override
   // earlier ones. `dotenv.parse` does NOT mutate any external state.
@@ -91,8 +105,7 @@ export function loadDotenvSnapshot(
     }
   }
 
-  cachedSnapshot = snapshot
-  return cachedSnapshot
+  return snapshot
 }
 
 /**
