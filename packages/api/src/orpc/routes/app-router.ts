@@ -14,6 +14,7 @@ import { organizationBlocksRouter } from "./organization-blocks.js"
 import { adminBlockPublicationsRouter } from "./admin-block-publications.js"
 import { adminBlocksRouter } from "./admin-blocks.js"
 import { blocksRouter } from "./blocks.js"
+import { vercelRouter } from "./vercel.js"
 
 export const appRouter = {
   blocks: blocksRouter,
@@ -36,6 +37,7 @@ export const appRouter = {
   },
   profile: { avatar: profileAvatarRouter },
   githubApp: githubAppRouter,
+  vercel: vercelRouter,
   playbook: playbookRouter,
 }
 

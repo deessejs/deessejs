@@ -17,6 +17,7 @@ import {
 import { orpc } from "@/lib/orpc"
 import { readWorkspaceOrganization } from "@/lib/workspace-organization"
 import { workspaceProjectsPath } from "@/lib/workspace-paths"
+import { VercelProjectMapping } from "@/components/organizations/projects/vercel-project-mapping"
 
 type ProjectStatus =
   | "valid"
@@ -53,7 +54,7 @@ export default async function ProjectHomePage({
   params: Promise<{ organization_slug: string; project_id: string }>
 }) {
   const { organization_slug, project_id } = await params
-  const [organization, result] = await Promise.all([
+  const [organization, result, vercelMapping] = await Promise.all([
     readWorkspaceOrganization(organization_slug),
     orpc.githubApp.projects
       .get({ slug: organization_slug, projectId: project_id })
@@ -63,6 +64,7 @@ export default async function ProjectHomePage({
         }
         throw error
       }),
+    orpc.vercel.mapping({ slug: organization_slug, projectId: project_id }),
   ])
   const { project } = result
   const status = projectStatus[project.status]
@@ -135,6 +137,12 @@ export default async function ProjectHomePage({
               {project.aliasCount}
             </ProjectDetail>
           ) : null}
+          <VercelProjectMapping
+            slug={organization_slug}
+            projectId={project_id}
+            mapping={vercelMapping.mapping}
+            canManage={vercelMapping.canManage}
+          />
         </CardContent>
       </Card>
     </div>

@@ -25,6 +25,7 @@ import { user } from "@workspace/database/schema"
 import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
 import { mountBlogRoutes } from "./blog.js"
 import { mountChangelogRoutes } from "./changelog.js"
+import { mountVercelRoutes } from "./vercel.js"
 import { mountRegistryRoutes } from "./registry.js"
 import { mountMcpRoutes } from "./mcp.js"
 
@@ -176,6 +177,7 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
   mountRegistryRoutes(api)
   mountBlogRoutes(api)
   mountChangelogRoutes(api)
+  mountVercelRoutes(api)
   // Liveness — cheap, always 200 unless the process is dead.
   api.get("/health", (c) =>
     c.json({ status: "ok", timestamp: new Date().toISOString() })

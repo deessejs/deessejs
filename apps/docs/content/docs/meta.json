@@ -14,6 +14,8 @@
     "community-templates",
     "template-authoring",
     "---Projects---",
-    "projects-github-import"
+    "projects-github-import",
+    "---Integrations---",
+    "vercel-integration"
   ]
 }

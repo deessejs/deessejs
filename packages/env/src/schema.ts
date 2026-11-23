@@ -154,6 +154,16 @@ export const serverInputShape = {
     .regex(/^[A-Za-z0-9+/]{43}=$/)
     .optional(),
 
+  // Vercel Connectable Account integration credentials. These stay on the
+  // server and are used to exchange authorization codes and request short-lived
+  // installation tokens.
+  VERCEL_CLIENT_ID: z.string().min(1).optional(),
+  VERCEL_CLIENT_SECRET: z.string().min(1).optional(),
+  VERCEL_INTEGRATION_SLUG: z
+    .string()
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
+
   // Stripe subscriptions are optional until the operator provisions the
   // Stripe account, webhook endpoint, and Pro prices. The server schema
   // below accepts either no Stripe values or the complete configuration.
@@ -231,6 +241,23 @@ export const serverSchema = z.object(serverInputShape).superRefine(
         message:
           "GitHub App client ID, client secret, slug, and token encryption key must be configured together.",
         path: ["GITHUB_APP_CLIENT_ID"],
+      })
+    }
+
+    const vercelConfiguration = [
+      data.VERCEL_CLIENT_ID,
+      data.VERCEL_CLIENT_SECRET,
+      data.VERCEL_INTEGRATION_SLUG,
+    ]
+    if (
+      vercelConfiguration.some(Boolean) &&
+      !vercelConfiguration.every(Boolean)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Vercel client ID, client secret, and integration slug must be configured together.",
+        path: ["VERCEL_CLIENT_ID"],
       })
     }
 
