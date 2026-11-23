@@ -62,7 +62,7 @@ describe("organization Pro entitlement and public metadata", () => {
       await db.insert(member).values({
         id: `member-${suffix}`,
         organizationId: orgA,
-        memberId: `member-${suffix}`,
+        userId,
         role: "member",
         createdAt: new Date(),
       })
