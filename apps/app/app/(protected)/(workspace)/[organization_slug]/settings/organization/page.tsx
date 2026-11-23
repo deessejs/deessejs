@@ -9,6 +9,7 @@ import {
 import { readWorkspaceOrganization } from "@/lib/workspace-organization"
 import { orpc } from "@/lib/orpc"
 import { GitHubAppIntegration } from "@/components/settings/github-app-integration"
+import { VercelIntegration } from "@/components/settings/vercel-integration"
 import { OrganizationProfile } from "@/components/settings/organization-profile"
 
 /**
@@ -27,15 +28,16 @@ export default async function OrganizationSettingsPage({
   searchParams,
 }: {
   params: Promise<{ organization_slug: string }>
-  searchParams: Promise<{ githubApp?: string }>
+  searchParams: Promise<{ githubApp?: string; vercelIntegration?: string }>
 }) {
   const [{ organization_slug }, query] = await Promise.all([
     params,
     searchParams,
   ])
-  const [organization, githubAppStatus] = await Promise.all([
+  const [organization, githubAppStatus, vercelStatus] = await Promise.all([
     readWorkspaceOrganization(organization_slug),
     orpc.githubApp.status({ slug: organization_slug }),
+    orpc.vercel.status({ slug: organization_slug }),
   ])
 
   return (
@@ -66,6 +68,11 @@ export default async function OrganizationSettingsPage({
         slug={organization_slug}
         status={githubAppStatus}
         result={query.githubApp}
+      />
+      <VercelIntegration
+        slug={organization_slug}
+        status={vercelStatus}
+        result={query.vercelIntegration}
       />
     </div>
   )

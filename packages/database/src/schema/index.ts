@@ -2,6 +2,7 @@
 export * from "./auth"
 export * from "./organization"
 export * from "./github-app"
+export * from "./external-integrations"
 export * from "./templates"
 export * from "./template-publications"
 export * from "./blocks"
