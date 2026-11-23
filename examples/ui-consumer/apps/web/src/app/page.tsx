@@ -12,7 +12,6 @@ import {
   CardTitle,
   Input,
   Label,
-  Separator,
   Textarea,
 } from "@deessejs/ui"
 
@@ -46,7 +45,6 @@ export default function HomePage() {
             <AlertDescription>The host app defines all color, radius, and light/dark values.</AlertDescription>
           </Alert>
         </CardContent>
-        <Separator />
         <CardFooter className="justify-between">
           <span className="text-sm text-muted-foreground">Workspace package example</span>
           <Button>Post update</Button>
