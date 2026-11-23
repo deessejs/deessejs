@@ -9,6 +9,7 @@ const active = {
   endedAt: null,
   cancelAtPeriodEnd: false,
   periodEnd: new Date("2026-12-20T12:00:00.000Z"),
+  seats: 1,
 }
 
 describe("organization Pro entitlement policy", () => {
@@ -53,6 +54,11 @@ describe("organization Pro entitlement policy", () => {
       false
     )
     expect(subscriptionGrantsPro({ ...active, endedAt: now }, now)).toBe(false)
+  })
+
+  it("fails closed when purchased capacity is absent or zero", () => {
+    expect(subscriptionGrantsPro({ ...active, seats: null }, now)).toBe(false)
+    expect(subscriptionGrantsPro({ ...active, seats: 0 }, now)).toBe(false)
   })
 
   it("does not grant V1 Pro for annual or unknown billing intervals", () => {

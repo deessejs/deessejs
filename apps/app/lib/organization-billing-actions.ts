@@ -2,6 +2,7 @@ import { client } from "@/lib/client"
 
 export async function startOrganizationCheckout(input: {
   organizationId: string
+  seats: number
   successUrl: string
   cancelUrl: string
 }): Promise<string> {
@@ -9,6 +10,7 @@ export async function startOrganizationCheckout(input: {
     plan: "pro",
     referenceId: input.organizationId,
     customerType: "organization",
+    seats: input.seats,
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,
     disableRedirect: true,
