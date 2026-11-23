@@ -16,6 +16,8 @@ graph TD
     CLI["apps/cli<br/>@deessejs/cli"]
     CDA["apps/create-deesse-app<br/>standalone scaffolder"]
     AGENT["apps/agent<br/>GitHub bot"]
+    PUBLICUI["apps/ui<br/>@deessejs/ui public React primitives"]
+    UIEXAMPLE["examples/ui-consumer/apps/web<br/>standalone UI package consumer"]
   end
 
   subgraph PKG["Packages"]
@@ -37,6 +39,7 @@ graph TD
   WEB --> ENV
   WEB --> UI
   WEB --> COOKIES
+  UIEXAMPLE --> PUBLICUI
 
   APPAPP --> API
   APPAPP --> AUTH
@@ -78,6 +81,7 @@ Reading the graph:
 - **`packages/env` is the foundation.** Five packages depend on it and it depends on none.
 - **`apps/cli` carries the registry client inside its bundle.** `packages/api` and `packages/contracts` are devDependencies that tsup inlines, so the published CLI resolves nothing at run time.
 - **`apps/create-deesse-app` and `apps/agent` stand alone.** The scaffolder fetches a template by commit and runs no workspace code; the bot is a GitHub webhook handler with no shared runtime.
+  - **`apps/ui` publishes `@deessejs/ui`, independently of the product-private `packages/ui`.** `examples/ui-consumer/apps/web` exercises the public package as a workspace dependency and owns its own theme values.
 - **The current `apps/app` to `packages/auth` edge is legacy code, not a pattern to extend. `lib/admin-auth.ts` and the device page call `auth.api.getSession()`, and the sessions table imports branded token helpers from the auth package. These cross the client boundary and are migration targets.
 - **Not every link goes through the package manager.** The applications that consume `@workspace/ui` also alias it to the source with a `paths` entry in their `tsconfig.json`. `apps/web` resolves `@workspace/cookies` that way, and that dependency is not declared in its `package.json`. When you add a workspace dependency to an application, declare it in `package.json` too, or the turbo task graph does not know about the edge.
 
@@ -93,6 +97,7 @@ Reading the graph:
 | What is the author-side template descriptor contract? | `packages/registry/src/v1/` |
 | Which templates does the registry serve? | `packages/api/src/templates.ts` |
 | What are the design tokens? | `packages/ui/src/styles/globals.css` |
+| Where are the public React UI primitives? | `apps/ui/src/` |
 | What are the design rules? | `DESIGN.md` |
 | What guards the authenticated routes? | `apps/app/proxy.ts` |
 | Where do the account settings live? | `apps/app/lib/settings-paths.ts` |

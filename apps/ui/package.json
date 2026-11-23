@@ -6,7 +6,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/deessejs/deessejs.git",
-    "directory": "packages/deesse-ui"
+    "directory": "apps/ui"
   },
   "type": "module",
   "files": ["dist", "tailwind.css", "README.md", "LICENSE"],
@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "lint": "pnpm --dir ../../ exec oxlint --config .oxlintrc.json packages/deesse-ui --deny-warnings",
+    "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/ui --deny-warnings",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
