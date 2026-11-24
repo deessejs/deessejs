@@ -23,8 +23,6 @@ name: Release
 # a temporary stage-only NPM_DRIZZLE_BOOTSTRAP_TOKEN secret. The maintainer
 # approves the staged version on npm, then records its GitHub Release here.
 # Trusted Publishing is added before a later real adapter release.
-# The first @deessejs/ui publish follows the same staged approval flow with
-# NPM_UI_BOOTSTRAP_TOKEN, then uses the workflow's Trusted Publisher later.
 
 on:
   push:
@@ -43,16 +41,6 @@ on:
         default: false
       record_adapter_release:
         description: 'Create the tag and GitHub Release after approving the staged adapter version on npm.'
-        type: boolean
-        required: true
-        default: false
-      bootstrap_ui:
-        description: 'Stage the first @deessejs/ui version for npm approval.'
-        type: boolean
-        required: true
-        default: false
-      record_ui_release:
-        description: 'Create the @deessejs/ui tag and GitHub Release after npm approval.'
         type: boolean
         required: true
         default: false
@@ -144,16 +132,8 @@ jobs:
             echo "::error::Stage the adapter or record its approved release in separate workflow runs."
             exit 1
           fi
-          if [ "${{ inputs.bootstrap_ui }}" = "true" ] && [ "${{ inputs.record_ui_release }}" = "true" ]; then
-            echo "::error::Stage the UI package or record its approved release in separate workflow runs."
-            exit 1
-          fi
           if { [ "${{ inputs.bootstrap_adapter }}" = "true" ] || [ "${{ inputs.record_adapter_release }}" = "true" ]; } && [ "${{ github.ref }}" != "refs/heads/main" ]; then
             echo "::error::Adapter bootstrap must run from main."
-            exit 1
-          fi
-          if { [ "${{ inputs.bootstrap_ui }}" = "true" ] || [ "${{ inputs.record_ui_release }}" = "true" ]; } && { [ "${{ inputs.canary }}" = "true" ] || [ "${{ github.ref }}" != "refs/heads/main" ]; }; then
-            echo "::error::UI bootstrap and release recording must run from main in stable mode."
             exit 1
           fi
 
@@ -310,21 +290,9 @@ jobs:
             echo "adapter_mode=skip" >> "$GITHUB_OUTPUT"
           fi
 
-          if [ "${{ inputs.record_ui_release }}" = "true" ]; then
-            if [ "$ui_registered" != "true" ] || [ "$ui_release_needed" = "true" ]; then
-              echo "::error::The UI manifest version is not published yet. Approve the staged npm version before recording its GitHub release."
-              exit 1
-            fi
-            echo "ui_mode=record" >> "$GITHUB_OUTPUT"
-          elif [ "${{ inputs.bootstrap_ui }}" = "true" ]; then
-            if [ "$ui_registered" = "true" ]; then
-              echo "::error::The UI package already exists on npm. Use its Trusted Publisher for subsequent releases."
-              exit 1
-            fi
-            echo "ui_mode=stage" >> "$GITHUB_OUTPUT"
-          elif [ "$ui_registered" = "false" ]; then
+          if [ "$ui_registered" = "false" ]; then
             echo "ui_mode=skip" >> "$GITHUB_OUTPUT"
-            echo "::notice::The UI package is not on npm yet. Stage its first version with bootstrap_ui=true."
+            echo "::notice::@deessejs/ui is not registered on npm, so its Trusted Publisher cannot publish it."
           elif [ "$ui_release_needed" = "true" ]; then
             echo "ui_mode=trusted" >> "$GITHUB_OUTPUT"
           else
@@ -598,11 +566,11 @@ jobs:
         run: pnpm turbo build --filter=deesse --filter=@deessejs/drizzle-adapter --force
 
       - name: Build UI package
-        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.ui_mode == 'trusted' || steps.stable-packages.outputs.ui_mode == 'stage')
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         run: pnpm turbo build --filter=@deessejs/ui --force
 
       - name: Pack and verify UI package
-        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.ui_mode == 'trusted' || steps.stable-packages.outputs.ui_mode == 'stage')
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         run: |
           set -euo pipefail
           pnpm --dir apps/ui pack
@@ -624,29 +592,8 @@ jobs:
           TARBALL=$(find apps/ui -maxdepth 1 -type f -name '*.tgz' -print -quit)
           npm publish "$TARBALL" --tag latest --provenance --no-git-checks
 
-      - name: Install npm CLI with staged publishing support for UI
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'stage'
-        run: npm install --global 'npm@^11.15.0'
-
-      - name: Stage first UI version for npm approval
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'stage'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_UI_BOOTSTRAP_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "::error::Set the temporary stage-only NPM_UI_BOOTSTRAP_TOKEN Actions secret before staging the UI package."
-            exit 1
-          fi
-          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npmrc"
-          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
-          chmod 600 "$NPM_CONFIG_USERCONFIG"
-          TARBALL=$(find apps/ui -maxdepth 1 -type f -name '*.tgz' -print -quit)
-          NPM_CONFIG_USERCONFIG="$NPM_CONFIG_USERCONFIG" npm stage publish "$TARBALL"
-          echo "Review the staged @deessejs/ui version on npm and approve it with 2FA. Then remove the temporary secret and run release.yml from main with record_ui_release=true."
-
       - name: Tag UI package release
-        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.ui_mode == 'trusted' || steps.stable-packages.outputs.ui_mode == 'record')
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         env:
           RELEASE_VERSION: ${{ steps.stable-packages.outputs.ui_version }}
         run: |
@@ -655,7 +602,7 @@ jobs:
           git push --force origin "ui/v${RELEASE_VERSION}"
 
       - name: Create UI package GitHub Release
-        if: steps.channel.outputs.dist_tag == 'latest' && (steps.stable-packages.outputs.ui_mode == 'trusted' || steps.stable-packages.outputs.ui_mode == 'record')
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ui/v${{ steps.stable-packages.outputs.ui_version }}
