@@ -214,23 +214,5 @@ For questions, consider using GitHub Discussions instead of issues.
 ### Cross-cutting
 `breaking-change` · `github_actions` · `dependencies`
 
-### Risk
-`risk:r0` · `risk:r1` · `risk:r2` · `risk:r3`
-
 ### Standard GitHub (closure)
 `bug` · `enhancement` · `documentation` · `duplicate` · `invalid` · `question` · `wontfix`
-
-## Risk assessment
-
-Risk measures potential impact and regression blast radius, not implementation effort or issue size. It is separate from priority, complexity or size, type, and status. Choose exactly one risk level:
-
-- `risk:r0` (R0): negligible regression risk. Documentation, links, spelling or wording, and other changes with no runtime behavior or persisted data impact.
-- `risk:r1` (R1): a contained change in one feature or module with well-understood behavior and focused regression coverage, without broad API, data, or security implications.
-- `risk:r2` (R2): meaningful uncertainty or impact across multiple modules, public contracts, shared behavior, configuration, persistence, or integrations. Broader review and testing are required.
-- `risk:r3` (R3): high-impact or sensitive changes, including authentication or authorization, security boundaries, data or schema migrations, billing or payments, destructive or irreversible external effects, or major data-loss or outage potential. Explicit human scrutiny is required.
-
-When uncertain, choose the higher plausible risk and briefly explain why.
-
-During issue triage, assess anticipated risk from the requested change and current code evidence. On explicitly requested mutating triage, apply exactly one matching `risk:*` label if it exists in the live repository label list. Never create a risk label. Include the reason in the triage result or comment when the existing workflow calls for a comment. Preserve the read-only default and all explicit-triage safeguards: do not mutate an issue unless the user explicitly asks to triage it.
-
-During PR review, reassess actual risk from the implementation and diff, especially when scope changed or new coupling was discovered. State the actual risk and evidence, and recommend updating the issue's risk label when it differs from the anticipated risk. Explain any increase or decrease. Risk alone does not approve or merge a PR or alter its auto-merge policy; CI and independent review remain governed by existing repository policy.
