@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/ui",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Theme-compatible React UI primitives for Tailwind CSS v4 applications.",
   "license": "MIT",
   "repository": {
