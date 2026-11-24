@@ -1,4 +1,5 @@
 @import "@deesse-admin-example/ui/globals.css";
+@import "@deessejs/ui/tailwind.css";
 @import "@deessejs/admin/styles.css";
 
 * {

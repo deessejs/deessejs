@@ -2,6 +2,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { notFound, redirect } from "next/navigation"
 import type { ComponentType, ReactNode } from "react"
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@deessejs/ui"
 import { admin, normalizeAdminPath, resolveAdminPage, type AdminPageContext, type AdminPluginOutput } from "./index.js"
 import { resolveAdminAccess } from "./access.js"
 
@@ -113,7 +114,7 @@ function AdminDashboard({
       <section className="flex min-w-0 flex-1 flex-col gap-8 p-6 md:p-10">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
           <div className="grid gap-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dashboard</p>
+            <Badge variant="outline">Dashboard</Badge>
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           </div>
           <span className="text-sm text-muted-foreground">Signed in as {name}</span>
@@ -127,16 +128,18 @@ function AdminDashboard({
 function AccessDenied() {
   return (
     <main className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
-      <section className="grid max-w-lg gap-3 rounded-xl border border-border bg-card p-8 text-card-foreground shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">403</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Admin access required</h1>
-        <p className="text-sm leading-6 text-muted-foreground">
-          Your account is signed in but does not have the admin role.
-        </p>
-        <Link className="w-fit text-sm font-medium text-primary underline-offset-4 hover:underline" href="/">
-          Return to the application
-        </Link>
-      </section>
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <Badge variant="outline" className="w-fit">403</Badge>
+          <CardTitle className="text-2xl">Admin access required</CardTitle>
+          <CardDescription>Your account is signed in but does not have the admin role.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link className="text-sm font-medium text-primary underline-offset-4 hover:underline" href="/">
+            Return to the application
+          </Link>
+        </CardContent>
+      </Card>
     </main>
   )
 }

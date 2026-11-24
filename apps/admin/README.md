@@ -47,10 +47,11 @@ Page components are statically imported at build time. The application's Tailwin
 
 ```css
 @import "tailwindcss";
+@import "@deessejs/ui/tailwind.css";
 @import "@deessejs/admin/styles.css";
 ```
 
-The shell uses semantic shadcn utilities and host theme tokens. The package does not depend on private product UI primitives; it is intended to consume the public `@deessejs/ui` package when that independent package is available.
+The shell uses public `@deessejs/ui` primitives, semantic shadcn utilities, and host theme tokens. Import the UI package stylesheet in the consuming Tailwind v4 build so its component source is registered. That stylesheet adds no second Tailwind build, preflight, or global palette.
 
 ## Checks
 

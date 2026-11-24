@@ -1,7 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@deesse-admin-example/ui", "@deessejs/admin"],
+  transpilePackages: ["@deesse-admin-example/ui", "@deessejs/admin", "@deessejs/ui"],
 }
 
 export default nextConfig

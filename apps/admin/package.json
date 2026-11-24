@@ -45,7 +45,9 @@
     "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/admin --deny-warnings",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@deessejs/ui": "catalog:"
+  },
   "devDependencies": {
     "@better-auth/memory-adapter": "catalog:",
     "@types/node": "catalog:",
