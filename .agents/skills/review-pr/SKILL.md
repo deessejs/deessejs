@@ -34,6 +34,16 @@ When uncertain, choose the higher plausible risk and state why. Compare the actu
 
 Risk is not a review verdict. Higher-risk changes remain eligible for manual review. Do not approve or reject a PR based on its risk label alone.
 
+## Mark an agent review on the PR
+
+The repository label `review:agent-approved` records that an independent agent review found no blocking issues. It is a review marker only. It does not prove that CI is green, satisfy GitHub's formal approval requirement, or authorize merging.
+
+1. Keep the reviewer read-only. The reviewer must not add, remove, or change PR labels. In the report, state whether the label may be applied and why.
+2. The authorized orchestration agent may apply `review:agent-approved` only when the recommendation is `approve`, there are no findings, there is no unresolved uncertainty, and the PR is still open at the exact head commit that was reviewed. Confirm that the PR's `risk:*` label matches the reviewer's independently assessed actual risk before applying the marker.
+3. Do not apply the label when the recommendation is changes requested, escalate, or block, or when findings or material uncertainty remain.
+4. If the PR head changes after the review, remove any existing `review:agent-approved` label and require a fresh review before applying it again. A code change invalidates the prior review marker.
+5. Keep CI status and merge eligibility as separate gates. A clean review marker does not override pending or failed checks, unresolved review threads, conflicts, branch rules, or required GitHub approvals. Do not merge as part of the review.
+
 ## Report a verdict
 
 Return a concise, structured review with:
