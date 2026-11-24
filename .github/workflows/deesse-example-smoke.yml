@@ -49,6 +49,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build the admin package and workspace dependencies before schema generation
+        run: pnpm turbo build --filter=@deessejs/admin...
       - name: Build the Deesse adapter CLI before schema generation
         run: pnpm turbo build --filter=@deessejs/drizzle-adapter
       - name: Generate schemas without a reachable database
