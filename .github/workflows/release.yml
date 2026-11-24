@@ -675,7 +675,28 @@ jobs:
         run: |
           set -euo pipefail
           DEESSE_PEER_RANGE=$(node -e "console.log(require('./apps/admin/package.json').peerDependencies.deesse)")
-          npm view "deesse@${DEESSE_PEER_RANGE}" version
+          attempt=1
+          delay=10
+          max_attempts=8
+          while [ "$attempt" -le "$max_attempts" ]; do
+            if npm view "deesse@${DEESSE_PEER_RANGE}" version; then
+              echo "Confirmed published Deesse version satisfies admin peer range ${DEESSE_PEER_RANGE}."
+              exit 0
+            fi
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "::error::No published Deesse version matched admin peer range ${DEESSE_PEER_RANGE} after ${max_attempts} attempts."
+              exit 1
+            fi
+
+            echo "::warning::Deesse peer range ${DEESSE_PEER_RANGE} is not visible on npm yet; retrying in ${delay}s (attempt ${attempt}/${max_attempts})."
+            sleep "$delay"
+            delay=$((delay * 2))
+            if [ "$delay" -gt 30 ]; then
+              delay=30
+            fi
+            attempt=$((attempt + 1))
+          done
 
       - name: Pack and verify admin package
         if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
