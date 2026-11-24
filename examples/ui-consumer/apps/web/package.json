@@ -1,0 +1,26 @@
+{
+  "name": "@deesse-example/ui-consumer",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @deessejs/ui build && next dev --port 3218",
+    "build": "pnpm --filter @deessejs/ui build && next build",
+    "typecheck": "pnpm --filter @deessejs/ui build && tsc --noEmit",
+    "lint": "pnpm --dir ../../../.. exec oxlint --config .oxlintrc.json examples/ui-consumer/apps/web --deny-warnings"
+  },
+  "dependencies": {
+    "@deessejs/ui": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  }
+}

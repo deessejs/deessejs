@@ -6,14 +6,11 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
 
-import { TierCardPricing } from "@/components/marketing/tier-card-pricing"
-import { TierTagline } from "@/components/marketing/tier-tagline"
 import type { LicenseType } from "@/lib/pricing"
 
 import { Cell } from "./_shared/cell"
 import { LICENSE_KICKER } from "./license-kicker"
 import { PriceBlock } from "./price-block"
-import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
 
 /**
  * License card — kicker + name + tagline + price + bullets + CTA.
@@ -21,22 +18,18 @@ import { usePricingCadence } from "@/hooks/marketing/pricing-cadence"
  * The `recommended` flag triggers the elevated visual treatment
  * (negative margin + shadow + ring) used for the Pro tier.
  *
- * The price rendering path is keyed on `price.kind`, not on the
- * `recommended` flag: subscription plans go through `TierCardPricing`
- * (which reads the cadence from the context); free and custom plans
- * go through `PriceBlock` directly. This way, any plan with a
- * subscription price gets the cadence toggle, regardless of its
- * position in the grid.
+ * Both offers use the same price block and static copy.
  */
 export function LicenseCell({
   license,
+  hrefOverride,
   isLast = false,
 }: {
   license: LicenseType
+  hrefOverride?: string | undefined
   isLast?: boolean
 }) {
   const isRecommended = license.recommended === true
-  const isSubscription = license.price.kind === "subscription"
   return (
     <div
       className={cn(
@@ -70,37 +63,29 @@ export function LicenseCell({
             {license.name}
           </h3>
           <p className="text-copy-14 text-muted-foreground [&:not(:first-child)]:mt-0">
-            {isSubscription ? (
-              <TierTagline
-                tier={license.id === "professional" ? "professional" : "agency"}
-              />
-            ) : (
-              license.tagline
-            )}
+            {license.tagline}
           </p>
         </header>
 
-        {isSubscription ? (
-          <TierCardPricing license={license} />
-        ) : (
-          <NonSubscriptionLicenseBody license={license} />
-        )}
+        <LicenseBody license={license} hrefOverride={hrefOverride} />
       </Cell>
     </div>
   )
 }
 
 /**
- * Body of a non-subscription license card (Community, Enterprise).
- * Lives in a sub-component so the parent component stays readable
- * and the hook order stays predictable (usePricingCadence is only
- * called when the subscription path is taken).
+ * Card body shared by Community and Pro.
  */
-function NonSubscriptionLicenseBody({ license }: { license: LicenseType }) {
-  const { cadence } = usePricingCadence()
+function LicenseBody({
+  license,
+  hrefOverride,
+}: {
+  license: LicenseType
+  hrefOverride?: string | undefined
+}) {
   return (
     <>
-      <PriceBlock price={license.price} cadence={cadence} />
+      <PriceBlock price={license.price} />
 
       <p className="text-copy-14 text-foreground/90 [&:not(:first-child)]:mt-0">
         {license.forWho}
@@ -124,11 +109,11 @@ function NonSubscriptionLicenseBody({ license }: { license: LicenseType }) {
       <div className="mt-auto pt-2">
         {license.cta.external ? (
           <Button asChild size="lg" variant="outline" className="w-full">
-            <a href={license.cta.href}>{license.cta.label}</a>
+            <a href={hrefOverride ?? license.cta.href}>{license.cta.label}</a>
           </Button>
         ) : (
           <Button asChild size="lg" variant="outline" className="w-full">
-            <Link href={license.cta.href}>{license.cta.label}</Link>
+            <Link href={hrefOverride ?? license.cta.href}>{license.cta.label}</Link>
           </Button>
         )}
       </div>

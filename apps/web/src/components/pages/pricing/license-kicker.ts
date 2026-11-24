@@ -1,17 +1,9 @@
 import type { LicenseTypeId } from "@/lib/pricing"
 
 /**
- * Short badge label per license tier. Independent from `LICENSE_TYPES`
- * so the marketing copy can name them differently than the data slug.
- *
- * - `open-community`  → "MIT"
- * - `professional`    → "Pro"
- * - `agency`          → "Team"
- * - `enterprise`      → "Enterprise"
+ * Short badge label per displayed offer.
  */
 export const LICENSE_KICKER: Record<LicenseTypeId, string> = {
   "open-community": "MIT",
-  professional: "Pro",
-  agency: "Team",
-  enterprise: "Enterprise",
+  pro: "For every developer seat",
 }

@@ -9,21 +9,15 @@
  * Sections:
  *   - JsonLd          — FAQPage schema for SEO (mounted early)
  *   - Hero            — proposition centrée
- *   - CadenceTabs     — strip 16px (monthly vs annual)
- *   - LicenseTypes    — 3-card grid (Community / Professional / Agency)
+ *   - LicenseTypes    — Community and Pro cards
  *   - TechStack       — "Built with" strip
- *   - Comparison      — side-by-side comparison table (3 columns)
- *   - Personas        — who buys what
- *   - EnterpriseReady — paperwork-level engagement (SLA / DPAs / Procurement)
- *   - FAQ             — 4 grouped accordions
+ *   - Comparison      — Community and Pro comparison
+ *   - Personas        — who the offer serves
+ *   - EnterpriseReady — custom procurement, support, or security contact path
+ *   - FAQ             — grouped offer and billing answers
  *   - FinalCta        — last 2-col block
  *
- * Note: the cadence context (`PricingCadenceProvider`) is supplied by
- * the route file, not the namespace — it wraps the entire page tree
- * and lifting it into a section would split the React context across
- * tree boundaries.
  */
-import { CadenceTabs } from "./cadence-tabs"
 import { Comparison } from "./comparison"
 import { EnterpriseReady } from "./enterprise-ready"
 import { FAQ } from "./faq"
@@ -37,7 +31,6 @@ import { TechStack } from "./tech-stack"
 export const Pricing = {
   JsonLd,
   Hero,
-  CadenceTabs,
   LicenseTypes,
   TechStack,
   Comparison,
@@ -50,7 +43,6 @@ export const Pricing = {
 // Named re-exports for consumers that want a single component
 // without going through the namespace.
 export {
-  CadenceTabs,
   Comparison,
   EnterpriseReady,
   FAQ,

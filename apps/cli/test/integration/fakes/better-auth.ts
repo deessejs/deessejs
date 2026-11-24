@@ -66,6 +66,8 @@ type State = {
    * first /get-session call arrives.
    */
   lastGetSessionAuthHeader: string | null
+  /** Parsed JSON payload received by /sign-out. */
+  lastSignOutBody: Record<string, unknown> | null
 }
 
 const CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // base32 sans I, O, 0, 1
@@ -118,7 +120,7 @@ async function handleFakeAuthRequest(
     case `GET ${AUTH_PATH}device`:
       return handleDeviceStatus(res, url)
     case `POST ${AUTH_PATH}sign-out`:
-      return handleSignOut(res, state)
+      return handleSignOut(req, res, state)
     case `GET ${AUTH_PATH}get-session`:
       return handleGetSession(req, res, state)
     case `POST ${AUTH_PATH}device/approve`:
@@ -224,8 +226,24 @@ function handleDeviceStatus(res: http.ServerResponse, url: URL): void {
   jsonResponse(res, 200, { user_code: userCode, status: "pending" })
 }
 
-function handleSignOut(res: http.ServerResponse, state: State): void {
+async function handleSignOut(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  state: State
+): Promise<void> {
   state.counters.signOutRequests += 1
+  let body: unknown
+  try {
+    body = JSON.parse(await readBody(req))
+  } catch {
+    jsonResponse(res, 400, { error: "invalid_json" })
+    return
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    jsonResponse(res, 400, { error: "invalid_body" })
+    return
+  }
+  state.lastSignOutBody = body as Record<string, unknown>
   if (state.behaviour.serverErrors) {
     jsonResponse(res, 500, { error: "server_error" })
     return
@@ -291,6 +309,7 @@ export async function startFakeAuthServer(
       signOutRequests: 0,
     },
     lastGetSessionAuthHeader: null,
+    lastSignOutBody: null,
   }
 
   const server = http.createServer((req, res) => {

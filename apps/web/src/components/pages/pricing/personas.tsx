@@ -13,24 +13,19 @@ import { Cell } from "./_shared/cell"
  */
 const PERSONAS = [
   {
-    label: "Primary",
-    title: "Freelance engineer or boutique studio",
-    body: "You bill clients $20k–$80k per project. You don't get paid to wire auth, billing webhooks, and audit logs from scratch. Use Professional to eliminate low-margin plumbing and ship production-grade architectures under your client's brand.",
+    label: "Pro",
+    title: "Independent developers",
+    body: "Use the same Pro catalog and commercial-use rights for your own products and client work. Each developer who needs Pro gets an assigned seat.",
   },
   {
-    label: "Secondary",
-    title: "In-house team at a startup past the weekend stage",
-    body: "You charge Professional subscriptions against engineering time saved, the same way you buy Vercel or Linear. Switch to annual when your team is shipping actively and you want every new template the day it lands.",
+    label: "Teams",
+    title: "Teams of any size",
+    body: "Buy seats for the developers who need Pro. Every seat has the same features and rights, with no agency plan or client-work surcharge.",
   },
   {
-    label: "Tertiary",
-    title: "Engineering team delivering client work",
-    body: "You need 5 seats under a single organization key, the Commercial Extended License, and the Figma source file. Agency is built for this. Layer an engagement contract for procurement and dedicated support when your client is regulated.",
-  },
-  {
-    label: "Floor",
-    title: "Solo builder shipping a weekend project",
-    body: "You use the Community templates for free, MIT-licensed. Cloning a Community template is the fastest way to see how a Professional codebase is structured before you commit.",
+    label: "Community",
+    title: "Builders getting started",
+    body: "Start with Community at no cost under the MIT license, and move to Pro when you need its additional catalog.",
   },
 ] as const
 
@@ -41,8 +36,7 @@ export function Personas() {
         <div className="flex flex-col gap-2 border-b border-border p-6">
           <p className="text-label-13 text-muted-foreground">Who buys what</p>
           <h2 className="text-heading-32 tracking-tight text-balance lg:text-heading-40">
-            The four buyers we built the licensing model around. Find the one
-            closest to you.
+            One Pro plan for individuals and teams.
           </h2>
         </div>
         <KbCardGrid className="md:grid-cols-2">
