@@ -29,7 +29,14 @@ pnpm --filter @deesse-admin-example/web db:migrate
 pnpm --filter @deesse-admin-example/web dev
 ```
 
-Open `http://localhost:3000`, create a user, and visit `/admin`. A regular user sees an access-denied state. To test the dashboard, create an admin user with Better Auth's admin CLI using the generated config at `apps/web/.deesse/tooling/auth.config.ts`, then sign in through the app.
+Open `http://localhost:3000`, create a user, and visit `/admin`. A regular user sees an access-denied state. To bootstrap an administrator, run this operator command from the example app directory after applying the migration:
+
+```sh
+cd examples/next-shadcn-admin/apps/web
+pnpm exec auth create-admin --config ./.deesse/tooling/auth.config.ts --email admin@example.com --name "Admin" --role admin
+```
+
+The pinned Better Auth CLI prompts for the password when `--password` is omitted. The generated config imports `deesse.config.ts` and uses its configured Deesse/Better Auth runtime, database adapter, and Admin plugin. Prerequisites are the generated `.deesse/tooling/auth.config.ts`, the same `DATABASE_URL` and `BETTER_AUTH_SECRET` as the app, and the migrated Better Auth schema. The command creates the account through Better Auth's server-side `auth.api.createUser`; it does not expose a signup or claim endpoint. If any users already exist, Better Auth asks for confirmation before creating another administrator. Do not use `--force` or `--yes` casually. If the email already belongs to an account, creation fails and leaves that account unchanged; use a different operator-approved address for recovery. The command is operator-run and can create additional admins after explicit confirmation, so restrict access to the app environment and database credentials.
 
 With the server running and the example database migrated, exercise the protected route and shared API with:
 
@@ -37,7 +44,7 @@ With the server running and the example database migrated, exercise the protecte
 pnpm --filter @deesse-admin-example/web smoke
 ```
 
-The smoke script checks anonymous redirects and authenticated non-admin denial on both the root and nested admin routes, plus the Better Auth session and authenticated Deesse posts API path. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
+The smoke script checks anonymous redirects and authenticated non-admin denial on both the root and nested admin routes. It exercises Better Auth's `create-admin` CLI against the isolated PostgreSQL database, verifies the persisted admin role and sign-in, confirms duplicate-email creation is refused without changing the account, then checks the Better Auth session and authenticated Deesse posts API path. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
 
 ## Environment
 

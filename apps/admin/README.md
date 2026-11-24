@@ -32,6 +32,16 @@ export default async function AdminRoute({ params }: { params: Promise<{ slug?: 
 
 `AdminPage` finds the plugin output using the id declared by the admin plugin definition through `runtime.plugins.get()`. It reads request headers on the server, reuses `runtime.auth.api.getSession()`, redirects anonymous visitors, and denies signed-in users without Better Auth's `admin` role. It resolves pages from that plugin output and calls Next.js `notFound()` for unknown paths. Optional page authorization runs server-side after the dashboard role check and can only narrow access. The package creates no separate auth client, database connection, or API transport.
 
+## Bootstrap an administrator
+
+This package registers Better Auth's Admin plugin with the shared Deesse auth composition. For an initial operator account, use the Better Auth CLI from the application directory with the application's Better Auth config:
+
+```sh
+pnpm exec auth create-admin --config ./path/to/auth.config.ts --email admin@example.com --name "Admin" --role admin
+```
+
+Use the same configured database and environment as the app, and apply the generated Better Auth schema migration first. The CLI prompts for a password when `--password` is omitted and creates the user through the server-side `auth.api.createUser` API. It asks for confirmation if the database already has users. An existing email is not promoted or overwritten; creation fails without changing that account. For lost admin access, an authorized operator can run the command again with a different approved account after confirming the existing-user prompt. There is no public signup role field or admin claim endpoint. Treat database credentials and access to this command as privileged.
+
 Feature plugins remain admin-agnostic. An optional feature adapter can export page definitions for the application to configure:
 
 ```tsx

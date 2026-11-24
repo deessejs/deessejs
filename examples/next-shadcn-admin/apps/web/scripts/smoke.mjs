@@ -1,10 +1,16 @@
 import { createClient, deesseServer } from "deesse/react"
+import { spawnSync } from "node:child_process"
+import { randomBytes } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import postgres from "postgres"
 
 const baseURL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
 const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false })
 const password = "local-smoke-password-123"
 const makeEmail = (label) => `${label}-${crypto.randomUUID()}@example.test`
+const authPackage = JSON.parse(readFileSync(new URL("../node_modules/auth/package.json", import.meta.url), "utf8"))
+const authCli = fileURLToPath(new URL(`../node_modules/auth/${authPackage.bin.auth}`, import.meta.url))
 
 function sessionCookie(response) {
   return response.headers
@@ -25,11 +31,11 @@ async function signUp(email, name, extraFields = {}) {
   return response.json()
 }
 
-async function signIn(email) {
+async function signIn(email, signInPassword = password) {
   const response = await fetch(`${baseURL}/api/auth/sign-in/email`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: baseURL },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password: signInPassword }),
   })
   if (!response.ok) {
     throw new Error(`sign-in failed: ${response.status} ${await response.text()}`)
@@ -75,6 +81,29 @@ async function expectAllowed(path, cookie, marker) {
     throw new Error(`expected admin page ${path} with marker ${marker}: ${response.status}`)
   }
   return response.status
+}
+
+function runCreateAdmin(email) {
+  const adminPassword = randomBytes(24).toString("base64url")
+  const result = spawnSync(
+    process.execPath,
+    [
+      authCli,
+      "create-admin",
+      "--config",
+      "./.deesse/tooling/auth.config.ts",
+      "--email",
+      email,
+      "--name",
+      "Bootstrap administrator",
+      "--password",
+      adminPassword,
+      "--yes",
+    ],
+    { cwd: process.cwd(), encoding: "utf8" },
+  )
+  if (result.error) throw result.error
+  return { result, password: adminPassword }
 }
 
 try {
@@ -137,16 +166,27 @@ try {
   }
 
   const bootstrapEmail = makeEmail("bootstrap-admin")
-  await signUp(bootstrapEmail, "Bootstrap administrator")
+  const { result: bootstrapResult, password: bootstrapPassword } = runCreateAdmin(bootstrapEmail)
+  if (bootstrapResult.status !== 0 || !bootstrapResult.stdout.includes("Admin user created successfully.")) {
+    throw new Error(`Better Auth create-admin failed: ${bootstrapResult.stderr || bootstrapResult.stdout}`)
+  }
   const [bootstrapRow] = await sql`
     select id, role from "user" where email = ${bootstrapEmail}
   `
-  if (bootstrapRow?.role !== "user") {
-    throw new Error(`bootstrap account did not start as an ordinary user: ${bootstrapRow?.role}`)
+  if (bootstrapRow?.role !== "admin") {
+    throw new Error(`create-admin did not persist the admin role: ${bootstrapRow?.role ?? "missing"}`)
   }
-  // Establish the first administrator directly in the disposable CI database.
-  await sql`update "user" set role = 'admin' where id = ${bootstrapRow.id}`
-  const bootstrapCookie = await signIn(bootstrapEmail)
+  const { result: duplicateBootstrap } = runCreateAdmin(bootstrapEmail)
+  if (duplicateBootstrap.status === 0 || duplicateBootstrap.stdout.includes("Admin user created successfully.")) {
+    throw new Error("create-admin unexpectedly replaced an existing account")
+  }
+  const [afterDuplicateBootstrap] = await sql`
+    select id, role from "user" where email = ${bootstrapEmail}
+  `
+  if (afterDuplicateBootstrap?.id !== bootstrapRow.id || afterDuplicateBootstrap?.role !== "admin") {
+    throw new Error("duplicate create-admin attempt changed the existing account")
+  }
+  const bootstrapCookie = await signIn(bootstrapEmail, bootstrapPassword)
   const bootstrapSession = await readSession(bootstrapCookie)
   if (bootstrapSession?.user?.role !== "admin") {
     throw new Error("bootstrap administrator could not sign in with the persisted admin role")
@@ -264,6 +304,8 @@ try {
     signupRoleInjection: "rejected",
     ordinaryRolePersisted: ordinaryRow.role,
     ordinaryDenied,
+    operatorBootstrap: bootstrapRow.role,
+    duplicateBootstrap: "refused without changing existing account",
     adminRolePersisted: adminRow.role,
     ordinaryRoleAssignment: forbiddenRoleAssignment.status,
     betterAuthRoleAssignment: roleAssignment.status,
