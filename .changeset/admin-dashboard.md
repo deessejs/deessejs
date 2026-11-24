@@ -1,6 +1,6 @@
 ---
 "@deessejs/admin": minor
-"@deessejs/drizzle-adapter": patch
+"@deessejs/drizzle-adapter": major
 "deesse": minor
 ---
 
