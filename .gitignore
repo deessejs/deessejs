@@ -29,5 +29,7 @@ apps/web/playwright-report/
 # CodeGraph local index and database
 .codegraph/
 
+# Local Claude Code settings
+.claude/settings.local.json
 # Example-local generated Deesse and Better Auth schema tooling
 examples/next-shadcn-monorepo/apps/web/.deesse/
