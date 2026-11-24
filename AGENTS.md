@@ -50,6 +50,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 | `apps/cli`               | [AGENTS.md](apps/cli/AGENTS.md)               | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`).                             |
 | `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds.                |
 | `apps/agent`             | [AGENTS.md](apps/agent/AGENTS.md)             | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve.                                                                               |
+| `apps/ui`                | [AGENTS.md](apps/ui/AGENTS.md)                 | Public, theme-compatible React primitives package `@deessejs/ui`.                                                                            |
 
 ### Packages
 

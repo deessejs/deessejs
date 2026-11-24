@@ -13,7 +13,7 @@ Add one when a pull request changes the published behavior, public API, runtime 
 - `apps/deesse-drizzle-adapter` changes that affect `@deessejs/drizzle-adapter`.
 - Existing CLI surfaces in `apps/create-deesse-app`, `packages/contracts`, or `packages/api` that affect the CLI.
 
-The first PR that introduces `deesse` or `@deessejs/drizzle-adapter` sets each package's baseline version directly in its `package.json`; that initial addition does not need a Changeset bump. Later PRs touching those packages require Changesets.
+The first PR that introduces `deesse` or `@deessejs/drizzle-adapter` sets each package's baseline version directly in its `package.json`; that initial addition does not need a Changeset bump. Later PRs touching those packages require Changesets. The first `@deessejs/ui` change uses a minor Changeset against its `0.0.0` manifest baseline, producing `0.1.0` when the version-preparation process runs.
 
 Skip a Changeset for internal-only changes, tests, documentation, formatting, or dependency updates that do not change consumer behavior. Template catalog content changes do not bump the CLI because templates are served by the API and the CLI is their client.
 
@@ -46,6 +46,8 @@ The first `@deessejs/drizzle-adapter` publication uses two manual workflow dispa
 2. Review and approve the staged `0.1.0` version on npm with 2FA, then remove the temporary secret. Dispatch `release.yml` again with `record_adapter_release: true` to create the package-specific GitHub tag and release.
 
 Add Trusted Publishing for `release.yml` on the npm package before the next real adapter release. Configure it close to that release so npm can validate the first trusted publish within its two-day window. Trusted Publishing for `deesse` should likewise be used by a successful `main` release shortly after its configuration is added.
+
+The first `@deessejs/ui` publication follows the same stage, approve, then record sequence. After the UI Changeset has been applied on `staging` and its resulting `0.1.0` manifest version is promoted to `main`, add a temporary stage-only token as the `NPM_UI_BOOTSTRAP_TOKEN` Actions secret and dispatch `release.yml` from `main` with `bootstrap_ui: true`. Review the staged tarball and approve it on npm with 2FA. Remove the temporary Actions secret, then dispatch again from `main` with `record_ui_release: true` to create the `ui/v0.1.0` GitHub tag and release. Staging only submits the package to npm's staging area; the live package and `latest` tag move only after the maintainer's 2FA approval. Configure the package's npm Trusted Publisher for GitHub Actions using organization `deessejs`, repository `deessejs`, and workflow filename `release.yml` before a later stable release. Subsequent releases use OIDC Trusted Publishing and `npm publish --provenance`.
 
 ## Examples
 

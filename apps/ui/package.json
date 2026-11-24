@@ -1,0 +1,50 @@
+{
+  "name": "@deessejs/ui",
+  "version": "0.0.0",
+  "description": "Theme-compatible React UI primitives for Tailwind CSS v4 applications.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deessejs/deessejs.git",
+    "directory": "apps/ui"
+  },
+  "type": "module",
+  "files": ["dist", "tailwind.css", "README.md", "LICENSE"],
+  "sideEffects": ["./tailwind.css"],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./cn": {
+      "types": "./dist/cn.d.ts",
+      "import": "./dist/cn.js",
+      "default": "./dist/cn.js"
+    },
+    "./tailwind.css": "./tailwind.css"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/ui --deny-warnings",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "clsx": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
