@@ -38,7 +38,7 @@ jobs:
           # package.json. Require Changesets only after that package exists
           # on the target branch, so later changes to it cannot bypass the
           # regular version gate.
-          for PACKAGE_DIR in apps/deesse apps/deesse-drizzle-adapter; do
+          for PACKAGE_DIR in apps/deesse apps/deesse-drizzle-adapter apps/admin; do
             if git cat-file -e "origin/$BASE_REF:$PACKAGE_DIR/package.json" 2>/dev/null; then
               PACKAGE_TOUCHED=$(git diff --name-only "${DIFF_ARGS[@]}" -- "$PACKAGE_DIR")
               if [ -n "$PACKAGE_TOUCHED" ]; then

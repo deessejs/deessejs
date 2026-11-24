@@ -122,9 +122,12 @@ export type PluginContribution = {
   extensions?: Readonly<Record<string, unknown>>
 }
 
+export type PluginOutput = PluginContribution | Readonly<Record<string, unknown>>
+
+
 export type PluginDefinition<
   TSchema extends ZodType,
-  TContribution extends PluginContribution,
+  TContribution extends PluginOutput,
   TRequires extends readonly string[] = readonly string[],
   TExtensionPoints extends Readonly<Record<string, unknown>> = Readonly<Record<string, unknown>>,
 > = {
@@ -149,8 +152,30 @@ export type PluginExtension<TProvider, TPoint extends string> = TProvider extend
   : never : never : never
 
 export type ContributionOf<TPlugins extends readonly AnyPlugin[]> = TPlugins[number] extends infer TPlugin
-  ? TPlugin extends { definition: { handler: (...args: never[]) => infer TContribution } } ? TContribution : never
+  ? PluginOutputOf<TPlugin>
   : never
+
+export type PluginOutputOf<TPlugin> = TPlugin extends { definition: { handler: (...args: never[]) => infer TOutput } }
+  ? TOutput
+  : never
+
+type PluginId<TPlugins extends readonly AnyPlugin[]> = TPlugins[number]["id"]
+type PluginById<TPlugins extends readonly AnyPlugin[], TId extends string> = Extract<TPlugins[number], { id: TId }>
+
+export type ImmutablePluginOutput<TOutput> = TOutput extends object ? Readonly<TOutput> : TOutput
+
+export type PluginOutputEntry<TPlugins extends readonly AnyPlugin[]> = TPlugins[number] extends infer TPlugin
+  ? TPlugin extends AnyPlugin
+    ? readonly [TPlugin["id"], ImmutablePluginOutput<PluginOutputOf<TPlugin>>]
+    : never
+  : never
+
+export type PluginOutputRegistry<TPlugins extends readonly AnyPlugin[]> = {
+  get<TId extends string>(id: TId): TId extends PluginId<TPlugins>
+    ? ImmutablePluginOutput<PluginOutputOf<PluginById<TPlugins, TId>>> | undefined
+    : undefined
+  entries(): readonly PluginOutputEntry<TPlugins>[]
+}
 
 type UnionToIntersection<TUnion> = (TUnion extends unknown ? (value: TUnion) => void : never) extends (value: infer TIntersection) => void
   ? TIntersection
@@ -215,6 +240,7 @@ export type DeessePluginContributionRegistry<TPlugins extends readonly AnyPlugin
   readonly extensions: MergeContributionObjects<ExtensionContribution<ContributionOf<TPlugins>>>
 }
 
+
 export type ApiRouter<TApi, TPlugins extends readonly AnyPlugin[]> =
   (TApi extends { router: infer TRouter extends AnyRouter } ? TRouter : Record<never, never>) & PluginRouters<TPlugins>
 
@@ -237,6 +263,7 @@ export type DeesseInstance<
   readonly database: DeesseDatabaseService<ComposedDatabaseSchema<TAdapter, TPlugins>, CapabilitiesOf<TAdapter>>
   readonly auth: TAuth
   readonly api: { readonly router: TApiRouter }
+  readonly plugins: PluginOutputRegistry<TPlugins>
   readonly handler: DeesseFetchHandler
 }
 

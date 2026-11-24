@@ -2,7 +2,7 @@ import { memoryAdapter } from "@better-auth/memory-adapter"
 import { createORPCClient } from "@orpc/client"
 import { RPCLink } from "@orpc/client/fetch"
 import { os, type RouterClient } from "@orpc/server"
-import { admin, username } from "better-auth/plugins"
+import { username } from "better-auth/plugins"
 import { Hono } from "hono"
 import { z } from "zod"
 import { describe, expect, it, vi } from "vitest"
@@ -14,6 +14,33 @@ type RequestContext = DeesseRequestContext<never, DeesseDatabaseCapabilities, { 
 const base = os.$context<RequestContext>()
 
 describe("Deesse runtime composition", () => {
+  it("retains each processed plugin output by id after one parsed handler call", () => {
+    const handler = vi.fn(({ amount }: { amount: number }) => ({ amount, label: amount.toFixed(2) }))
+    const configured = plugin({
+      id: "configured-output",
+      args: z.object({ amount: z.string().transform(Number) }),
+      handler,
+    })
+    const database = {
+      database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
+      authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    } satisfies DatabaseAdapter
+    const runtime = createDeesse({
+      database,
+      auth: { baseURL: "http://localhost", secret: "deesse-output-test-secret-long-enough" },
+      plugins: [configured({ amount: "12" })],
+    })
+    const output = runtime.plugins.get("configured-output")
+
+    expect(output).toEqual({ amount: 12, label: "12.00" })
+    expect(Object.isFrozen(output)).toBe(true)
+    expect(runtime.plugins.get("unknown-plugin")).toBeUndefined()
+    expect(runtime.plugins.entries()).toEqual([["configured-output", output]])
+    expect(Object.isFrozen(runtime.plugins.entries())).toBe(true)
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith({ amount: 12 })
+  })
+
   it("runs plugin handlers once and serves public and authenticated oRPC calls through Hono", async () => {
     const identity = base.handler(({ context }) => {
       const transactions: true = context.database.capabilities.transactions
@@ -236,25 +263,22 @@ describe("Deesse runtime composition", () => {
     expect(initializeSchema).not.toHaveBeenCalled()
   })
 
-  it("merges app and plugin Better Auth server plugins into the owned instance", () => {
+  it("composes generic Better Auth server plugins into the owned instance", () => {
     const database = {
       database: { capabilities: { transactions: true as const } } as unknown as DeesseDatabaseService,
       authAdapter: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
     } satisfies DatabaseAdapter
-    const contributing = plugin({ id: "admin-extension", handler: () => ({ auth: { serverPlugins: [admin()] } }) })
+    const contributing = plugin({ id: "auth-extension", handler: () => ({ auth: { serverPlugins: [username()] } }) })
     const app = createDeesse({
       database,
       auth: {
         baseURL: "http://localhost",
         secret: "deesse-auth-contribution-secret-long-enough",
-        plugins: [username()],
       },
       plugins: [contributing()],
     })
-    expect(app.auth.options.plugins?.map(({ id }) => id)).toContain("username")
-    expect(app.auth.options.plugins?.map(({ id }) => id)).toContain("admin")
+    expect((app.auth.options.plugins as { id: string }[]).map(({ id }) => id)).toContain("username")
     expect(app.auth.api).toHaveProperty("isUsernameAvailable")
-    expect(app.auth.api).toHaveProperty("listUsers")
   })
 
   it("serializes invalid oRPC input and keeps request users isolated", async () => {

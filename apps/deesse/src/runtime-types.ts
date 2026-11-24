@@ -1,4 +1,4 @@
-import type { BetterAuthOptions, DatabaseAdapter, DeesseApiOptions, PluginContribution, ZodType } from "./types.js"
+import type { BetterAuthOptions, DatabaseAdapter, DeesseApiOptions, PluginOutput, ZodType } from "./types.js"
 
 export type RuntimePlugin = {
   id: string
@@ -6,7 +6,7 @@ export type RuntimePlugin = {
   definition: {
     args?: ZodType
     requires?: readonly string[]
-    handler: ((args: never) => PluginContribution) | (() => PluginContribution)
+    handler: ((args: never) => PluginOutput) | (() => PluginOutput)
   }
 }
 

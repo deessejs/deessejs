@@ -1,0 +1,71 @@
+{
+  "name": "@deessejs/admin",
+  "version": "0.1.0",
+  "description": "Framework-native admin dashboard for DeesseJS applications.",
+  "keywords": [
+    "admin",
+    "better-auth",
+    "dashboard",
+    "deessejs",
+    "nextjs"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deessejs/deessejs.git",
+    "directory": "apps/admin"
+  },
+  "files": [
+    "dist",
+    "src/admin.css",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./next": {
+      "types": "./dist/next.d.ts",
+      "import": "./dist/next.js",
+      "default": "./dist/next.js"
+    },
+    "./styles.css": "./src/admin.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc --noEmit -p tsconfig.consumer.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "pnpm --dir ../.. exec oxlint --config .oxlintrc.json apps/admin --deny-warnings",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@deessejs/ui": "catalog:"
+  },
+  "devDependencies": {
+    "@better-auth/memory-adapter": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@workspace/typescript-config": "workspace:*",
+    "better-auth": "catalog:",
+    "deesse": "workspace:*",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "better-auth": "catalog:",
+    "deesse": "^0.4.0",
+    "next": "catalog:",
+    "react": "catalog:"
+  }
+}

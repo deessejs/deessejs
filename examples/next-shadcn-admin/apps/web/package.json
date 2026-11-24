@@ -1,0 +1,47 @@
+{
+  "name": "@deesse-admin-example/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "pnpm run schema:generate && next build",
+    "start": "next start",
+    "smoke": "node ./scripts/smoke.mjs",
+    "lint": "pnpm --dir ../../../../ exec oxlint --config .oxlintrc.json examples/next-shadcn-admin --deny-warnings",
+    "typecheck": "pnpm run schema:generate && tsc --noEmit",
+    "schema:generate": "pnpm run deesse:schema && pnpm run auth:schema",
+    "auth:schema": "pnpm exec auth generate --config ./.deesse/tooling/auth.config.ts --adapter drizzle --dialect postgresql --output ./src/server/database/schema/auth.ts --yes",
+    "deesse:schema": "tsx ../../../../apps/deesse-drizzle-adapter/dist/cli.js --config ./deesse.config.ts --output ./src/server/database/schema/deesse.ts --auth-config-output ./.deesse/tooling/auth.config.ts --auth-schema-placeholder-output ./src/server/database/schema/auth.ts",
+    "db:generate": "pnpm exec drizzle-kit generate --config ./drizzle.config.ts",
+    "db:migrate": "pnpm exec drizzle-kit migrate --config ./drizzle.config.ts"
+  },
+  "dependencies": {
+    "@deesse-admin-example/ui": "workspace:*",
+    "@deessejs/admin": "workspace:*",
+    "@deessejs/ui": "catalog:",
+    "@deessejs/drizzle-adapter": "workspace:*",
+    "@orpc/server": "catalog:",
+    "better-auth": "catalog:",
+    "deesse": "workspace:*",
+    "dotenv": "catalog:",
+    "drizzle-orm": "catalog:",
+    "next": "catalog:",
+    "postgres": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@workspace/typescript-config": "workspace:*",
+    "auth": "catalog:",
+    "drizzle-kit": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  }
+}
