@@ -1,5 +1,14 @@
 # Dependencies
 node_modules/
+**/.turbo/
+/apps/*/dist/
+/packages/*/dist/
+/apps/*/.next/
+
+# Local development secrets, generated sessions, and per-worktree state
+.env.local
+.env.*.local
+.local/
 
 # Local Vale scratch files
 B-RULES.txt
@@ -22,3 +31,5 @@ apps/web/playwright-report/
 
 # Local Claude Code settings
 .claude/settings.local.json
+# Example-local generated Deesse and Better Auth schema tooling
+examples/next-shadcn-monorepo/apps/web/.deesse/

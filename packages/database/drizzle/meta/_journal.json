@@ -113,6 +113,13 @@
       "when": 1795179120394,
       "tag": "0016_soft_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795442337125,
+      "tag": "0017_chilly_storm",
+      "breakpoints": true
     }
   ]
 }

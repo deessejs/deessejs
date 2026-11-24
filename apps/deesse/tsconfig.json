@@ -1,0 +1,14 @@
+{
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "isolatedDeclarations": false,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "deesse": ["./src/index.ts"],
+      "deesse/react": ["./src/react.ts"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*.ts"]
+}

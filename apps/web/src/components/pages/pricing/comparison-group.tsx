@@ -48,7 +48,7 @@ export function ComparisonGroup({ group }: { group: ComparisonGroupData }) {
           </th>
           {COMPARISON_LAYERS.map((layer) => {
             const status = row.status?.[layer.id] ?? "yes"
-            const isRecommended = layer.id === "professional"
+            const isRecommended = layer.id === "pro"
             return (
               <td
                 key={`${row.attribute}-${layer.id}`}

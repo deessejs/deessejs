@@ -220,6 +220,14 @@ const authConfig: BetterAuthOptions = {
 
   advanced: {
     useSecureCookies: process.env.NODE_ENV === "production",
+    // T3 previews route every worktree through localhost on a different
+    // port, but browser cookies are scoped to host and path, not port.
+    // Give each local worktree a separate cookie namespace. The prefix is
+    // deliberately absent from non-agent development and production.
+    ...(process.env.NODE_ENV === "development" &&
+    /^[a-f0-9]{12}$/.test(process.env.DEV_AGENT_WORKTREE_ID ?? "")
+      ? { cookiePrefix: `deessejs-${process.env.DEV_AGENT_WORKTREE_ID}` }
+      : {}),
     // 1.7 moved the joins flag out of `experimental`. Behaviour matches
     // what `experimental.joins: true` did in 1.6.x — the ORM performs
     // JOIN-based hydration instead of N+1 selects. Keep off for
@@ -296,7 +304,13 @@ const authConfig: BetterAuthOptions = {
       loginPage: "/oauth/login",
       consentPage: "/oauth/consent",
       allowPublicClientPrelogin: true,
-      scopes: ["openid", "profile", "offline_access", "templates:read"],
+      scopes: [
+        "openid",
+        "profile",
+        "offline_access",
+        "templates:read",
+        "organizations:read",
+      ],
       refreshTokenReuseInterval: 0,
     }),
     cimd({

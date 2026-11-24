@@ -25,7 +25,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core"
 
-import { user } from "./auth.js"
+import { member, organization, user } from "./auth.js"
 
 /**
  * The states an operation goes through.
@@ -59,7 +59,7 @@ export const ORGANIZATION_PROVISIONING_STATUS: {
 
 /** Whether the value is one of the operation's states. */
 export const isOrganizationProvisioningStatus = (
-  value: string,
+  value: string
 ): value is OrganizationProvisioningStatus =>
   value === ORGANIZATION_PROVISIONING_STATUS.pending ||
   value === ORGANIZATION_PROVISIONING_STATUS.completed ||
@@ -93,10 +93,34 @@ export const organizationProvisioning = pgTable(
       .on(table.userId)
       .where(sql`${table.status} IN ('pending', 'superseded')`),
     index("organization_provisioning_user_idx").on(table.userId),
-  ],
+  ]
 )
 
 export type OrganizationProvisioningRow =
   typeof organizationProvisioning.$inferSelect
 export type NewOrganizationProvisioningRow =
   typeof organizationProvisioning.$inferInsert
+
+/** An explicit allocation of one purchased Pro seat to an organization member. */
+export const organizationProSeat = pgTable(
+  "organization_pro_seat",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("organization_pro_seat_member_uidx").on(
+      table.organizationId,
+      table.memberId
+    ),
+    index("organization_pro_seat_member_idx").on(table.memberId),
+  ]
+)
+
+export type OrganizationProSeatRow = typeof organizationProSeat.$inferSelect

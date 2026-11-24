@@ -20,7 +20,7 @@
       "onAutoForward": "silent"
     }
   },
-  "postCreateCommand": "pnpm install && pnpm db:generate",
+  "postCreateCommand": "pnpm install --frozen-lockfile",
   "customizations": {
     "codespaces": {
       "openFiles": ["README.md", "CLAUDE.md"]
@@ -38,9 +38,5 @@
       ]
     }
   },
-  "remoteEnv": {
-    "DATABASE_URL": "postgresql://codespace:codespace@localhost:5432/postgres",
-    "BETTER_AUTH_SECRET": "${localEnv:BETTER_AUTH_SECRET}",
-    "BETTER_AUTH_URL": "http://localhost:3000"
-  }
+  "remoteEnv": {}
 }

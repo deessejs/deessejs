@@ -14,12 +14,12 @@ export function FinalCta({ signupHref }: { signupHref: string }) {
   return (
     <FinalCtaShell
       noBorderB
-      eyebrow="Ready to ship?"
-      title="Start with a template. Keep the contracts."
-      body="Install the CLI, pick a starter, and your agent gets every contract it needs to navigate the rest of the project."
+      eyebrow="Choose your workspace"
+      title="Community is free. Pro is ready when you are."
+      body="Sign in, choose or create an organization, then continue to its billing settings."
       actions={[
         {
-          label: "Start now",
+          label: "Get Pro",
           href: signupHref,
           withArrow: true,
         },

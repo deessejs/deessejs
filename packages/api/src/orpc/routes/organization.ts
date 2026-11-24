@@ -1,20 +1,32 @@
-import type { ORPCError } from "@orpc/server"
+import { ORPCError } from "@orpc/server"
 import { and, desc, eq, sql } from "drizzle-orm"
 import { z } from "zod"
-import { hasOrganizationProEntitlement } from "@workspace/auth/organization/entitlement"
+import { MyOrganizationsListResponseV1 } from "@workspace/contracts/v1"
+import {
+  hasOrganizationProEntitlement,
+  subscriptionGrantsPro,
+} from "@workspace/auth/organization/entitlement"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   assertOrganizationName,
   slugifyOrganizationName,
 } from "@workspace/auth/organization/policy"
 import { db } from "@workspace/database"
-import { invitation, organization, user } from "@workspace/database/schema"
+import {
+  invitation,
+  member,
+  organization,
+  organizationProSeat,
+  subscription,
+  user,
+} from "@workspace/database/schema"
 
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
 import {
   findOrganizationForMember,
   findOrganizationForMemberById,
+  findOrganizationsForMember,
 } from "../../core/organization/membership.js"
 import {
   OrganizationProvisioningError,
@@ -56,6 +68,28 @@ const invitationSummary = z.object({
   expiresAt: z.string(),
   inviterName: z.string(),
 })
+
+/** OAuth identity is supplied only by the verified MCP request boundary. */
+const mcpOrganizationsGuard = base.middleware(async ({ context, next }) => {
+  const identity = context.mcpIdentity
+  if (!identity?.userId || !identity.scopes.includes("organizations:read")) {
+    throw new ORPCError("FORBIDDEN")
+  }
+  return next({
+    context: {
+      ...context,
+      mcpIdentity: { userId: identity.userId, scopes: identity.scopes },
+    },
+  })
+})
+
+/** Lists only the authenticated user's current memberships and roles. */
+const listMine = base
+  .use(mcpOrganizationsGuard)
+  .output(MyOrganizationsListResponseV1)
+  .handler(async ({ context }) => ({
+    organizations: await findOrganizationsForMember(context.mcpIdentity.userId),
+  }))
 
 /**
  * Reads the organization the caller named, if they belong to it.
@@ -153,6 +187,126 @@ export const proEntitlement = base
       context.organization.id
     ),
   }))
+
+/** Seat allocations are visible to billing managers only. */
+export const proSeatAssignments = base
+  .input(z.object({ slug: z.string() }))
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED
+    )
+    if (!hasManagingRole(org.role)) {
+      throw options.errors.ORGANIZATION_ACCESS_DENIED()
+    }
+    return options.next({ context: { ...options.context, organization: org } })
+  })
+  .output(z.object({ memberIds: z.array(z.string()) }))
+  .handler(async ({ context }) => {
+    const rows = await db
+      .select({ memberId: organizationProSeat.memberId })
+      .from(organizationProSeat)
+      .where(eq(organizationProSeat.organizationId, context.organization.id))
+    return { memberIds: rows.map((row) => row.memberId) }
+  })
+
+/** Assign or release one purchased seat after rechecking role, membership, and capacity. */
+export const setProSeatAssignment = base
+  .input(
+    z.object({ slug: z.string(), memberId: z.string(), assigned: z.boolean() })
+  )
+  .errors(accessDeniedErrors)
+  .use(authGuard)
+  .use(async (options, input) => {
+    const org = await resolveForCaller(
+      options,
+      input.slug,
+      options.errors.ORGANIZATION_ACCESS_DENIED
+    )
+    if (!hasManagingRole(org.role)) {
+      throw options.errors.ORGANIZATION_ACCESS_DENIED()
+    }
+    return options.next({ context: { ...options.context, organization: org } })
+  })
+  .output(z.object({ assigned: z.boolean() }))
+  .handler(async ({ context, input }) => {
+    return db.transaction(async (tx) => {
+      await tx
+        .select({ id: organization.id })
+        .from(organization)
+        .where(eq(organization.id, context.organization.id))
+        .for("update")
+      const [membership] = await tx
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.organizationId, context.organization.id),
+            eq(member.id, input.memberId)
+          )
+        )
+        .limit(1)
+      if (!membership) throw new ORPCError("NOT_FOUND")
+
+      const subscriptions = await tx
+        .select({
+          plan: subscription.plan,
+          status: subscription.status,
+          billingInterval: subscription.billingInterval,
+          endedAt: subscription.endedAt,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          periodEnd: subscription.periodEnd,
+          seats: subscription.seats,
+        })
+        .from(subscription)
+        .where(eq(subscription.referenceId, context.organization.id))
+      const activeSubscription = subscriptions.find((row) =>
+        subscriptionGrantsPro(row)
+      )
+      if (!activeSubscription) {
+        throw new ORPCError("PRECONDITION_FAILED", {
+          message: "An active Pro subscription is required to assign seats.",
+        })
+      }
+
+      const current = await tx
+        .select({
+          id: organizationProSeat.id,
+          memberId: organizationProSeat.memberId,
+        })
+        .from(organizationProSeat)
+        .where(eq(organizationProSeat.organizationId, context.organization.id))
+      const alreadyAssigned = current.some(
+        (seat) => seat.memberId === input.memberId
+      )
+      if (input.assigned && !alreadyAssigned) {
+        if (current.length >= (activeSubscription.seats ?? 0)) {
+          throw new ORPCError("PRECONDITION_FAILED", {
+            message:
+              "All purchased Pro seats are assigned. Add seat capacity in billing first.",
+          })
+        }
+        await tx.insert(organizationProSeat).values({
+          id: crypto.randomUUID(),
+          organizationId: context.organization.id,
+          memberId: input.memberId,
+        })
+      } else if (!input.assigned && alreadyAssigned) {
+        await tx
+          .delete(organizationProSeat)
+          .where(
+            and(
+              eq(organizationProSeat.organizationId, context.organization.id),
+              eq(organizationProSeat.memberId, input.memberId)
+            )
+          )
+      }
+      return { assigned: input.assigned }
+    })
+  })
 
 /** Pending invitations are visible to owners and admins only. */
 export const pendingInvitations = base
@@ -421,9 +575,12 @@ export const create = base
   }))
 
 export const organizationRouter = {
+  listMine,
   bySlug,
   settings,
   proEntitlement,
+  proSeatAssignments,
+  setProSeatAssignment,
   pendingInvitations,
   accountInvitations,
   active,

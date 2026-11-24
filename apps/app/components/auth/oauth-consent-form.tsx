@@ -13,6 +13,8 @@ const CONSENT_SCOPE_DESCRIPTIONS: Record<string, string> = {
   profile: "Share basic profile details with this app.",
   offline_access: "Keep the connection active between visits.",
   "templates:read": "Read the public DeesseJS template catalog.",
+  "organizations:read":
+    "Read the organizations you belong to and your current role in each.",
 }
 
 function safeHttpsUrl(value: string | undefined) {
