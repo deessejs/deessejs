@@ -1,5 +1,12 @@
 # @deesse-example/ui-consumer
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @deessejs/ui@0.4.0
+
 ## 0.0.1
 
 ### Patch Changes
