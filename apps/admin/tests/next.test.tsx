@@ -20,7 +20,11 @@ function ReportsPage() {
   return <p>Reports page content</p>
 }
 
-function createRuntime(role: string | undefined = "admin", includeAdminPlugin = true): AdminPageProps["runtime"] {
+function createRuntime(
+  role: string | undefined = "admin",
+  includeAdminPlugin = true,
+  pages = adminOutput.pages,
+): AdminPageProps["runtime"] {
   return {
     auth: {
       api: {
@@ -31,7 +35,9 @@ function createRuntime(role: string | undefined = "admin", includeAdminPlugin = 
       },
     },
     plugins: {
-      get: vi.fn((id: string) => id === admin.definition.id && includeAdminPlugin ? adminOutput : undefined),
+      get: vi.fn((id: string) =>
+        id === admin.definition.id && includeAdminPlugin ? { ...adminOutput, pages } : undefined,
+      ),
     },
   }
 }
@@ -99,6 +105,42 @@ describe("AdminPage routing", () => {
 
     expect(html).toContain("Admin access required")
     expect(html).not.toContain("Reports page content")
+  })
+
+  it("renders a contributed page when its page-level authorization allows access", async () => {
+    const authorize = vi.fn(async () => "allow" as const)
+    const registration = admin({
+      pages: [{ path: "reports", title: "Reports", component: ReportsPage, authorize }],
+    })
+    const output = registration.definition.handler(
+      registration.definition.args.parse(registration.args),
+    )
+    const page = await AdminPage({
+      runtime: createRuntime("admin", true, output.pages),
+      path: "reports",
+    })
+
+    expect(renderToStaticMarkup(page)).toContain("Reports page content")
+    expect(authorize).toHaveBeenCalledTimes(1)
+  })
+
+  it("denies page-level authorization without rendering contributed content", async () => {
+    const authorize = vi.fn(async () => "forbidden" as const)
+    const registration = admin({
+      pages: [{ path: "reports", title: "Reports", component: ReportsPage, authorize }],
+    })
+    const output = registration.definition.handler(
+      registration.definition.args.parse(registration.args),
+    )
+    const page = await AdminPage({
+      runtime: createRuntime("admin", true, output.pages),
+      path: "reports",
+    })
+    const html = renderToStaticMarkup(page)
+
+    expect(html).toContain("Admin access required")
+    expect(html).not.toContain("Reports page content")
+    expect(authorize).toHaveBeenCalledTimes(1)
   })
 
   it("normalizes and resolves paths within the admin-owned config", () => {

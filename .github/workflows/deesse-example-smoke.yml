@@ -6,7 +6,9 @@ on:
     paths:
       - "apps/deesse/**"
       - "apps/deesse-drizzle-adapter/**"
+      - "apps/admin/**"
       - "examples/next-shadcn-monorepo/**"
+      - "examples/next-shadcn-admin/**"
       - ".github/workflows/deesse-example-smoke.yml"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -114,5 +116,93 @@ jobs:
           pnpm --filter @deesse-example/web exec node ./scripts/schema-snapshot.mjs > "$RUNNER_TEMP/deesse-schema-after-smoke.json"
           if ! diff -u "$RUNNER_TEMP/deesse-schema-after.json" "$RUNNER_TEMP/deesse-schema-after-smoke.json"; then
             echo "PostgreSQL schema catalog changed during the example smoke journey" >&2
+            exit 1
+          fi
+
+  next-admin-example:
+    name: Next admin example security smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: deesse_admin_smoke
+          POSTGRES_PASSWORD: local_smoke_only
+          POSTGRES_USER: deesse_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deesse_smoke -d deesse_admin_smoke"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://deesse_smoke:local_smoke_only@127.0.0.1:5432/deesse_admin_smoke
+      BETTER_AUTH_SECRET: local-smoke-only-secret-that-is-long-enough
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the Deesse adapter CLI before schema generation
+        run: pnpm turbo build --filter=@deessejs/drizzle-adapter
+      - name: Generate admin example schemas without a reachable database
+        working-directory: examples/next-shadcn-admin/apps/web
+        env:
+          DATABASE_URL: postgres://unreachable:unreachable@127.0.0.1:1/unreachable
+        run: pnpm run schema:generate
+      - name: Verify generated schemas and migrations are current
+        run: |
+          set -euo pipefail
+          pnpm --filter @deesse-admin-example/web exec drizzle-kit check --config ./drizzle.config.ts
+          pnpm --filter @deesse-admin-example/web db:generate
+          generated_paths="examples/next-shadcn-admin/apps/web/src/server/database/schema examples/next-shadcn-admin/apps/web/drizzle"
+          if [ -n "$(git status --porcelain -- $generated_paths)" ]; then
+            echo "Generated schema or migration output changed. Review and commit it explicitly." >&2
+            git status --short -- $generated_paths
+            git diff -- $generated_paths
+            exit 1
+          fi
+      - name: Build the admin example and workspace dependencies
+        run: NODE_ENV=production pnpm turbo build --filter=@deesse-admin-example/web...
+      - name: Apply reviewed admin example migrations
+        run: pnpm --filter @deesse-admin-example/web db:migrate
+      - name: Capture migrated PostgreSQL schema
+        run: pnpm --filter @deesse-admin-example/web exec node ./scripts/schema-snapshot.mjs > "$RUNNER_TEMP/deesse-admin-schema-before.json"
+      - name: Start the admin example and run its auth and route matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          NODE_ENV=production setsid pnpm --filter @deesse-admin-example/web start > "$RUNNER_TEMP/deesse-admin-next.log" 2>&1 &
+          server_pid=$!
+          cleanup() {
+            status=$?
+            kill -- "-$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+            cat "$RUNNER_TEMP/deesse-admin-next.log"
+            return "$status"
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then ready=1; break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat "$RUNNER_TEMP/deesse-admin-next.log"
+              exit 1
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/deesse-admin-next.log"; exit 1; fi
+          NODE_ENV=production pnpm --filter @deesse-admin-example/web smoke
+          pnpm --filter @deesse-admin-example/web exec node ./scripts/schema-snapshot.mjs > "$RUNNER_TEMP/deesse-admin-schema-after.json"
+          if ! diff -u "$RUNNER_TEMP/deesse-admin-schema-before.json" "$RUNNER_TEMP/deesse-admin-schema-after.json"; then
+            echo "PostgreSQL schema catalog changed during the admin example smoke journey" >&2
+            cat "$RUNNER_TEMP/deesse-admin-next.log"
             exit 1
           fi

@@ -56,7 +56,11 @@ const definition: PluginDefinition<
   id: "admin",
   args: adminOptionsSchema,
   handler: ({ pages }) => ({
-    auth: { serverPlugins: [betterAuthAdmin()] },
+    auth: {
+      serverPlugins: [
+        betterAuthAdmin({ defaultRole: "user", adminRoles: ["admin"] }),
+      ],
+    },
     pages: composePages(pages),
   }),
 }
