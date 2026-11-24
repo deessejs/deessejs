@@ -59,9 +59,9 @@ Use lowercase letters, numbers, and hyphens for `name` and package IDs. Start ea
 Check a local block directory, including its referenced files and package manifests:
 
 ```bash
-deesse block check ./path/to/block
+deessejs block check ./path/to/block
 ```
 
-Inspect the descriptor with `deesse block info ./path/to/block`. Both commands accept a public HTTPS GitHub repository or supported directory URL. Add `--ref <git-ref>` to select a Git ref. Run `deesse block check --help` to see options. View the public [block V1 schema](https://app.deessejs.com/schema/block/v1.json).
+Inspect the descriptor with `deessejs block info ./path/to/block`. Both commands accept a public HTTPS GitHub repository or supported directory URL. Add `--ref <git-ref>` to select a Git ref. Run `deessejs block check --help` to see options. View the public [block V1 schema](https://app.deessejs.com/schema/block/v1.json).
 
 The [`@workspace/registry` package](https://github.com/deessejs/deessejs/tree/staging/packages/registry) contains the generated schemas and implementation. It defines the V1 contracts, source resolution, validation, and file selection.
