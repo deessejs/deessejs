@@ -44,6 +44,7 @@ catalog:
   "@content-collections/next": ^0.2.11
   "@deessejs/errors": ^1.1.1
   "@deessejs/fp": ^5.0.1
+  "@deessejs/ui": ^0.4.0
   "@hookform/resolvers": ^5.0.0
   clsx: ^2.1.1
 
@@ -143,6 +144,7 @@ catalog:
   tailwindcss: ^4.3.2
   tar: ^7.5.22
   tsup: ^8.3.5
+  tsx: ^4.23.0
   typescript: ^6.0.3
   unist-util-visit: ^5.1.0
   "vercel-minimax-ai-provider": ^0.0.2

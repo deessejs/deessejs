@@ -94,6 +94,30 @@ const contextualRouter = contextualOs.router({
   }),
 })
 const contextualApp = createDeesse({ database, auth, api: { router: contextualRouter } })
+const configuredOutputPlugin = plugin({
+  id: "configured-output",
+  args: z.object({ amount: z.string().transform(Number) }),
+  handler: ({ amount }) => ({ amount, label: amount.toFixed(2) }),
+})
+const configuredOutputApp = createDeesse({
+  database,
+  auth,
+  plugins: [configuredOutputPlugin({ amount: "12" })],
+})
+const configuredOutputAmount: number | undefined = configuredOutputApp.plugins.get("configured-output")?.amount
+const configuredOutput = configuredOutputApp.plugins.get("configured-output")
+for (const [configuredOutputId, configuredOutputValue] of configuredOutputApp.plugins.entries()) {
+  const exactConfiguredOutputId: "configured-output" = configuredOutputId
+  const exactConfiguredOutputAmount: number = configuredOutputValue.amount
+  void [exactConfiguredOutputId, exactConfiguredOutputAmount]
+}
+let invalidConfiguredOutputAmount = ""
+if (configuredOutput) {
+  // @ts-expect-error the runtime exposes the plugin output object as readonly
+  configuredOutput.amount = 13
+  // @ts-expect-error the accessor returns the processed numeric output, not the input string
+  invalidConfiguredOutputAmount = configuredOutput.amount
+}
 const noConfigRegistration = noConfigPlugin()
 const config = { database, auth, api: { router: appRouter }, plugins: [feature({}), usernameFeature({}), auditFeature({})] } as const satisfies DeesseConfig<typeof database, typeof auth, { router: typeof appRouter }, readonly [ReturnType<typeof feature>, ReturnType<typeof usernameFeature>, ReturnType<typeof auditFeature>]>
 const app = createDeesse(config)
@@ -122,6 +146,7 @@ type DatabaseAdapterShapeExact = Assert<Equal<keyof DeesseDatabaseAdapter<typeof
 type ContextDatabaseExact = Assert<Equal<DeesseRequestContext<typeof adapterSchema>["database"], DeesseDatabaseService<typeof adapterSchema>>>
 type InferredPluginRouterOutputExact = Assert<Equal<InferRouterOutputs<typeof inferredPluginRouter>["articleContext"], { email: string | undefined; service: true }>>
 type ContextualRouterKeysExact = Assert<Equal<keyof typeof contextualApp.api.router, "articleById">>
+type ConfiguredPluginOutputExact = Assert<Equal<NonNullable<typeof configuredOutput>["amount"], number>>
 type NoConfigArgsOmitted = Assert<Equal<keyof typeof noConfigRegistration, "id" | "definition">>
 type NoConfigContributionExact = Assert<Equal<keyof ReturnType<typeof noConfigRegistration.definition.handler>["database"]["schema"], "noConfig">>
 type NoConfigRequiresExact = Assert<Equal<typeof noConfigRegistration.definition.requires, readonly ["feature"]>>
@@ -277,8 +302,10 @@ const usernameResponse = await usernameAvailable
 const availability: boolean | undefined = usernameResponse.data?.available
 const clientTeamCode: string = client.auth.$Infer.Session.user.teamCode
 const clientUsername: ReturnType<typeof client.auth.useSession> = client.auth.useSession()
-const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "admin" })
+const organizationPermission: boolean = client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "member" })
 // @ts-expect-error the organization client rejects roles outside the configured plugin
 client.auth.organization.checkRolePermission({ permissions: { organization: ["update"] }, role: "unknown" })
 void [parsedCount, missing, invalidFieldDefault, portableTransactions, insertedArticle, updatedArticle, deletedArticle, pluginResult, appResult, wrongOutput, serverTeamCode, usernameAvailable, availability, clientTeamCode, clientUsername, isolatedTeamCode, minimalSessionUserId, organizationPermission, incompatibleDashboardMetric]
 void (null as unknown as [ConfigDatabaseExact, ConfigAuthExact, ConfigApiExact, ConfigPluginsExact, DatabaseExact, AuthExact, RouterExact, InstanceExact, DirectRouterExact, DirectAuthExact, ComposedDatabaseKeysExact, ComposedInstanceDatabaseKeysExact, AuthAdapterExact, DatabaseAdapterShapeExact, ContextDatabaseExact, InferredPluginRouterOutputExact, ContextualRouterKeysExact, NoConfigArgsOmitted, NoConfigContributionExact, NoConfigRequiresExact, NoConfigExtensionKeysExact, HandlerExact, PluginTupleExact, PluginRouterRegistryKeysExact, PluginDatabaseRegistryKeysExact, PluginExtensionRegistryKeysExact, RegistryUsernameSchemaExact, RegistryAuditSchemaExact, RegistryWidgetExact, RegistryMetricExact, PluginServerRegistryExact, PluginClientRegistryExact, PluginAuthSchemaExact, ArticleIdExact, ArticleSummaryExact, ArticlePublishedAtExact, ArticleJsonExact, RequestContextDatabaseExact, ArticleResultExact, ArticleNotFoundFieldsExact, ArticleInsertExact, ArticleUpdateExact, ArticleDeleteExact, UsernameModelRowKeysExact, UsernameModelRowFieldsExact, AuditModelRowKeysExact, AuditModelRowFieldsExact, UsernameRowExact, AuditRowsExact, ArticlePageExact, TransactionResultExact, ApiInputExact, ApiOutputExact, ClientApiExact, LinkedClientApiExact, MinimalClientApiExact, ClientAuthExact, BuiltInAuthExact, DeesseServerKeysExact, DeesseServerRouterExact, EmptyRouterExact, RegistrationArgsExact, RawArgsExact, ParsedHandlerArgsExact, HandlerContributionExact, RequiresExact, AuditRequiresExact, UsernameSchemaKeysExact, UsernameFieldTypeExact, UsernameApiContributionExact, UsernameServerPluginExact, UsernameClientPluginExact, ExtensionContributionExact, UsernameClientInputExact])
+void [configuredOutput, configuredOutputAmount, invalidConfiguredOutputAmount]
+void (null as unknown as ConfiguredPluginOutputExact)

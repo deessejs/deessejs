@@ -1,0 +1,15 @@
+{
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": {
+      "@deessejs/admin": ["./src/index.ts"],
+      "@deessejs/admin/next": ["./src/next.tsx"]
+    }
+  },
+  "include": ["consumer-tests/**/*.tsx"]
+}

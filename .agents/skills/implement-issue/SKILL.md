@@ -38,7 +38,17 @@ An implementation that raises actual risk above R0, or whose issue did not enter
 1. Commit and push the completed implementation branch. Do not push to `staging` or `main`.
 2. Use the canonical `.agents/skills/create-pr/SKILL.md` workflow. Follow its duplicate checks, PR template, changeset rules, applicable PR labels, and `staging` target. For an issue-driven PR, link it in GitHub's Development panel using the documented GraphQL `addCloseIssueReferences` workflow. A PR targeting `staging` does not close the issue. Do not invent a different linking convention.
 3. Apply the actual `risk:*` label to the PR, along with other applicable labels confirmed to exist. Never replace the issue's triage risk label with the implementation assessment.
-4. Do not merge the PR. Report the issue and PR URLs, branch and commit, original issue risk, actual PR risk and evidence, whether it is outside the R0 automatic lane, changeset status, and checks run or skipped.
+4. Do not merge the PR. Report the issue and PR URLs, branch and commit, original issue risk, actual PR risk and evidence, whether it is outside the R0 automatic lane, changeset status, and the final CI status after monitoring.
+
+## Monitor checks after opening the PR
+
+Treat the implementation as in progress after the PR opens. Local checks do not replace CI, and an open PR with pending or failed checks is not complete.
+
+1. Track checks on the PR's latest head commit. Use T3's pull request watch when available so new check results wake the session. Otherwise, inspect the PR checks and workflow runs periodically through GitHub or `gh`. After every push, use the new head commit and wait for its checks; results from an earlier commit do not validate the latest changes.
+2. Wait for required checks to finish. If they take long enough to make useful progress elsewhere, continue other explicitly authorized, independent tasks, keep a list of PRs with pending checks, and return to inspect them periodically and before ending the orchestration. Do not idle unnecessarily, but do not finish the task while a PR still has pending or unresolved failed checks.
+3. For every failed check, inspect its annotations and logs. If the failure comes from this change, fix it on the same issue branch, run the relevant focused check, push the correction, and repeat monitoring on the new head. If it appears flaky or unrelated, verify that with logs, a rerun, or comparison with the base where possible. Do not treat a local pass or an unsupported assumption as a resolution.
+4. Keep working until all required checks on the latest PR head are green and all other failures have a verified resolution. If several issue PRs are part of one authorized orchestration, revisit each one and confirm all of them are green before reporting the orchestration complete. If an external outage or missing permission prevents resolution, keep the work explicitly blocked, report the evidence and needed intervention, and do not describe the PR as ready or complete.
+5. In the final handoff, list each PR's latest head commit and check results, including any check that was rerun or could not be resolved. Never merge a PR as part of this workflow.
 
 ## Boundary for the R0 pilot
 
