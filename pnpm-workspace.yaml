@@ -23,6 +23,7 @@ catalog:
   # Core
   "@aws-sdk/client-s3": ^3.1159.0
   "@aws-sdk/s3-request-presigner": ^3.1159.0
+  "@base-ui/react": ^1.9.0
 
   # Email (added 2026-07-07, packages/email)
 

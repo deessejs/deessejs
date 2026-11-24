@@ -50,6 +50,7 @@ Every workspace has its own guide, linked in the tables below. Read the one that
 | `apps/cli`               | [AGENTS.md](apps/cli/AGENTS.md)               | `@deessejs/cli`: a typed client of the template registry with a scaffolder (`list`, `info`, `init`, `auth login`).                             |
 | `apps/create-deesse-app` | [AGENTS.md](apps/create-deesse-app/AGENTS.md) | Standalone `create-*` scaffolder. Resolves `main` on `deessejs/saas-template` and downloads the tarball of the commit it finds.                |
 | `apps/agent`             | [AGENTS.md](apps/agent/AGENTS.md)             | `@deessejs-agent`: a mentionable GitHub bot built on Vercel eve.                                                                               |
+| `apps/ui`                | [AGENTS.md](apps/ui/AGENTS.md)                 | Public, theme-compatible React primitives package `@deessejs/ui`.                                                                            |
 
 ### Packages
 
@@ -174,8 +175,7 @@ This repo is staging-first: start from `staging`, work on a branch named `impl/{
 
 ## Agent tooling
 
-- **Skills** live in `.agents/skills/` and `.claude/skills/`. Read the relevant `SKILL.md` before using a repository-owned skill.
-- **Subagents** live in `.claude/agents/`. Several of them were inherited from the template repo and still point at paths this repo does not have. Check that a subagent's target paths exist before trusting its guidance.
+- **Repository skills** live in `.agents/skills/`. Read the relevant `SKILL.md` before using one.
 - **Web research** follows the protocol in "Where your facts come from".
 
 ## Where the documentation lives

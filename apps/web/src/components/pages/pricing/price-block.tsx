@@ -1,82 +1,22 @@
-import {
-  annualBreakdown,
-  type BillingCadence,
-  type PlanPricing,
-} from "@/lib/pricing"
+import type { LicenseType } from "@/lib/pricing"
 
-/**
- * Renders the price line for a plan. Three shapes:
- *
- * - `free`         → plain "Free"
- * - `custom`       → "Custom, per engagement"
- * - `subscription` → renders the amount for the requested cadence.
- *   Monthly: the monthly amount + "/ month, cancel any time".
- *   Annual: the equivalent monthly ($299 / 12 = $24.92) as the
- *   headline figure, with a secondary line "Billed annually at $299
- *   (saves 14%)" so the visitor sees both the monthly framing and
- *   the actual annual charge.
- *
- * The annual breakdown (monthly-equivalent and savings percent) is
- * derived from the configuration in `lib/pricing.ts` via
- * `annualBreakdown`. Never hardcode those values here.
- */
-export function PriceBlock({
-  price,
-  cadence,
-}: {
-  price: PlanPricing
-  cadence: BillingCadence
-}) {
+/** Renders a free label or the approved seat-based pricing description. */
+export function PriceBlock({ price }: { price: LicenseType["price"] }) {
   if (price.kind === "free") {
     return (
       <p className="text-heading-32 tracking-tight text-foreground">Free</p>
     )
   }
-  if (price.kind === "custom") {
+  if (price.kind === "seat-based") {
     return (
-      <p className="text-heading-32 tracking-tight text-foreground">
-        Custom
-        <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
-          per engagement
-        </span>
-      </p>
-    )
-  }
-
-  const currencySymbol = price.currency === "USD" ? "$" : ""
-  if (cadence === "monthly") {
-    return (
-      <div className="flex flex-col gap-1">
+      <div>
         <p className="text-heading-32 tracking-tight text-foreground">
-          {currencySymbol}
-          {price.monthly.amount}
-          <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
-            / month, cancel any time
-          </span>
+          Per seat
         </p>
-        <p className="text-copy-13 text-muted-foreground [&:not(:first-child)]:mt-0">
-          Taxes included. Annual billing saves two months.
+        <p className="text-copy-13 text-muted-foreground">
+          Price details are not yet available.
         </p>
       </div>
     )
   }
-
-  const { monthlyEquivalent, savingsPercent } = annualBreakdown(price)
-  const monthlyEquivalentDisplay = monthlyEquivalent.toFixed(2)
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="text-heading-32 tracking-tight text-foreground">
-        {currencySymbol}
-        {price.annual.amount}
-        <span className="ml-2 text-copy-14 font-normal text-muted-foreground">
-          / year
-        </span>
-      </p>
-      <p className="text-copy-13 text-muted-foreground [&:not(:first-child)]:mt-0">
-        Equivalent to {currencySymbol}
-        {monthlyEquivalentDisplay} / month. Saves {savingsPercent}% vs monthly.
-        Taxes included.
-      </p>
-    </div>
-  )
 }

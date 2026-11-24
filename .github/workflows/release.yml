@@ -265,6 +265,9 @@ jobs:
           check_registered_package adapter @deessejs/drizzle-adapter apps/deesse-drizzle-adapter/package.json
           adapter_registered="$PACKAGE_REGISTERED"
           adapter_release_needed="$PACKAGE_RELEASE_NEEDED"
+          check_registered_package ui @deessejs/ui apps/ui/package.json
+          ui_registered="$PACKAGE_REGISTERED"
+          ui_release_needed="$PACKAGE_RELEASE_NEEDED"
 
           if [ "${{ inputs.record_adapter_release }}" = "true" ]; then
             if [ "$adapter_registered" != "true" ] || [ "$adapter_release_needed" = "true" ]; then
@@ -285,6 +288,15 @@ jobs:
             echo "adapter_mode=trusted" >> "$GITHUB_OUTPUT"
           else
             echo "adapter_mode=skip" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$ui_registered" = "false" ]; then
+            echo "ui_mode=skip" >> "$GITHUB_OUTPUT"
+            echo "::notice::@deessejs/ui is not registered on npm, so its Trusted Publisher cannot publish it."
+          elif [ "$ui_release_needed" = "true" ]; then
+            echo "ui_mode=trusted" >> "$GITHUB_OUTPUT"
+          else
+            echo "ui_mode=skip" >> "$GITHUB_OUTPUT"
           fi
 
           if [ "$deesse_registered" = "false" ]; then
@@ -552,6 +564,52 @@ jobs:
            steps.stable-packages.outputs.adapter_mode == 'trusted' ||
            steps.stable-packages.outputs.adapter_mode == 'stage')
         run: pnpm turbo build --filter=deesse --filter=@deessejs/drizzle-adapter --force
+
+      - name: Build UI package
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
+        run: pnpm turbo build --filter=@deessejs/ui --force
+
+      - name: Pack and verify UI package
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
+        run: |
+          set -euo pipefail
+          pnpm --dir apps/ui pack
+          TARBALL=$(find apps/ui -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          node scripts/verify-npm-tarball.mjs \
+            "$TARBALL" \
+            @deessejs/ui \
+            "${{ steps.stable-packages.outputs.ui_version }}" \
+            package/dist/index.js \
+            package/dist/cn.js \
+            package/tailwind.css \
+            package/README.md \
+            package/LICENSE
+
+      - name: Publish UI package to npm with Trusted Publishing
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
+        run: |
+          set -euo pipefail
+          TARBALL=$(find apps/ui -maxdepth 1 -type f -name '*.tgz' -print -quit)
+          npm publish "$TARBALL" --tag latest --provenance --no-git-checks
+
+      - name: Tag UI package release
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
+        env:
+          RELEASE_VERSION: ${{ steps.stable-packages.outputs.ui_version }}
+        run: |
+          set -euo pipefail
+          git tag -f "ui/v${RELEASE_VERSION}"
+          git push --force origin "ui/v${RELEASE_VERSION}"
+
+      - name: Create UI package GitHub Release
+        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ui/v${{ steps.stable-packages.outputs.ui_version }}
+          name: "@deessejs/ui v${{ steps.stable-packages.outputs.ui_version }}"
+          prerelease: false
+          generate_notes: true
+          fail_on_unmatched_files: true
 
       - name: Pack and verify Deesse framework
         if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.deesse_mode == 'trusted'

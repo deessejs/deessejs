@@ -1,0 +1,2 @@
+/* Register the published component files. The consuming app imports Tailwind itself. */
+@source "./dist";

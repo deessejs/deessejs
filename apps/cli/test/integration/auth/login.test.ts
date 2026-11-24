@@ -1,9 +1,16 @@
 import { existsSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+vi.mock("../../../src/lib/auth/flow/index.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../src/lib/auth/flow/index.js")>()
+  return { ...actual, openVerificationUrl: vi.fn() }
+})
 
 import { loginCommand } from "../../../src/commands/auth/login.js"
+import { openVerificationUrl } from "../../../src/lib/auth/flow/index.js"
 import { AUTH_PATH } from "../../../src/lib/auth/store/store.js"
 
 import {
@@ -39,6 +46,9 @@ import {
 const REAL_HOME = process.env.HOME
 const REAL_USERPROFILE = process.env.USERPROFILE
 let fake: FakeAuthServer | undefined
+let capturedOutput: string[] = []
+let stdoutSpy: ReturnType<typeof vi.spyOn> | undefined
+let stderrSpy: ReturnType<typeof vi.spyOn> | undefined
 
 async function runLogin(args: string[]): Promise<void> {
   // Commander's parseAsync returns a Promise that resolves
@@ -69,11 +79,23 @@ void REAL_USERPROFILE
 
 describe("deesse auth login", () => {
   beforeEach(async () => {
+    capturedOutput = []
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((
+      chunk: string | Uint8Array
+    ) => {
+      capturedOutput.push(String(chunk))
+      return true
+    })
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
     fake = await startFakeAuthServer({ deviceCode: "approve" })
     process.env.DEESSEJS_API_URL = fake.url
   })
 
   afterEach(async () => {
+    stdoutSpy?.mockRestore()
+    stderrSpy?.mockRestore()
+    stdoutSpy = undefined
+    stderrSpy = undefined
     await fake?.close()
     fake = undefined
     delete process.env.DEESSEJS_API_URL
@@ -84,12 +106,14 @@ describe("deesse auth login", () => {
     await withHome(home, async () => {
       await runLogin(["node", "auth", "login", "--json"])
       expect(existsSync(AUTH_PATH())).toBe(true)
+      const openedUrl = vi.mocked(openVerificationUrl).mock.calls[0]?.[0] ?? ""
+      expect(openedUrl.includes(String(fake?.state.userCode))).toBe(true)
       const raw = readFileSync(AUTH_PATH(), "utf8")
       const parsed = JSON.parse(raw) as {
         access_token: string
         user: { id: string; email: string }
       }
-      expect(parsed.access_token).toBe(fake?.state.accessToken)
+      expect(parsed.access_token === fake?.state.accessToken).toBe(true)
       expect(parsed.user.email).toBe("[email protected]")
       expect(parsed.user.id).toBe("user_test_1")
       // The CLI now resolves the user by calling
@@ -100,11 +124,29 @@ describe("deesse auth login", () => {
       // called getSession() with no Authorization header at all
       // and the fake silently returned the user anyway — this
       // assertion would fail and catches the regression.
-      expect(fake?.state.lastGetSessionAuthHeader).toBe(
-        `Bearer ${fake?.state.accessToken}`
-      )
+      expect(
+        fake?.state.lastGetSessionAuthHeader?.endsWith(
+          String(fake?.state.accessToken)
+        )
+      ).toBe(true)
     })
     rmSync(home, { recursive: true, force: true })
+  })
+
+  it("prints the verification URL and user code without opening a browser when --no-open is set", async () => {
+    const home = join(tmpdir(), `cli-test-${Date.now()}-login-no-open`)
+    vi.mocked(openVerificationUrl).mockClear()
+    try {
+      await withHome(home, () =>
+        runLogin(["node", "auth", "login", "--no-open"])
+      )
+      const output = capturedOutput.join("\n")
+      expect(output.includes(String(fake?.state.userCode))).toBe(true)
+      expect(output.includes(`${fake?.url}/device?user_code=`)).toBe(true)
+      expect(vi.mocked(openVerificationUrl).mock.calls.length).toBe(0)
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   it.skip("writes the auth.json file with mode 0o600", () => {

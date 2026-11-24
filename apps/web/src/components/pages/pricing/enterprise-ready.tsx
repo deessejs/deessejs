@@ -7,18 +7,18 @@ import { Cell } from "./_shared/cell"
 const PILLARS = [
   {
     icon: ShieldCheck,
-    label: "SLAs",
-    body: "Guaranteed response times and uptime commitments, written into the engagement contract.",
+    label: "Security",
+    body: "Discuss genuinely custom security requirements.",
   },
   {
     icon: FileCheck,
-    label: "DPAs",
-    body: "Data Processing Agreements signed before any production data crosses our infrastructure.",
+    label: "Support",
+    body: "Discuss support requirements that need a custom arrangement.",
   },
   {
     icon: Briefcase,
     label: "Procurement",
-    body: "Custom invoicing, dedicated contact, and a security packet your legal team can review without back-and-forth.",
+    body: "Discuss custom purchasing and contract requirements.",
   },
 ] as const
 
@@ -53,10 +53,9 @@ export function EnterpriseReady() {
             Built for teams that need paperwork, not slides.
           </h2>
           <p className="max-w-xl text-copy-16 leading-7 text-muted-foreground [&:not(:first-child)]:mt-0">
-            Professional and Agency already cover the technical side. For
-            regulated industries, public sector, and large in-house teams, the
-            rest of the deal is process. We sign the documents, your security
-            team gets a packet, and the contract is on your terms.
+            Pro is available by developer seat. Contact us when you have
+            genuinely custom procurement, support, or security requirements.
+            Enterprise is not required to add seats.
           </p>
           <ul className="mt-2 flex flex-col gap-4">
             {PILLARS.map((pillar) => (

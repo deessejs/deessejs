@@ -89,6 +89,7 @@ Use only labels confirmed to exist in the repository. Preserve existing type, ar
 - Status: `status:needs-triage`, `status:ready`, `status:in-progress`, `status:blocked`, or `needs-info`.
 - Priority: `priority:high`, `priority:medium`, or `priority:low`.
 - Cross-cutting: for example, `breaking-change`, `dependencies`, or `github_actions`.
+- Risk: `risk:r0`, `risk:r1`, `risk:r2`, or `risk:r3`, with one level chosen using the scale below.
 
 Recommended status decisions:
 
@@ -106,3 +107,18 @@ Do not label an issue `duplicate`, `invalid`, or `wontfix` based only on a hunch
 For a mutating triage, first check whether an equivalent triage comment already exists; do not post duplicates. Write a brief human explanation of the decision and the evidence that matters. Do not include a structured inventory of metadata or label lines such as `Type: enhancement`, `Status: status:ready`, `Area: area:app`, or `Priority: priority:medium`. The type, field values, and labels belong in their GitHub metadata. For `needs-info`, list the specific missing details. For `status:blocked`, link the blocking issue or dependency. For a duplicate, link the matching issue and explain the relationship. Keep comments factual, respectful, and free of sensitive details. Do not post a comment for review-only requests unless asked.
 
 After changes, summarize the GitHub issue type, custom fields, labels, and comment that changed. If no changes were justified, say why.
+
+## Risk assessment
+
+Risk measures potential impact and regression blast radius, not implementation effort or issue size. It is separate from priority, complexity or size, type, and status. Choose exactly one risk level:
+
+- `risk:r0` (R0): negligible regression risk. Documentation, links, spelling or wording, and other changes with no runtime behavior or persisted data impact.
+- `risk:r1` (R1): a contained change in one feature or module with well-understood behavior and focused regression coverage, without broad API, data, or security implications.
+- `risk:r2` (R2): meaningful uncertainty or impact across multiple modules, public contracts, shared behavior, configuration, persistence, or integrations. Broader review and testing are required.
+- `risk:r3` (R3): high-impact or sensitive changes, including authentication or authorization, security boundaries, data or schema migrations, billing or payments, destructive or irreversible external effects, or major data-loss or outage potential. Explicit human scrutiny is required.
+
+When uncertain, choose the higher plausible risk and briefly explain why.
+
+During issue triage, assess anticipated risk from the requested change and current code evidence. On explicitly requested mutating triage, apply exactly one matching `risk:*` label if it exists in the live repository label list. Never create a risk label. Include the reason in the triage result or comment when the existing workflow calls for a comment. Preserve the read-only default and all explicit-triage safeguards: do not mutate an issue unless the user explicitly asks to triage it.
+
+During PR review, reassess actual risk from the implementation and diff, especially when scope changed or new coupling was discovered. State the actual risk and evidence, and recommend updating the issue's risk label when it differs from the anticipated risk. Explain any increase or decrease. Risk alone does not approve or merge a PR or alter its auto-merge policy; CI and independent review remain governed by existing repository policy.

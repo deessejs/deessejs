@@ -9,7 +9,7 @@ import { Card } from "@workspace/ui/components/card"
  * Security, Pro Education, Enterprise). Each row pairs a
  * `<strong>General:</strong>` label with a mailto: link and
  * a muted caption; the Security row also links to the
- * internal /security page.
+ * published GitHub security policy.
  *
  * The Card grid replaces the previous flat-list rendering so
  * the page matches the rest of the marketing app (cards on
@@ -51,7 +51,7 @@ export function Email() {
               <br />
               vulnerability reports. See{" "}
               <Link
-                href="/security"
+                href="https://github.com/deessejs/deessejs/security/policy"
                 className="underline underline-offset-4 hover:text-foreground"
               >
                 security policy

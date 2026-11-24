@@ -15,9 +15,8 @@ export function Hero() {
         The catalog your agent can navigate.
       </h1>
       <p className="max-w-2xl text-copy-18 leading-7 text-balance text-muted-foreground [&:not(:first-child)]:mt-0">
-        One payment for the catalog. Every template, every update, every project
-        you ship, solo or as a team. MIT for the foundation, Professional for
-        production, Team for agencies.
+        Community is free. Pro gives every assigned developer the same catalog,
+        features, and commercial-use rights.
       </p>
     </div>
   )

@@ -3,6 +3,7 @@
 import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
 import { CardGridSkeleton } from "@/components/loading/page-skeleton"
 import {
@@ -12,7 +13,10 @@ import {
 } from "@workspace/ui/components/input-group"
 import { BoxesIcon, PlusIcon, SearchIcon } from "lucide-react"
 
-import { workspaceHomePath } from "@/lib/workspace-paths"
+import {
+  workspaceBillingSettingsPath,
+  workspaceHomePath,
+} from "@/lib/workspace-paths"
 import { CreateOrganizationDialog } from "./create-organization-dialog"
 
 /**
@@ -29,6 +33,8 @@ import { CreateOrganizationDialog } from "./create-organization-dialog"
  */
 export function OrganizationList() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isProIntent = searchParams.get("intent") === "pro"
   const organizations = client.auth.useListOrganizations()
   const [query, setQuery] = useState("")
   const [failure, setFailure] = useState<string | null>(null)
@@ -62,7 +68,11 @@ export function OrganizationList() {
       setFailure("The organization could not be selected.")
       return
     }
-    router.push(workspaceHomePath(slug))
+    router.push(
+      isProIntent
+        ? `${workspaceBillingSettingsPath(slug)}?intent=pro`
+        : workspaceHomePath(slug)
+    )
   }
 
   return (
@@ -71,6 +81,11 @@ export function OrganizationList() {
         <h1 className="sr-only">Organizations</h1>
 
         <div className="flex items-center justify-between gap-x-2 md:gap-x-3">
+          {isProIntent && (
+            <p className="text-sm text-muted-foreground">
+              Choose an organization for Pro billing, or create one first.
+            </p>
+          )}
           <InputGroup className="w-full md:w-64">
             <InputGroupAddon>
               <SearchIcon aria-hidden />
