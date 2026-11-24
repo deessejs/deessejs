@@ -1,13 +1,32 @@
 {
   "name": "@deessejs/drizzle-adapter",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PostgreSQL postgres-js and Drizzle adapter for DeesseJS.",
   "license": "MIT",
-  "keywords": ["deessejs", "drizzle", "postgres", "postgres-js", "better-auth"],
-  "repository": { "type": "git", "url": "https://github.com/deessejs/deessejs.git", "directory": "apps/deesse-drizzle-adapter" },
-  "files": ["dist", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public", "provenance": true },
-  "bin": { "deesse-drizzle-schema": "./dist/cli.js" },
+  "keywords": [
+    "deessejs",
+    "drizzle",
+    "postgres",
+    "postgres-js",
+    "better-auth"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deessejs/deessejs.git",
+    "directory": "apps/deesse-drizzle-adapter"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "bin": {
+    "deesse-drizzle-schema": "./dist/cli.js"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -30,7 +49,7 @@
     "@better-auth/drizzle-adapter": "catalog:"
   },
   "peerDependencies": {
-    "deesse": "^0.3.0 || ^0.4.0",
+    "deesse": "^0.4.0",
     "better-auth": "catalog:",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9"

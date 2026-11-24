@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/admin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Framework-native admin dashboard for DeesseJS applications.",
   "keywords": [
     "admin",
