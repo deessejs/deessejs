@@ -106,6 +106,11 @@ const configuredOutputApp = createDeesse({
 })
 const configuredOutputAmount: number | undefined = configuredOutputApp.plugins.get("configured-output")?.amount
 const configuredOutput = configuredOutputApp.plugins.get("configured-output")
+for (const [configuredOutputId, configuredOutputValue] of configuredOutputApp.plugins.entries()) {
+  const exactConfiguredOutputId: "configured-output" = configuredOutputId
+  const exactConfiguredOutputAmount: number = configuredOutputValue.amount
+  void [exactConfiguredOutputId, exactConfiguredOutputAmount]
+}
 let invalidConfiguredOutputAmount = ""
 if (configuredOutput) {
   // @ts-expect-error the runtime exposes the plugin output object as readonly

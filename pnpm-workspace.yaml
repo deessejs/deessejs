@@ -144,6 +144,7 @@ catalog:
   tailwindcss: ^4.3.2
   tar: ^7.5.22
   tsup: ^8.3.5
+  tsx: ^4.23.0
   typescript: ^6.0.3
   unist-util-visit: ^5.1.0
   "vercel-minimax-ai-provider": ^0.0.2

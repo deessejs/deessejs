@@ -16,8 +16,24 @@ interface CliOptions {
 }
 
 interface PluginContribution {
-  item: CliPlugin
+  item: Pick<CliPlugin, "id">
   contribution: ReturnType<CliPlugin["definition"]["handler"]>
+}
+
+type RuntimePluginRegistry = {
+  entries: () => readonly (readonly [string, unknown])[]
+}
+
+function runtimePluginContributions(runtime: unknown): PluginContribution[] | undefined {
+  if (typeof runtime !== "object" || runtime === null || !("plugins" in runtime)) return undefined
+  const registry = runtime.plugins
+  if (typeof registry !== "object" || registry === null || !("entries" in registry) || typeof registry.entries !== "function") {
+    return undefined
+  }
+  return (registry as RuntimePluginRegistry).entries().map(([id, contribution]) => ({
+    item: { id },
+    contribution: contribution as ReturnType<CliPlugin["definition"]["handler"]>,
+  }))
 }
 
 function readFlag(name: string): string {
@@ -50,11 +66,16 @@ function readCliOptions(): CliOptions {
   }
 }
 
-async function loadPlugins(options: CliOptions): Promise<readonly CliPlugin[]> {
+async function loadContributions(options: CliOptions): Promise<PluginContribution[]> {
   const modulePath = options.pluginsPath ?? options.configPath
   if (!modulePath) throw new Error("Provide --config or --plugins.")
 
   const pluginModule = await import(pathToFileURL(modulePath).href)
+  if (!options.pluginsPath) {
+    const contributions = runtimePluginContributions(pluginModule.deesse)
+    if (contributions) return contributions
+  }
+
   const config = options.pluginsPath ? undefined : pluginModule.deesseConfig ?? pluginModule.default
   const plugins = options.pluginsPath
     ? pluginModule.plugins ?? pluginModule.default
@@ -63,7 +84,7 @@ async function loadPlugins(options: CliOptions): Promise<readonly CliPlugin[]> {
   if (!Array.isArray(plugins)) {
     throw new Error("The plugin module must export a plugins array, or the config must export plugins.")
   }
-  return plugins as readonly CliPlugin[]
+  return collectContributions(plugins as readonly CliPlugin[])
 }
 
 function collectContributions(plugins: readonly CliPlugin[]): PluginContribution[] {
@@ -140,8 +161,7 @@ async function writeAuthConfig(options: CliOptions): Promise<void> {
 
 async function main(): Promise<void> {
   const options = readCliOptions()
-  const plugins = await loadPlugins(options)
-  const contributions = collectContributions(plugins)
+  const contributions = await loadContributions(options)
   await writeSchema(options.outputPath, collectDatabaseSchema(contributions))
   await writeAuthSchemaPlaceholder(options.authSchemaPlaceholderPath)
   await writeAuthConfig(options)

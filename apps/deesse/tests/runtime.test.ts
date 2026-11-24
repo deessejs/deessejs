@@ -35,6 +35,8 @@ describe("Deesse runtime composition", () => {
     expect(output).toEqual({ amount: 12, label: "12.00" })
     expect(Object.isFrozen(output)).toBe(true)
     expect(runtime.plugins.get("unknown-plugin")).toBeUndefined()
+    expect(runtime.plugins.entries()).toEqual([["configured-output", output]])
+    expect(Object.isFrozen(runtime.plugins.entries())).toBe(true)
     expect(handler).toHaveBeenCalledTimes(1)
     expect(handler).toHaveBeenCalledWith({ amount: 12 })
   })

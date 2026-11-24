@@ -164,10 +164,17 @@ type PluginById<TPlugins extends readonly AnyPlugin[], TId extends string> = Ext
 
 export type ImmutablePluginOutput<TOutput> = TOutput extends object ? Readonly<TOutput> : TOutput
 
+export type PluginOutputEntry<TPlugins extends readonly AnyPlugin[]> = TPlugins[number] extends infer TPlugin
+  ? TPlugin extends AnyPlugin
+    ? readonly [TPlugin["id"], ImmutablePluginOutput<PluginOutputOf<TPlugin>>]
+    : never
+  : never
+
 export type PluginOutputRegistry<TPlugins extends readonly AnyPlugin[]> = {
   get<TId extends string>(id: TId): TId extends PluginId<TPlugins>
     ? ImmutablePluginOutput<PluginOutputOf<PluginById<TPlugins, TId>>> | undefined
     : undefined
+  entries(): readonly PluginOutputEntry<TPlugins>[]
 }
 
 type UnionToIntersection<TUnion> = (TUnion extends unknown ? (value: TUnion) => void : never) extends (value: infer TIntersection) => void
