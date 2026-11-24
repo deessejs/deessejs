@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Theme-compatible React UI primitives for Tailwind CSS v4 applications.",
   "license": "MIT",
   "repository": {
@@ -9,8 +9,15 @@
     "directory": "apps/ui"
   },
   "type": "module",
-  "files": ["dist", "tailwind.css", "README.md", "LICENSE"],
-  "sideEffects": ["./tailwind.css"],
+  "files": [
+    "dist",
+    "tailwind.css",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./tailwind.css"
+  ],
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
