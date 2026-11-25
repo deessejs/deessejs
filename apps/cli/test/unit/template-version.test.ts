@@ -21,17 +21,15 @@ describe("local template version bump", () => {
     ["major", "1.2.3", "2.0.0"],
   ] as const)("increments the %s component", async (release, version, expected) => {
     const directory = await createTemplateDirectory(version)
+    const before = await readDescriptor(directory)
 
     await expect(bumpLocalTemplateVersion(directory, release)).resolves.toEqual({
       previousVersion: version,
       version: expected,
     })
-    await expect(readDescriptor(directory)).resolves.toMatchObject({
+    await expect(readDescriptor(directory)).resolves.toEqual({
+      ...before,
       version: expected,
-      name: "test-template",
-      title: "Test Template",
-      excludes: ["private/**"],
-      labels: ["starter"],
     })
   })
 
