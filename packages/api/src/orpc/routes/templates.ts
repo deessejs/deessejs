@@ -35,6 +35,7 @@ const publicTemplateColumns = {
   license: templateRepositorySnapshots.license,
   repositoryUpdatedAt: templateRepositorySnapshots.repositoryUpdatedAt,
   stars: templateRepositorySnapshots.stars,
+  access: templates.access,
 }
 
 const publicTemplateDetailColumns = {
@@ -117,6 +118,7 @@ function toCommunityTemplate(row: {
     organizationName: row.organizationName,
     templateSlug: row.slug,
     sourceCommit: row.sourceCommit,
+    requiresManaged: false,
   }
 }
 
@@ -137,6 +139,7 @@ type PublicTemplateRow = {
   readme?: string | null
   repositoryUpdatedAt: Date | null
   stars: number | null
+  access: "free" | "paid"
 }
 
 /**
@@ -167,6 +170,7 @@ function toPublicTemplate(row: PublicTemplateRow): TemplateV1 {
       ? { updatedAt: row.repositoryUpdatedAt.toISOString() }
       : {}),
     ...(row.stars !== null ? { stars: row.stars } : {}),
+    requiresManaged: row.access === "paid",
   }
 }
 

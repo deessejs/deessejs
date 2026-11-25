@@ -125,7 +125,7 @@ async function resolveTemplatePlan(input: {
   accessToken: string | undefined
   ref: string | undefined
 }): Promise<Awaited<ReturnType<typeof resolveTemplateInstallationPlan>>> {
-  if (input.useCatalog) {
+  if (input.useCatalog && (input.organizationSlug || input.template.requiresManaged)) {
     const managed = await resolveManagedTemplateInstallationPlan({
       slug: input.template.slug,
       repository: `${input.template.owner}/${input.template.repo}`,

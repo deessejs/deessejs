@@ -58,7 +58,7 @@ CREATE TABLE "managed_releases" (
 --> statement-breakpoint
 ALTER TABLE "managed_release_uploads" ADD CONSTRAINT "managed_release_uploads_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managed_release_uploads" ADD CONSTRAINT "managed_release_uploads_template_id_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."templates"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "managed_release_uploads" ADD CONSTRAINT "managed_release_uploads_block_publication_id_block_publications_id_fk" FOREIGN KEY ("block_publication_id") REFERENCES "public"."block_publications"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "managed_release_uploads" ADD CONSTRAINT "managed_release_uploads_block_pub_fk" FOREIGN KEY ("block_publication_id") REFERENCES "public"."block_publications"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managed_release_uploads" ADD CONSTRAINT "managed_release_uploads_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managed_releases" ADD CONSTRAINT "managed_releases_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "managed_releases" ADD CONSTRAINT "managed_releases_template_id_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."templates"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint

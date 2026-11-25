@@ -4567,8 +4567,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "managed_release_uploads_block_publication_id_block_publications_id_fk": {
-          "name": "managed_release_uploads_block_publication_id_block_publications_id_fk",
+        "managed_release_uploads_block_pub_fk": {
+          "name": "managed_release_uploads_block_pub_fk",
           "tableFrom": "managed_release_uploads",
           "tableTo": "block_publications",
           "columnsFrom": [

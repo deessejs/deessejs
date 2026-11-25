@@ -11,7 +11,7 @@ The `@deessejs/cli` npm package provides the `deessejs` command for discovering 
 - **Inspect a template**: `deessejs info <slug>` prints metadata plus the install line.
 - **Scaffold a template**: `deessejs init <slug-or-github-url>` uses the repository's `deesse-template.json`, detects the package manager, and installs dependencies.
 - **Publish a managed release**: `deessejs template publish --slug <slug> --destination <organization-or-deessejs>` uploads the current committed descriptor and selected files as an immutable version. `deessejs block publish` publishes a block release.
-- **Request a catalog listing**: `deessejs organization template request-listing <organization> <slug> --confirm-distribution-rights` is a separate review request. It does not publish a managed release or approve a catalog entry.
+- **Request a catalog listing**: `deessejs organization template request-listing <organization> <slug> --confirm-distribution-rights` asks for catalog review. It neither publishes a managed release nor approves a catalog entry.
 - **Inspect blocks**: `deessejs block info` reads block metadata. `deessejs block check` checks a local or GitHub block source.
 - **Sign in**: `deessejs auth login` opens the browser for a device-flow approval. The CLI stores the resulting token at `~/.deessejs/auth.json`.
 
@@ -41,7 +41,7 @@ The CLI defaults to `https://app.deessejs.com`. Set `DEESSEJS_API_URL` to use an
 ## What the CLI doesn't do
 
 - It doesn't host templates. They live in GitHub repositories, and the CLI uses each repository's descriptor to select files.
-- Managed releases are private R2 artifacts. The API validates and seals each archive, and returns short-lived download links only after access checks. A missing repository preview image uses the catalog placeholder.
+- The API stores managed releases as private R2 artifacts. It checks and seals each archive, then returns short-lived download links after access checks. The catalog uses a placeholder when a repository has no preview image.
 - It doesn't manage your environment variables. Templates ship `.env.example` files. Copy one and add your values.
 - It doesn't deploy. Use your platform's tools to deploy the generated project, such as Vercel, Expo Application Services (EAS), or Cloudflare.
 

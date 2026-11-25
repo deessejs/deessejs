@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
 import {
   check,
+  foreignKey,
   index,
   integer,
   pgEnum,
@@ -59,7 +60,7 @@ export const managedReleaseUploads = pgTable("managed_release_uploads", {
   ownerType: managedReleaseOwnerType("owner_type").notNull(),
   organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
   templateId: uuid("template_id").references(() => templates.id, { onDelete: "cascade" }),
-  blockPublicationId: uuid("block_publication_id").references(() => blockPublications.id, { onDelete: "cascade" }),
+  blockPublicationId: uuid("block_publication_id"),
   slug: text("slug").notNull(),
   version: text("version").notNull(),
   digest: text("digest").notNull(),
@@ -76,6 +77,11 @@ export const managedReleaseUploads = pgTable("managed_release_uploads", {
   check("managed_release_uploads_target_check", sql`(${table.kind} = 'template' AND ${table.templateId} IS NOT NULL AND ${table.blockPublicationId} IS NULL) OR (${table.kind} = 'block' AND ${table.blockPublicationId} IS NOT NULL AND ${table.templateId} IS NULL)`),
   check("managed_release_uploads_digest_check", sql`${table.digest} ~ '^[a-f0-9]{64}$' AND ${table.descriptorDigest} ~ '^[a-f0-9]{64}$'`),
   check("managed_release_uploads_archive_size_check", sql`${table.archiveSize} > 0 AND ${table.archiveSize} <= 104857600`),
+  foreignKey({
+    columns: [table.blockPublicationId],
+    foreignColumns: [blockPublications.id],
+    name: "managed_release_uploads_block_pub_fk",
+  }).onDelete("cascade"),
   uniqueIndex("managed_release_uploads_idempotency_uidx").on(table.createdBy, table.idempotencyKey),
   index("managed_release_uploads_expiry_idx").on(table.state, table.expiresAt),
 ])

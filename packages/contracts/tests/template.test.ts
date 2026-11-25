@@ -32,6 +32,13 @@ describe("TemplateV1", () => {
     expect(result.cloneUrl).toBe("https://github.com/deessejs/deessejs.git")
   })
 
+  it("accepts API managed-release requirements while preserving older payloads", () => {
+    expect(TemplateV1.parse(validTemplate).requiresManaged).toBeUndefined()
+    expect(
+      TemplateV1.parse({ ...validTemplate, requiresManaged: true }).requiresManaged
+    ).toBe(true)
+  })
+
   it("rejects a missing slug", () => {
     const { slug, ...rest } = validTemplate
     expect(slug).toBe("saas-starter") // referenced to keep the destructure used
