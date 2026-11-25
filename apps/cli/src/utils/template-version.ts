@@ -50,6 +50,14 @@ async function readDescriptor(path: string): Promise<{
   descriptor: Record<string, unknown>
   mode: number
 }> {
+  const fileInfo = await statDescriptor(path)
+  const bytes = await readDescriptorBytes(path)
+  const descriptor = parseDescriptor(bytes)
+
+  return { bytes, descriptor, mode: fileInfo.mode }
+}
+
+async function statDescriptor(path: string) {
   let fileInfo: Awaited<ReturnType<typeof lstat>>
   try {
     fileInfo = await lstat(path)
@@ -62,17 +70,21 @@ async function readDescriptor(path: string): Promise<{
   if (!fileInfo.isFile()) {
     throw descriptorError(`"${DESCRIPTOR_FILENAME}" must be a regular file, not a symlink or directory.`)
   }
+  return fileInfo
+}
 
-  let bytes: Buffer
+async function readDescriptorBytes(path: string): Promise<Buffer> {
   try {
-    bytes = await readFile(path)
+    return await readFile(path)
   } catch (error) {
     throw descriptorError(
       `cannot read "${DESCRIPTOR_FILENAME}": ${error instanceof Error ? error.message : String(error)}`,
       error instanceof Error ? error : undefined
     )
   }
+}
 
+function parseDescriptor(bytes: Buffer): Record<string, unknown> {
   let input: unknown
   try {
     input = JSON.parse(bytes.toString("utf8"))
@@ -90,11 +102,7 @@ async function readDescriptor(path: string): Promise<{
       .join("; ")
     throw descriptorError(`"${DESCRIPTOR_FILENAME}" is invalid: ${detail}`)
   }
-  if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    throw descriptorError(`"${DESCRIPTOR_FILENAME}" must contain a JSON object.`)
-  }
-
-  return { bytes, descriptor: input as Record<string, unknown>, mode: fileInfo.mode }
+  return input as Record<string, unknown>
 }
 
 async function writeAtomically(
