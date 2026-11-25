@@ -141,7 +141,7 @@ If neither source identifies a package manager, the CLI creates the project with
 
 ### Exit codes
 
-- `0`: success (created + installed, or created only if `--no-install`).
+- `0`: success (created and installed, or created without installation when you pass `--no-install`).
 - `1`: public codes (`not_found`, `network_error`, `parse_error`).
 - `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `materialize_failed`, `install_failed`, `internal`.
 
@@ -229,11 +229,11 @@ deessejs auth login
 | -------- | -------------------------------------------------------------------------------------------------------- |
 | `--json` | Emit `{ ok: true, user }` on success. A handled `CliError` uses `{ ok: false, code, message }`. |
 
-Exit codes: `0` on success and `1` on failure. Denying the request produces `cli_device_denied`; an expired, rejected, or otherwise unusable device flow produces `cli_device_expired`. Unexpected failures use the CLI's general error handler.
+Exit code `0` signals success. Exit code `1` signals failure. Denying the request produces `cli_device_denied`. An expired, rejected, or unusable device flow produces `cli_device_expired`. Unexpected failures use the CLI's general error handler.
 
 ### `deessejs auth status`
 
-This read-only diagnostic validates the stored bearer against the server and prints one of three states: no session, valid session, or stale session. These three states exit `0`; a request or server failure exits `1`.
+This diagnostic leaves the stored bearer unchanged. It checks the token with the server and prints one of three states: no session, valid session, or stale session. Each state returns `0`. Request or server failures return `1`.
 
 ```bash
 deessejs auth status
@@ -245,7 +245,7 @@ deessejs auth status
 
 ### `deessejs auth logout`
 
-Attempt to invalidate the server-side session, then delete the local token file. A non-2xx response still clears the local file and is reported as a warning in human-readable mode. A network failure also clears the local file, then exits with an error.
+Attempt to invalidate the server-side session, then delete the local token file. A non-2xx response still clears the local file. The CLI logs a warning in human-readable mode. A network failure also clears the local file and returns an error.
 
 ```bash
 deessejs auth logout
@@ -279,11 +279,11 @@ These commands emit JSON by default. Use `--verbose` for human-readable output. 
 
 ## Error codes reference
 
-These public error codes are intended for scripting. Some internal errors are also included in JSON output and may change between releases.
+Use these public error codes in scripts. The CLI may include some internal errors in JSON output. Those internal codes can change between releases.
 
 | Code                 | Meaning                                             | Remediation                                                         |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
-| `not_found`          | A requested identifier doesn't exist               | Check spelling or run `deessejs list`                            |
+| `not_found`          | Identifier not found | Check spelling or run `deessejs list` |
 | `network_error`      | Network request failed                              | Check connectivity, then retry                                      |
 | `parse_error`        | Server response didn't match the v1 contract | This may signal a server-side regression. Open an issue. |
 | `cli_device_denied`  | You denied the device-flow request in the browser   | Re-run `deessejs auth login` and select Approve                     |
