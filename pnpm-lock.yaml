@@ -590,6 +590,9 @@ importers:
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      picomatch:
+        specifier: 'catalog:'
+        version: 4.0.7
       semver:
         specifier: 'catalog:'
         version: 7.8.5
@@ -600,6 +603,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.2
+      '@types/picomatch':
+        specifier: 'catalog:'
+        version: 4.0.3
       '@workspace/api':
         specifier: workspace:*
         version: link:../../packages/api
@@ -1421,6 +1427,9 @@ importers:
       oxlint:
         specifier: 'catalog:'
         version: 1.90.0(oxlint-tsgolint@7.0.2005)
+      tar:
+        specifier: 'catalog:'
+        version: 7.5.22
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.2)(@vitest/coverage-v8@4.1.10)(vite@8.3.5(@types/node@24.13.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.1))
@@ -10093,10 +10102,6 @@ packages:
     resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
     engines: {node: '>=8.6'}
 
-  picomatch@4.0.4:
-    resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
-    engines: {node: '>=12'}
-
   picomatch@4.0.7:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
@@ -12460,7 +12465,7 @@ snapshots:
       esbuild: 0.25.12
       gray-matter: 4.0.3
       p-limit: 6.2.0
-      picomatch: 4.0.4
+      picomatch: 4.0.7
       pluralize: 8.0.0
       serialize-javascript: 7.0.7
       tinyglobby: 0.2.17
@@ -19471,8 +19476,6 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@2.3.2: {}
-
-  picomatch@4.0.4: {}
 
   picomatch@4.0.7: {}
 

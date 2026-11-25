@@ -124,7 +124,7 @@ async function resolveAddInputs(
   options: AddOptions
 ): Promise<AddInputs> {
   const [source, target, packageManager] = await Promise.all([
-    resolveAddSource(input, options.ref),
+    resolveAddSource(input, options.ref, options.organization),
     resolveAddTarget(cwd, options.target),
     Promise.resolve(detectPackageManager(cwd)),
   ])

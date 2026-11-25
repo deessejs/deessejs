@@ -5,6 +5,7 @@ import type { PackageManagerInfo } from "./detect-pm.js"
 export type AddOptions = {
   target: string
   ref?: string
+  organization?: string
   dryRun?: boolean
   install?: boolean
 }

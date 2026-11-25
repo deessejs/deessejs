@@ -1,0 +1,34 @@
+---
+title: Managed releases
+description: Publish immutable template and block artifacts through the DeesseJS CLI.
+---
+
+Managed releases let authorized authors publish a local template or block snapshot without making the source repository public. The API is authoritative for ownership, organization membership, roles, paid seats, release ordering, validation, and download access.
+
+## Publish a release
+
+Start from a committed, clean Git working tree. The root descriptor version must be canonical stable `MAJOR.MINOR.PATCH` SemVer and greater than the prior release. The CLI creates a deterministic archive from the template's `includes` and `excludes`, or the block's declared install files.
+
+```sh
+deessejs auth login
+deessejs template publish --slug my-template --destination my-organization
+deessejs block publish --slug my-block --destination my-organization
+```
+
+Use `--destination deessejs` for platform releases. Platform publishing requires an administrator. Organization publishing requires a managing role and an assigned active paid seat under a qualifying active organization subscription. Version bumping is a separate local command supplied by PR #577 once that PR is available.
+
+Publishing is distinct from catalog review. `deessejs organization template request-listing <organization> <slug> --confirm-distribution-rights` requests review for public catalog listing. It does not create a managed release or approve a listing.
+
+## List and initialize
+
+`deessejs template releases [slug]` lists ready platform releases without exposing storage keys. Add `--organization <organization-slug>` to list private releases you can access. `deessejs init <slug>` resolves an eligible managed release first and validates the archive before materializing files. Use `deessejs init <slug> --organization <organization-slug>` for a private organization template, or `deessejs add <block-slug> --target <package-id> --organization <organization-slug>` for a private block. Paid templates and blocks require an active Pro seat and must initialize from a managed artifact. Public GitHub sources without a protected managed release continue to use their pinned public source.
+
+An unqualified version resolves to the highest ready, non-withdrawn release. If that release is withdrawn, resolution falls back to the next eligible version. Explicit withdrawn versions do not resolve. Re-publishing the exact same version and bytes is idempotent; changing bytes requires a higher version.
+
+## Storage and limits
+
+Production requires private `R2_TEMPLATE_RELEASES_STAGING_BUCKET` and `R2_TEMPLATE_RELEASES_BUCKET` buckets plus the existing R2 account and credential variables. Configure a short object lifecycle expiration on the staging bucket to remove objects left by expired or replayed upload capabilities. The API validates archive paths and entry types, caps compressed archives at 100 MiB and expanded content at 200 MiB, then seals the exact archive bytes under a server-generated key. Download URLs are short-lived and scoped to one artifact.
+
+Template previews are optional. If `previewImage` in `deesse-template.json` names a validated PNG, JPEG, or WebP file in the archive, the API stores it from those exact bytes. Otherwise, the catalogue uses its placeholder. There is no manual image-upload control for managed releases.
+
+Local development leaves R2 credentials blank. API tests inject a fake storage adapter. Validate real bucket permissions, signed PUT/GET behavior, content type, and lifecycle policy with a non-production Cloudflare R2 smoke test before production rollout.

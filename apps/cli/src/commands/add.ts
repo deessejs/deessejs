@@ -11,6 +11,7 @@ export const addCommand = new Command("add")
   )
   .requiredOption("--target <id>", "package target id declared in deesse.json")
   .option("--ref <ref>", "Git ref for a GitHub source")
+  .option("--organization <slug>", "resolve an organization-owned block release")
   .option("--dry-run", "print the plan without writing files")
   .option(
     "--install",
@@ -22,6 +23,7 @@ export const addCommand = new Command("add")
       options: {
         target: string
         ref?: string
+        organization?: string
         dryRun?: boolean
         install?: boolean
       }

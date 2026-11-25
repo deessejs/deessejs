@@ -47,6 +47,8 @@ export const TemplateDescriptorV1Schema = z.strictObject({
   license: z.string().min(1).optional(),
   category: z.string().min(1).optional(),
   labels: z.array(z.string()).optional(),
+  /** Optional repository-relative preview image, uploaded automatically with a managed release. */
+  previewImage: z.string().min(1).optional(),
 })
 
 export type TemplateDescriptorV1 = z.infer<typeof TemplateDescriptorV1Schema>
