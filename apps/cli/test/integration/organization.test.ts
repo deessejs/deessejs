@@ -3,11 +3,13 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mockCreate, mockTemplateList, spinnerEvents } = vi.hoisted(() => ({
-  mockCreate: vi.fn(),
-  mockTemplateList: vi.fn(),
-  spinnerEvents: [] as string[],
-}))
+const { mockCreate, mockTemplateList, mockTemplateSubmit, spinnerEvents } =
+  vi.hoisted(() => ({
+    mockCreate: vi.fn(),
+    mockTemplateList: vi.fn(),
+    mockTemplateSubmit: vi.fn(),
+    spinnerEvents: [] as string[],
+  }))
 
 vi.mock("ora", () => ({
   default: () => ({
@@ -30,7 +32,11 @@ vi.mock("../../src/api/client.js", () => ({
   createAuthenticatedORPCClient: vi.fn(() => ({
     organization: {
       create: mockCreate,
-      templates: { create: mockCreate, list: mockTemplateList },
+      templates: {
+        create: mockCreate,
+        list: mockTemplateList,
+        submit: mockTemplateSubmit,
+      },
     },
   })),
 }))
@@ -72,7 +78,8 @@ async function runCommand(args: string[]) {
   const resetOptions = (command: typeof organizationCommand): void => {
     command.setOptionValue("json", undefined)
     command.setOptionValue("verbose", undefined)
-    for (const child of command.commands) resetOptions(child as typeof organizationCommand)
+    for (const child of command.commands)
+      resetOptions(child as typeof organizationCommand)
   }
   resetOptions(organizationCommand)
   await organizationCommand.parseAsync(args, { from: "user" })
@@ -94,6 +101,7 @@ describe("organization commands", () => {
       })
     mockCreate.mockReset()
     mockTemplateList.mockReset()
+    mockTemplateSubmit.mockReset()
     spinnerEvents.length = 0
   })
 
@@ -208,16 +216,22 @@ describe("organization commands", () => {
 
   it("prints one JSON error and exits nonzero when creation fails", async () => {
     mockCreate.mockRejectedValue(new Error("simulated API failure"))
-    const exit = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+    const exit = vi.spyOn(process, "exit").mockImplementation(((
+      code?: number
+    ) => {
       throw Object.assign(new Error("exit"), { exitCode: code })
     }) as never)
     const stderr: string[] = []
-    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation((chunk) => {
-      stderr.push(chunk.toString())
-      return true
-    })
+    const stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk) => {
+        stderr.push(chunk.toString())
+        return true
+      })
     try {
-      await expect(runCommand(["create", "Acme Studio"])).rejects.toMatchObject({ exitCode: 1 })
+      await expect(runCommand(["create", "Acme Studio"])).rejects.toMatchObject(
+        { exitCode: 1 }
+      )
       const parsed = JSON.parse(stdoutWrites.join(""))
       expect(parsed.ok).toBe(false)
       expect(parsed.code).toBe("internal")
@@ -345,6 +359,116 @@ describe("organization commands", () => {
       )
     } finally {
       log.mockRestore()
+    }
+  })
+
+  it("uses JSON by default for organization listing requests", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [{ id: "template_1", slug: "starter" }],
+    })
+    mockTemplateSubmit.mockResolvedValue({
+      sourceCommit: "abc123",
+      status: "pending",
+    })
+    const stderr: string[] = []
+    const stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk) => {
+        stderr.push(chunk.toString())
+        return true
+      })
+    try {
+      await runCommand([
+        "template",
+        "request-listing",
+        "acme",
+        "starter",
+        "--confirm-distribution-rights",
+      ])
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+        submission: { sourceCommit: "abc123", status: "pending" },
+      })
+      expect(stderr.join("")).toBe("")
+    } finally {
+      stderrSpy.mockRestore()
+    }
+  })
+
+  it("uses human output for --verbose and JSON when --json overrides it", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [{ id: "template_1", slug: "starter" }],
+    })
+    mockTemplateSubmit.mockResolvedValue({
+      sourceCommit: "abc123",
+      status: "pending",
+    })
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined)
+    try {
+      await runCommand([
+        "template",
+        "request-listing",
+        "acme",
+        "starter",
+        "--confirm-distribution-rights",
+        "--verbose",
+      ])
+      expect(log.mock.calls.flat().join(" ")).toContain(
+        "Catalog listing request submitted"
+      )
+      expect(stdoutWrites.join("")).toBe("")
+
+      stdoutWrites = []
+      log.mockClear()
+      await runCommand([
+        "template",
+        "request-listing",
+        "acme",
+        "starter",
+        "--confirm-distribution-rights",
+        "--verbose",
+        "--json",
+      ])
+      expect(JSON.parse(stdoutWrites.join(""))).toEqual({
+        submission: { sourceCommit: "abc123", status: "pending" },
+      })
+      expect(log).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("returns JSON errors and exits nonzero when listing requests fail", async () => {
+    mockTemplateList.mockResolvedValue({
+      templates: [{ id: "template_1", slug: "starter" }],
+    })
+    mockTemplateSubmit.mockRejectedValue(new Error("request rejected"))
+    const exit = vi.spyOn(process, "exit").mockImplementation(((
+      code?: number
+    ) => {
+      throw Object.assign(new Error("exit"), { exitCode: code })
+    }) as never)
+    const stderr: string[] = []
+    const stderrSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((chunk) => {
+        stderr.push(chunk.toString())
+        return true
+      })
+    try {
+      await expect(
+        runCommand([
+          "template",
+          "request-listing",
+          "acme",
+          "starter",
+          "--confirm-distribution-rights",
+        ])
+      ).rejects.toMatchObject({ exitCode: 1 })
+      expect(JSON.parse(stdoutWrites.join(""))).toMatchObject({ ok: false })
+      expect(stderr.join("")).toBe("")
+    } finally {
+      exit.mockRestore()
+      stderrSpy.mockRestore()
     }
   })
 

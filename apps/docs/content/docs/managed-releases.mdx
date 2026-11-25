@@ -5,6 +5,8 @@ description: Publish immutable template and block artifacts through the DeesseJS
 
 Managed releases let authorized authors publish template or block snapshots without making source repositories public. The API decides ownership, roles, paid seats, version order, archive validation, and download access.
 
+The release and organization commands in this guide emit JSON to stdout by default. Use `--verbose` for human-readable output. When users pass both flags, `--json` keeps JSON output. Errors cause a nonzero exit code. Prompts and diagnostics go to the standard error stream.
+
 ## Publish a release
 
 Commit a clean Git working tree before publishing. The root descriptor needs a canonical stable version in `MAJOR.MINOR.PATCH` SemVer. Its version must exceed the previous release. The CLI archives files selected by the template's `includes` and `excludes`, or the block's install file list.
@@ -15,15 +17,23 @@ deessejs template publish --slug my-template --destination my-organization
 deessejs block publish --slug my-block --destination my-organization
 ```
 
+Publishing reads the stable version already present in the template or block descriptor. Use the version bump command from PR #577 when available to prepare the next release. `--verbose` prints a human-readable confirmation. `--json` selects JSON and overrides `--verbose`.
+
 Set `--destination deessejs` for platform releases. Platform publishing requires an administrator. Organization publishing requires a managing role and an assigned active paid seat under an active qualifying subscription. PR #577 adds the separate version-bump commands.
 
 Publishing and catalog review serve different purposes. Run `deessejs organization template request-listing <organization> <slug> --confirm-distribution-rights` to request public catalog review. This request neither publishes a managed release nor approves a catalog entry.
+
+The request-listing command also emits JSON by default. Add `--verbose` for a human confirmation, or combine it with `--json` to keep JSON output.
 
 ## List and initialize
 
 Run `deessejs template releases [slug]` to list ready platform releases without exposing storage keys. Add `--organization <organization-slug>` to list private releases you can access.
 
+The command returns JSON by default. Use `deessejs template releases --verbose` for a human-readable list. `--verbose --json` still returns JSON.
+
 Run `deessejs init <slug>` to use the source selected by the API. Protected templates require managed releases. Initialize a private organization template with `deessejs init <slug> --organization <organization-slug>`. Add a private block with `deessejs add <block-slug> --target <package-id> --organization <organization-slug>`. Paid templates and blocks require an active Pro seat. Public GitHub templates continue to use their pinned public source.
+
+Both commands produce JSON results by default. Pass `--verbose` to `init` for human-readable progress, or to `add` to see its planned file changes and human-readable result. Before writing, `add` always asks for confirmation: it prompts in an interactive terminal and requires the explicit `--yes` consent flag when the process has no terminal. `--dry-run` previews the plan without writing. In JSON mode, prompts and plan notices go to the standard error stream, while result JSON stays on stdout. `--json` overrides `--verbose`.
 
 An unqualified version resolves to the highest ready, non-withdrawn release. If that release gets withdrawn, resolution falls back to the next eligible version. Explicit requests for withdrawn versions return no result. Re-publishing the same version and bytes remains idempotent. Changed bytes require a higher version.
 

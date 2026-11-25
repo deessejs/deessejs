@@ -15,6 +15,7 @@ import {
 } from "./add-types.js"
 import { getInstallCommand } from "./detect-pm.js"
 import { spawn } from "./spawn.js"
+import { printJson } from "../output/index.js"
 
 type AddInputs = {
   cwd: string
@@ -48,15 +49,26 @@ async function readState(path: string): Promise<BlockState> {
   })
 }
 
-function confirmPlan(): Promise<boolean> {
-  if (!process.stdin.isTTY)
+type ConfirmationInput = {
+  isTTY?: boolean
+  once: (event: "data", listener: (value: Buffer) => void) => unknown
+  pause: () => void
+}
+
+export function confirmPlan(
+  input: ConfirmationInput = process.stdin,
+  writePrompt: (message: string) => void = (message) => {
+    process.stderr.write(message)
+  }
+): Promise<boolean> {
+  if (!input.isTTY)
     throw new Error(
-      "Confirmation requires a TTY. Use --dry-run to preview without writes."
+      "Confirmation requires a TTY. Use --yes to confirm noninteractive writes or --dry-run to preview without writing."
     )
-  process.stdout.write("Apply this plan? [y/N] ")
+  writePrompt("Apply this plan? [y/N] ")
   return new Promise((resolve) =>
-    process.stdin.once("data", (value) => {
-      process.stdin.pause()
+    input.once("data", (value) => {
+      input.pause()
       resolve(["y", "yes"].includes(String(value).trim().toLowerCase()))
     })
   )
@@ -66,21 +78,138 @@ export async function runAddBlock(
   input: string,
   options: AddOptions
 ): Promise<void> {
-  const prepared = await resolveAddPlan(input, options)
-  if (!prepared.plan.writes.length) {
-    console.log("Already installed for this target and source revision.")
-    return
+  const json = options.json ?? (!options.verbose || !!options.json)
+  try {
+    await executeAdd(input, options, json)
+  } catch (error) {
+    reportAddError(error, json)
   }
-  printAddPlan(prepared, options.target)
-  if (options.dryRun)
-    return void console.log("Dry run complete. No files were changed.")
-  if (!(await confirmPlan()))
-    return void console.log("Cancelled. No files were changed.")
+}
+
+async function executeAdd(
+  input: string,
+  options: AddOptions,
+  json: boolean
+): Promise<void> {
+  const prepared = await resolveAddPlan(input, options)
+  if (reportAlreadyInstalled(prepared, options, json)) return
+  showAddPlan(prepared, options, json)
+  if (reportDryRun(prepared, options, json)) return
+  if (!(await confirmAdd(prepared, options, json))) return
   await applyAddPlan(prepared.cwd, prepared.plan.writes)
+  await installDependencies(prepared, options.install, json)
+  reportAddSuccess(prepared, options, json)
+}
+
+function reportAlreadyInstalled(
+  prepared: PreparedAdd,
+  options: AddOptions,
+  json: boolean
+): boolean {
+  if (prepared.plan.writes.length) return false
+  if (json)
+    printJson({
+      ok: true,
+      command: "add",
+      applied: false,
+      alreadyInstalled: true,
+      target: options.target,
+    })
+  else console.log("Already installed for this target and source revision.")
+  return true
+}
+
+function showAddPlan(
+  prepared: PreparedAdd,
+  options: AddOptions,
+  json: boolean
+): void {
+  if (options.verbose && !json) printAddPlan(prepared, options.target)
+}
+
+function reportDryRun(
+  prepared: PreparedAdd,
+  options: AddOptions,
+  json: boolean
+): boolean {
+  if (!options.dryRun) return false
+  if (json)
+    printJson({
+      ok: true,
+      command: "add",
+      applied: false,
+      dryRun: true,
+      plan: summarizePlan(prepared, options.target),
+    })
+  else console.log("Dry run complete. No files were changed.")
+  return true
+}
+
+async function confirmAdd(
+  prepared: PreparedAdd,
+  options: AddOptions,
+  json: boolean
+): Promise<boolean> {
+  if (options.yes) return true
+  if (json)
+    process.stderr.write(
+      `Plan: ${prepared.plan.writes.length} file change${prepared.plan.writes.length === 1 ? "" : "s"} for target ${options.target}.\n`
+    )
+  const confirmed = await confirmPlan()
+  if (confirmed) return true
+  if (json)
+    printJson({ ok: true, command: "add", applied: false, cancelled: true })
+  else console.log("Cancelled. No files were changed.")
+  return false
+}
+
+function reportAddSuccess(
+  prepared: PreparedAdd,
+  options: AddOptions,
+  json: boolean
+): void {
+  if (json) return void printJson(addSuccessPayload(prepared, options))
   console.log(
     `Added ${prepared.source.descriptor.name} to target ${options.target}.`
   )
-  await installDependencies(prepared, options.install)
+}
+
+function addSuccessPayload(prepared: PreparedAdd, options: AddOptions) {
+  return {
+    ok: true,
+    command: "add",
+    applied: true,
+    target: options.target,
+    block: {
+      name: prepared.source.descriptor.name,
+      version: prepared.source.descriptor.version,
+    },
+    writes: summarizePlan(prepared, options.target).writes,
+    dependenciesInstalled: !!options.install,
+  }
+}
+
+function reportAddError(error: unknown, json: boolean): void {
+  const message = error instanceof Error ? error.message : String(error)
+  if (json)
+    printJson({ ok: false, command: "add", code: "add_failed", message })
+  else process.stderr.write(`Error: ${message}\n`)
+  process.exitCode = 1
+}
+
+function summarizePlan(prepared: PreparedAdd, targetId: string) {
+  return {
+    block: {
+      name: prepared.source.descriptor.name,
+      version: prepared.source.descriptor.version,
+    },
+    target: targetId,
+    writes: prepared.plan.writes.map((write) => ({
+      action: write.previous ? "update" : "create",
+      path: relative(prepared.cwd, write.path),
+    })),
+    manualSteps: prepared.plan.manualSteps,
+  }
 }
 
 async function resolveAddPlan(
@@ -150,13 +279,17 @@ function printAddPlan(prepared: PreparedAdd, targetId: string): void {
 
 async function installDependencies(
   prepared: PreparedAdd,
-  shouldInstall = false
+  shouldInstall = false,
+  json = false
 ): Promise<void> {
   if (!shouldInstall) return
   const [command, ...args] = getInstallCommand(prepared.packageManager).split(
     " "
   )
   if (!command) throw new Error("Package manager install command is empty.")
-  await spawn(command, args, { cwd: prepared.cwd, stdio: "inherit" })
-  console.log("Dependencies installed.")
+  await spawn(command, args, {
+    cwd: prepared.cwd,
+    stdio: json ? "pipe" : "inherit",
+  })
+  if (!json) console.log("Dependencies installed.")
 }
