@@ -35,12 +35,12 @@ const publicTemplateColumns = {
   license: templateRepositorySnapshots.license,
   repositoryUpdatedAt: templateRepositorySnapshots.repositoryUpdatedAt,
   stars: templateRepositorySnapshots.stars,
-  access: templates.access,
 }
 
 const publicTemplateDetailColumns = {
   ...publicTemplateColumns,
   readme: templateRepositorySnapshots.readme,
+  access: templates.access,
 }
 
 const communityListColumns = {
@@ -118,7 +118,6 @@ function toCommunityTemplate(row: {
     organizationName: row.organizationName,
     templateSlug: row.slug,
     sourceCommit: row.sourceCommit,
-    requiresManaged: false,
   }
 }
 
@@ -139,7 +138,7 @@ type PublicTemplateRow = {
   readme?: string | null
   repositoryUpdatedAt: Date | null
   stars: number | null
-  access: "free" | "paid"
+  access?: "free" | "paid"
 }
 
 /**
@@ -147,7 +146,10 @@ type PublicTemplateRow = {
  * existing public V1 contract. Editorial values remain authoritative; the
  * snapshot supplies repository details that are not curated in the dashboard.
  */
-function toPublicTemplate(row: PublicTemplateRow): TemplateV1 {
+function toPublicTemplate(
+  row: PublicTemplateRow,
+  includeManagedRequirement = false
+): TemplateV1 {
   return {
     slug: row.slug,
     name: row.name,
@@ -170,7 +172,9 @@ function toPublicTemplate(row: PublicTemplateRow): TemplateV1 {
       ? { updatedAt: row.repositoryUpdatedAt.toISOString() }
       : {}),
     ...(row.stars !== null ? { stars: row.stars } : {}),
-    requiresManaged: row.access === "paid",
+    ...(includeManagedRequirement && row.access === "paid"
+      ? { requiresManaged: true }
+      : {}),
   }
 }
 
@@ -268,7 +272,7 @@ export const detail = base
         )
       )
       .limit(1)
-    return row ? toPublicTemplate(row as PublicTemplateRow) : null
+    return row ? toPublicTemplate(row as PublicTemplateRow, true) : null
   })
 
 /** Resolve a catalog slug without loading its GitHub snapshot payload. */
