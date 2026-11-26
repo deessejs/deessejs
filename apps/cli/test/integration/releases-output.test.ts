@@ -14,6 +14,23 @@ vi.mock("../../src/lib/auth/store/store.js", () => ({ readAuth }))
 
 import { releasesCommand } from "../../src/commands/releases.js"
 
+function stripAnsi(value: string): string {
+  let output = ""
+  for (let index = 0; index < value.length; index += 1) {
+    if (value.charCodeAt(index) !== 0x1b || value[index + 1] !== "[") {
+      output += value[index]
+      continue
+    }
+    index += 2
+    while (index < value.length) {
+      const code = value.charCodeAt(index)
+      if (code >= 0x40 && code <= 0x7e) break
+      index += 1
+    }
+  }
+  return output
+}
+
 describe("managed release listing output", () => {
   let stdout: string[]
   let stderr: string[]
@@ -76,7 +93,7 @@ describe("managed release listing output", () => {
 
   it("uses human output with --verbose and JSON when --json overrides it", async () => {
     await run(["--verbose"])
-    expect(stdout.join("")).toContain("starter 1.2.0")
+    expect(stripAnsi(stdout.join(""))).toContain("starter 1.2.0")
     expect(stderr.join("")).toBe("")
 
     stdout = []
