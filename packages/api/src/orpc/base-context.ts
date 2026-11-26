@@ -17,4 +17,6 @@ export interface BaseContext {
   requestId: string
   /** Verified OAuth identity forwarded only by the MCP route. */
   mcpIdentity?: { userId: string | null; scopes: string[] } | null
+  /** Resolved actor for a session or a scoped MCP read. */
+  actorUserId?: string
 }

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
+import {
+  OrganizationProjectDetailResponseV1,
+  OrganizationProjectsListResponseV1,
+} from "@workspace/contracts/v1"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   db,
@@ -23,6 +27,7 @@ import {
 } from "../../core/github-app/project-config.js"
 import { base } from "../base.js"
 import { authGuard } from "../auth-middleware.js"
+import { memberReadGuard } from "../member-read-middleware.js"
 
 const deniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
@@ -361,17 +366,27 @@ const inspectConfiguration = base
   })
 
 const listProjects = base
-  .input(z.object({ slug: z.string().min(1) }))
+  .input(
+    z.object({
+      slug: z.string().min(1),
+      page: z.number().int().min(1).max(10_000).optional(),
+      pageSize: z.number().int().min(1).max(50).optional(),
+    })
+  )
   .errors(deniedErrors)
-  .use(authGuard)
+  .use(memberReadGuard("organizations:projects:read"))
+  .output(OrganizationProjectsListResponseV1)
   .handler(async ({ context, input, errors }) => {
     const organization = await findOrganizationForMember(
-      context.user.id,
+      context.actorUserId,
       input.slug
     )
     if (!organization) throw errors.ORGANIZATION_ACCESS_DENIED()
 
-    const projects = await db
+    const paginated = input.page !== undefined || input.pageSize !== undefined
+    const page = input.page ?? 1
+    const pageSize = input.pageSize ?? 25
+    const projectQuery = db
       .select({
         id: githubProject.id,
         repositoryId: githubProject.repositoryId,
@@ -384,8 +399,22 @@ const listProjects = base
       .from(githubProject)
       .where(eq(githubProject.organizationId, organization.id))
       .orderBy(asc(githubProject.repositoryFullName))
+    const loadedProjects = paginated
+      ? await projectQuery.limit(pageSize + 1).offset((page - 1) * pageSize)
+      : await projectQuery
+    const hasMore = paginated && loadedProjects.length > pageSize
+    const projects = hasMore
+      ? loadedProjects.slice(0, pageSize)
+      : loadedProjects
 
-    if (projects.length === 0) return { projects: [] }
+    if (projects.length === 0) {
+      return {
+        projects: [],
+        ...(paginated
+          ? { pagination: { page, pageSize, hasMore: false } }
+          : {}),
+      }
+    }
 
     const checks = await db
       .select({
@@ -427,13 +456,12 @@ const listProjects = base
           lastCheckedAt: check?.checkedAt.toISOString() ?? null,
         }
       }),
+      ...(paginated ? { pagination: { page, pageSize, hasMore } } : {}),
     }
   })
 
 const getProject = base
-  .input(
-    z.object({ slug: z.string().min(1), projectId: z.string().uuid() })
-  )
+  .input(z.object({ slug: z.string().min(1), projectId: z.string().uuid() }))
   .errors({
     ...deniedErrors,
     PROJECT_NOT_FOUND: {
@@ -441,10 +469,11 @@ const getProject = base
       message: "This project was not found in this organization.",
     },
   })
-  .use(authGuard)
+  .use(memberReadGuard("organizations:projects:read"))
+  .output(OrganizationProjectDetailResponseV1)
   .handler(async ({ context, input, errors }) => {
     const organization = await findOrganizationForMember(
-      context.user.id,
+      context.actorUserId,
       input.slug
     )
     if (!organization) throw errors.ORGANIZATION_ACCESS_DENIED()
@@ -452,6 +481,7 @@ const getProject = base
     const [project] = await db
       .select({
         id: githubProject.id,
+        repositoryId: githubProject.repositoryId,
         repositoryFullName: githubProject.repositoryFullName,
         repositoryUrl: githubProject.repositoryUrl,
         isPrivate: githubProject.isPrivate,

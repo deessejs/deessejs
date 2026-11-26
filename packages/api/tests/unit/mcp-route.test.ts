@@ -164,7 +164,12 @@ describe("MCP HTTP route", () => {
       resource: serverEnv.MCP_RESOURCE_URL,
       authorization_servers: [issuer],
       bearer_methods_supported: ["header"],
-      scopes_supported: ["templates:read", "organizations:read"],
+      scopes_supported: [
+        "templates:read",
+        "organizations:read",
+        "organizations:projects:read",
+        "organizations:templates:read",
+      ],
     })
   })
 
@@ -176,7 +181,7 @@ describe("MCP HTTP route", () => {
       `resource_metadata="${resourceUrl.origin}${metadataPath}"`
     )
     expect(response.headers.get("www-authenticate")).toContain(
-      'scope="templates:read organizations:read"'
+      'scope="templates:read organizations:read organizations:projects:read organizations:templates:read"'
     )
   })
 
@@ -220,9 +225,27 @@ describe("MCP HTTP route", () => {
     }
     const listTemplates = vi.fn(async () => templates)
     const listMyOrganizations = vi.fn(async () => organizations)
+    const projects = {
+      projects: [],
+      pagination: { page: 1, pageSize: 25, hasMore: false },
+    }
+    const project = { project: { id: "project-1" } }
+    const organizationTemplates = {
+      templates: [],
+      pagination: { page: 1, pageSize: 25, hasMore: false },
+    }
+    const organizationTemplate = { template: { id: "template-1" } }
+    const listOrganizationProjects = vi.fn(async () => projects)
+    const getOrganizationProject = vi.fn(async () => project)
+    const listOrganizationTemplates = vi.fn(async () => organizationTemplates)
+    const getOrganizationTemplate = vi.fn(async () => organizationTemplate)
     const handler = createProductMcpHandler({
       listTemplates,
       listMyOrganizations,
+      listOrganizationProjects,
+      getOrganizationProject,
+      listOrganizationTemplates,
+      getOrganizationTemplate,
     })
     const transport = new StreamableHTTPClientTransport(
       new URL("http://test.local/mcp"),
@@ -239,14 +262,14 @@ describe("MCP HTTP route", () => {
       expect(client.getProtocolEra()).toBe("modern")
       const discovery = await client.listTools()
       const registeredToolNames = discovery.tools.map((tool) => tool.name)
-      const policyToolNames = Object.values(PRODUCT_MCP_TOOL_POLICIES).map(
-        (policy) => policy.name
-      )
-      expect(registeredToolNames.sort()).toEqual([
+      expect([...registeredToolNames].sort()).toEqual([
+        "get_organization_project",
+        "get_organization_template",
         "list_my_organizations",
+        "list_organization_projects",
+        "list_organization_templates",
         "list_templates",
       ])
-      expect([...registeredToolNames].sort()).toEqual(policyToolNames.sort())
       expect(
         Object.values(PRODUCT_MCP_TOOL_POLICIES).every(
           (policy) => policy.scope.length > 0
@@ -261,6 +284,28 @@ describe("MCP HTTP route", () => {
         name: "list_my_organizations",
         arguments: {},
       })
+      const projectsResult = await client.callTool({
+        name: "list_organization_projects",
+        arguments: { organization_slug: "acme", page: 2, page_size: 10 },
+      })
+      const projectResult = await client.callTool({
+        name: "get_organization_project",
+        arguments: {
+          organization_slug: "acme",
+          project_id: "00000000-0000-4000-8000-000000000001",
+        },
+      })
+      const organizationTemplatesResult = await client.callTool({
+        name: "list_organization_templates",
+        arguments: { organization_slug: "acme", page: 1, page_size: 5 },
+      })
+      const organizationTemplateResult = await client.callTool({
+        name: "get_organization_template",
+        arguments: {
+          organization_slug: "acme",
+          template_id: "00000000-0000-4000-8000-000000000002",
+        },
+      })
 
       expect(templateResult.content).toEqual([
         { type: "text", text: JSON.stringify(templates) },
@@ -268,8 +313,38 @@ describe("MCP HTTP route", () => {
       expect(organizationResult.content).toEqual([
         { type: "text", text: JSON.stringify(organizations) },
       ])
+      expect(projectsResult.content).toEqual([
+        { type: "text", text: JSON.stringify(projects) },
+      ])
+      expect(projectResult.content).toEqual([
+        { type: "text", text: JSON.stringify(project) },
+      ])
+      expect(organizationTemplatesResult.content).toEqual([
+        { type: "text", text: JSON.stringify(organizationTemplates) },
+      ])
+      expect(organizationTemplateResult.content).toEqual([
+        { type: "text", text: JSON.stringify(organizationTemplate) },
+      ])
       expect(listTemplates).toHaveBeenCalledOnce()
       expect(listMyOrganizations).toHaveBeenCalledOnce()
+      expect(listOrganizationProjects).toHaveBeenCalledWith({
+        organizationSlug: "acme",
+        page: 2,
+        pageSize: 10,
+      })
+      expect(getOrganizationProject).toHaveBeenCalledWith({
+        organizationSlug: "acme",
+        projectId: "00000000-0000-4000-8000-000000000001",
+      })
+      expect(listOrganizationTemplates).toHaveBeenCalledWith({
+        organizationSlug: "acme",
+        page: 1,
+        pageSize: 5,
+      })
+      expect(getOrganizationTemplate).toHaveBeenCalledWith({
+        organizationSlug: "acme",
+        templateId: "00000000-0000-4000-8000-000000000002",
+      })
     } finally {
       await Promise.all([client.close(), handler.close()])
     }
@@ -358,5 +433,44 @@ describe("MCP HTTP route", () => {
 
     expect(templatesResponse.status).toBe(200)
     expect(organizationsResponse.status).toBe(200)
+  })
+
+  it("enforces the organization project and template scopes per tool", async () => {
+    const handler = protectedToolHandler()
+    const deniedProject = await handler(
+      protectedToolRequest(
+        signAccessToken("organizations:templates:read"),
+        "list_organization_projects"
+      )
+    )
+    const deniedTemplate = await handler(
+      protectedToolRequest(
+        signAccessToken("organizations:projects:read"),
+        "list_organization_templates"
+      )
+    )
+    const allowedProject = await handler(
+      protectedToolRequest(
+        signAccessToken("organizations:projects:read"),
+        "get_organization_project"
+      )
+    )
+    const allowedTemplate = await handler(
+      protectedToolRequest(
+        signAccessToken("organizations:templates:read"),
+        "get_organization_template"
+      )
+    )
+
+    expect(deniedProject.status).toBe(403)
+    expect(deniedProject.headers.get("www-authenticate")).toContain(
+      'scope="organizations:projects:read"'
+    )
+    expect(deniedTemplate.status).toBe(403)
+    expect(deniedTemplate.headers.get("www-authenticate")).toContain(
+      'scope="organizations:templates:read"'
+    )
+    expect(allowedProject.status).toBe(200)
+    expect(allowedTemplate.status).toBe(200)
   })
 })

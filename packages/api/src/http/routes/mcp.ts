@@ -6,6 +6,7 @@ import {
 } from "better-auth/oauth2"
 import { HTTPException } from "hono/http-exception"
 import { auth } from "@workspace/auth"
+import { resolveMcpUserId } from "../../core/mcp/identity.js"
 import {
   createProductMcpHandler,
   PRODUCT_MCP_TOOL_POLICIES,
@@ -103,6 +104,73 @@ const createHandler = (identity: { userId: string | null; scopes: string[] }) =>
           mcpIdentity: identity,
         },
       }),
+    listOrganizationProjects: (input) =>
+      call(
+        appRouter.githubApp.projects.list,
+        {
+          slug: input.organizationSlug,
+          page: input.page,
+          pageSize: input.pageSize,
+        },
+        {
+          context: {
+            headers: new Headers(),
+            user: null,
+            session: null,
+            requestId: crypto.randomUUID(),
+            mcpIdentity: identity,
+          },
+        }
+      ),
+    getOrganizationProject: (input) =>
+      call(
+        appRouter.githubApp.projects.get,
+        { slug: input.organizationSlug, projectId: input.projectId },
+        {
+          context: {
+            headers: new Headers(),
+            user: null,
+            session: null,
+            requestId: crypto.randomUUID(),
+            mcpIdentity: identity,
+          },
+        }
+      ),
+    listOrganizationTemplates: (input) =>
+      call(
+        appRouter.organization.templates.list,
+        {
+          organizationSlug: input.organizationSlug,
+          page: input.page,
+          pageSize: input.pageSize,
+        },
+        {
+          context: {
+            headers: new Headers(),
+            user: null,
+            session: null,
+            requestId: crypto.randomUUID(),
+            mcpIdentity: identity,
+          },
+        }
+      ),
+    getOrganizationTemplate: (input) =>
+      call(
+        appRouter.organization.templates.get,
+        {
+          organizationSlug: input.organizationSlug,
+          templateId: input.templateId,
+        },
+        {
+          context: {
+            headers: new Headers(),
+            user: null,
+            session: null,
+            requestId: crypto.randomUUID(),
+            mcpIdentity: identity,
+          },
+        }
+      ),
   })
 
 const authIssuer = `${serverEnv.API_BASE_URL}${API_AUTH_PATH}`
@@ -113,11 +181,20 @@ const protectedHandler = auth.$context.then((authContext) =>
       audience: resource,
       jwksUrl: `${authIssuer}/jwks`,
       jwtVerifyOptions: { typ: "at+jwt", requiredClaims: ["azp"] },
-      challengeScopes: ["templates:read", "organizations:read"],
+      challengeScopes: [
+        "templates:read",
+        "organizations:read",
+        "organizations:projects:read",
+        "organizations:templates:read",
+      ],
       dpop: { replayStore: createDpopReplayStore(authContext) },
     },
     async (request, accessTokenClaims) => {
-      const identity = mapVerifiedMcpClaimsToIdentity(accessTokenClaims)
+      const tokenIdentity = mapVerifiedMcpClaimsToIdentity(accessTokenClaims)
+      const identity = {
+        ...tokenIdentity,
+        userId: await resolveMcpUserId(tokenIdentity.userId),
+      }
       await assertMcpToolScope(request, identity)
       return createHandler(identity).fetch(request)
     }
@@ -139,7 +216,12 @@ export const mountMcpRoutes = (api: Hono<ApiEnv>): void => {
       resource,
       authorization_servers: [authIssuer],
       bearer_methods_supported: ["header"],
-      scopes_supported: ["templates:read", "organizations:read"],
+      scopes_supported: [
+        "templates:read",
+        "organizations:read",
+        "organizations:projects:read",
+        "organizations:templates:read",
+      ],
     })
   })
 
