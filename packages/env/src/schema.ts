@@ -180,6 +180,9 @@ export const serverInputShape = {
   R2_AVATARS_BUCKET: z.string().min(1).optional(),
   R2_ENDPOINT: z.url().optional(),
   R2_REGION: z.string().min(1).optional(),
+  // Private, separate buckets for staging and sealed managed releases.
+  R2_TEMPLATE_RELEASES_BUCKET: z.string().min(1).optional(),
+  R2_TEMPLATE_RELEASES_STAGING_BUCKET: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(32).optional(),
 
   // Test-only override for the email-verification-on-invitation
@@ -200,21 +203,76 @@ export const serverInputShape = {
     .default("true"),
 }
 
+function validateR2AvatarConfiguration(
+  data: z.infer<z.ZodObject<typeof serverInputShape>>,
+  ctx: z.RefinementCtx
+) {
+  const avatarConfiguration = [
+    data.R2_ACCOUNT_ID,
+    data.R2_ACCESS_KEY_ID,
+    data.R2_SECRET_ACCESS_KEY,
+    data.R2_AVATARS_BUCKET,
+  ]
+  const releaseStorageConfigured = Boolean(
+    data.R2_TEMPLATE_RELEASES_BUCKET || data.R2_TEMPLATE_RELEASES_STAGING_BUCKET
+  )
+  if (
+    avatarConfiguration.some(Boolean) &&
+    !avatarConfiguration.every(Boolean) &&
+    !releaseStorageConfigured
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "R2 avatar storage configuration must be provided together.",
+      path: ["R2_ACCOUNT_ID"],
+    })
+  }
+}
+
+function validateReleaseStorageConfiguration(
+  data: z.infer<z.ZodObject<typeof serverInputShape>>,
+  ctx: z.RefinementCtx
+) {
+  const releaseBuckets = [
+    data.R2_TEMPLATE_RELEASES_BUCKET,
+    data.R2_TEMPLATE_RELEASES_STAGING_BUCKET,
+  ]
+  if (releaseBuckets.some(Boolean) && !releaseBuckets.every(Boolean)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Managed release R2 buckets must be configured together.",
+      path: ["R2_TEMPLATE_RELEASES_BUCKET"],
+    })
+  }
+  if (
+    releaseBuckets.some(Boolean) &&
+    (!data.R2_ACCOUNT_ID ||
+      !data.R2_ACCESS_KEY_ID ||
+      !data.R2_SECRET_ACCESS_KEY)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        "Managed release buckets require the R2 account ID and access credentials.",
+      path: ["R2_ACCOUNT_ID"],
+    })
+  }
+  if (
+    data.R2_TEMPLATE_RELEASES_BUCKET &&
+    data.R2_TEMPLATE_RELEASES_BUCKET === data.R2_TEMPLATE_RELEASES_STAGING_BUCKET
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Staging and sealed managed release buckets must be different.",
+      path: ["R2_TEMPLATE_RELEASES_STAGING_BUCKET"],
+    })
+  }
+}
+
 export const serverSchema = z.object(serverInputShape).superRefine(
   (data, ctx) => {
-    const r2Configuration = [
-      data.R2_ACCOUNT_ID,
-      data.R2_ACCESS_KEY_ID,
-      data.R2_SECRET_ACCESS_KEY,
-      data.R2_AVATARS_BUCKET,
-    ]
-    if (r2Configuration.some(Boolean) && !r2Configuration.every(Boolean)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "R2 avatar storage configuration must be provided together.",
-        path: ["R2_ACCOUNT_ID"],
-      })
-    }
+    validateR2AvatarConfiguration(data, ctx)
+    validateReleaseStorageConfiguration(data, ctx)
 
     const githubAppConfiguration = [
       data.GITHUB_APP_CLIENT_ID,

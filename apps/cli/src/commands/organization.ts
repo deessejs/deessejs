@@ -331,6 +331,27 @@ organizationTemplateCommand
   )
 
 organizationTemplateCommand
+  .command("request-listing")
+  .description("Request review for an organization template in the public catalog")
+  .argument("<organization-slug>", "organization slug")
+  .argument("<template-slug>", "template slug")
+  .requiredOption("--confirm-distribution-rights", "confirm that the organization may distribute this template")
+  .option("--json", "JSON output for scripting")
+  .option("--verbose", "show human-readable output")
+  .action(async (organizationSlug: string, slug: string, options: JsonOption) => {
+    await runOrganizationTemplateAction(options, "Submitting catalog listing request...", async (client, complete) => {
+      const { templates } = await client.organization.templates.list({ organizationSlug })
+      const template = templates.find((item) => item.slug === slug)
+      if (!template) throw new CliError("organization_api_error", `Template "${slug}" not found in organization "${organizationSlug}".`)
+      const submission = await client.organization.templates.submit({ organizationSlug, templateId: template.id, distributionRightsConfirmed: true })
+      completeBeforePrint(complete, () => {
+        if (isJsonOutput(options)) printJson({ submission })
+        else console.log(`Catalog listing request submitted for ${slug} at ${submission.sourceCommit}.`)
+      })
+    })
+  })
+
+organizationTemplateCommand
   .command("add")
   .description("Add a template to an organization")
   .argument("<organization-slug>", "organization slug")
