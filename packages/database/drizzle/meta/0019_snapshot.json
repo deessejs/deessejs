@@ -1,5 +1,5 @@
 {
-  "id": "4dbe974c-89ba-4543-913a-925297f14384",
+  "id": "c565d859-c4ed-4f60-b959-5bf95e40a772",
   "prevId": "cf8bd3d9-16a1-4304-aa98-0e491bf69b10",
   "version": "7",
   "dialect": "postgresql",
@@ -3263,7 +3263,7 @@
         },
         "templates_source_identity_check": {
           "name": "templates_source_identity_check",
-          "value": "(\"templates\".\"source_type\" = 'github' AND length(btrim(\"templates\".\"owner\")) > 0 AND \"templates\".\"repo\" IS NOT NULL AND length(btrim(\"templates\".\"repo\")) > 0) OR (\"templates\".\"source_type\" = 'managed' AND \"templates\".\"owner\" IS NULL AND \"templates\".\"repo\" IS NULL)"
+          "value": "(\"templates\".\"source_type\" = 'github' AND \"templates\".\"owner\" IS NOT NULL AND length(btrim(\"templates\".\"owner\")) > 0 AND \"templates\".\"repo\" IS NOT NULL AND length(btrim(\"templates\".\"repo\")) > 0) OR (\"templates\".\"source_type\" = 'managed' AND \"templates\".\"owner\" IS NULL AND \"templates\".\"repo\" IS NULL)"
         },
         "templates_category_nonempty": {
           "name": "templates_category_nonempty",

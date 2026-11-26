@@ -383,6 +383,35 @@ const submissionErrors = {
   },
 }
 
+function hasPublicGithubSource(template: {
+  sourceType: "github" | "managed"
+  owner: string | null
+  repo: string | null
+}): boolean {
+  return (
+    template.sourceType === "github" &&
+    Boolean(template.owner) &&
+    Boolean(template.repo)
+  )
+}
+
+async function acquirePublicTemplateSource(
+  repositoryUrl: string,
+  errors: { invalidSource: () => Error; fetchFailed: () => Error }
+) {
+  try {
+    return await acquireTemplateRepositoryRevision(repositoryUrl)
+  } catch (error) {
+    if (error instanceof InvalidTemplateSourceError) {
+      throw errors.invalidSource()
+    }
+    if (error instanceof TemplateSourceFetchError) {
+      throw errors.fetchFailed()
+    }
+    throw error
+  }
+}
+
 export const submit = base
   .input(submitInput)
   .errors(submissionErrors)
@@ -429,27 +458,20 @@ export const submit = base
       .limit(1)
 
     if (!template) throw errors.ORGANIZATION_ACCESS_DENIED()
-    if (template.sourceType !== "github" || !template.owner || !template.repo) {
+    if (!hasPublicGithubSource(template)) {
       throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
     }
     if (!/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(template.slug)) {
       throw errors.TEMPLATE_SLUG_INVALID()
     }
 
-    let acquired: Awaited<ReturnType<typeof acquireTemplateRepositoryRevision>>
-    try {
-      acquired = await acquireTemplateRepositoryRevision(
-        `https://github.com/${template.owner}/${template.repo}`
-      )
-    } catch (error) {
-      if (error instanceof InvalidTemplateSourceError) {
-        throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
+    const acquired = await acquirePublicTemplateSource(
+      `https://github.com/${template.owner}/${template.repo}`,
+      {
+        invalidSource: () => errors.TEMPLATE_GITHUB_SOURCE_INVALID(),
+        fetchFailed: () => errors.TEMPLATE_GITHUB_FETCH_FAILED(),
       }
-      if (error instanceof TemplateSourceFetchError) {
-        throw errors.TEMPLATE_GITHUB_FETCH_FAILED()
-      }
-      throw error
-    }
+    )
 
     const license = template.licenseFallback ?? acquired.snapshot.license
     if (!license?.trim()) throw errors.TEMPLATE_LICENSE_REQUIRED()

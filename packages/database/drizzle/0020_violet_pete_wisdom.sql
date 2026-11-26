@@ -1,2 +1,0 @@
-ALTER TABLE "templates" DROP CONSTRAINT "templates_source_identity_check";--> statement-breakpoint
-ALTER TABLE "templates" ADD CONSTRAINT "templates_source_identity_check" CHECK (("templates"."source_type" = 'github' AND "templates"."owner" IS NOT NULL AND length(btrim("templates"."owner")) > 0 AND "templates"."repo" IS NOT NULL AND length(btrim("templates"."repo")) > 0) OR ("templates"."source_type" = 'managed' AND "templates"."owner" IS NULL AND "templates"."repo" IS NULL));
