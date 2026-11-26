@@ -1,11 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@deesse-admin-example/ui/components/card"
-import { PostsConsole } from "@/components/posts-console"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@deesse-admin-example/ui/components/card"
+import { AuthConsole } from "@/components/auth-console"
 
 export default function HomePage() {
   return (
@@ -19,18 +13,21 @@ export default function HomePage() {
         </h1>
         <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
           This page calls the same Deesse instance that serves Better Auth and
-          the typed posts API.
+          the Blog API.
         </p>
       </header>
       <Card>
         <CardHeader>
-          <CardTitle>Try the runtime</CardTitle>
+          <CardTitle>Authentication</CardTitle>
           <CardDescription>
-            Sign up, check a username, inspect your session, and create a post.
+            Manage Markdown posts from the administrator dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PostsConsole />
+          <p className="text-sm text-muted-foreground">
+            Sign in here, then manage Markdown posts from the administrator dashboard.
+          </p>
+          <div className="mt-4"><AuthConsole /></div>
           <p className="mt-6 text-sm text-muted-foreground">
             <a href="/admin">Open the admin dashboard</a>
           </p>

@@ -12,7 +12,7 @@
     "typecheck": "pnpm run schema:generate && tsc --noEmit",
     "schema:generate": "pnpm run deesse:schema && pnpm run auth:schema",
     "auth:schema": "pnpm exec auth generate --config ./.deesse/tooling/auth.config.ts --adapter drizzle --dialect postgresql --output ./src/server/database/schema/auth.ts --yes",
-    "deesse:schema": "tsx ../../../../apps/deesse-drizzle-adapter/dist/cli.js --config ./deesse.config.ts --output ./src/server/database/schema/deesse.ts --auth-config-output ./.deesse/tooling/auth.config.ts --auth-schema-placeholder-output ./src/server/database/schema/auth.ts",
+    "deesse:schema": "tsx ../../../../apps/deesse-drizzle-adapter/dist/cli.js --plugins ./plugins.ts --output ./src/server/database/schema/deesse.ts --auth-config-output ./.deesse/tooling/auth.config.ts --auth-config-source ./deesse.config.ts --auth-schema-placeholder-output ./src/server/database/schema/auth.ts",
     "db:generate": "pnpm exec drizzle-kit generate --config ./drizzle.config.ts",
     "db:migrate": "pnpm exec drizzle-kit migrate --config ./drizzle.config.ts"
   },

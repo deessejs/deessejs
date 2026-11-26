@@ -40,6 +40,11 @@
       "types": "./dist/next.d.ts",
       "import": "./dist/next.js",
       "default": "./dist/next.js"
+    },
+    "./plugins/blog": {
+      "types": "./dist/plugins/blog/index.d.ts",
+      "import": "./dist/plugins/blog/index.js",
+      "default": "./dist/plugins/blog/index.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -57,6 +62,9 @@
     "better-auth": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
   },
   "devDependencies": {
     "@better-auth/memory-adapter": "catalog:",

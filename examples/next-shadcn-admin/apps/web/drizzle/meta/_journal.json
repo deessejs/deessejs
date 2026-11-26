@@ -15,6 +15,13 @@
       "when": 1795439876899,
       "tag": "0001_stale_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795704788064,
+      "tag": "0002_messy_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

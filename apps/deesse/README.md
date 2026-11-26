@@ -28,4 +28,17 @@ Compile-time assertions preserve `DeesseConfig` and direct `createDeesse({ datab
 
 The oRPC request context type includes the stable database service, request, headers, user, and session; the runtime passes those request-scoped values. Plugin auth schema contributions are collected in the type-only contribution registry. Extension values are checked manually with `PluginExtension`; `requires` does not infer provider-to-consumer extension validation. Runtime dependency ordering and missing/cycle/duplicate checks are implemented, but schema conflict and provider extension compatibility checks are not. The app supplies Better Auth client plugins when it constructs the React client; they are not automatically derived from server contributions. The contribution registry remains type-only and is not exposed on `DeesseInstance`.
 
-The package build emits declarations and typechecks a consumer fixture through the public `deesse`, `deesse/react`, and `deesse/next` exports. The database adapter integration requires a real PostgreSQL service and is exercised in CI. This slice supports postgres-js only, the bounded plugin-declared schema and operations above, and the current installed compatibility baseline. It does not implement general collections or relationship behavior, node-postgres or other dialects, dashboard user interfaces, a production example application, or the rest of V1. Runtime detection of incompatible schemas is limited to registration and operation validation; migration review and application remain explicit operator steps.
+The package build emits declarations and typechecks a consumer fixture through the public `deesse`, `deesse/react`, `deesse/next`, and `deesse/plugins/blog` exports. The database adapter integration requires a real PostgreSQL service and is exercised in CI. This slice supports postgres-js only, the bounded plugin-declared schema and operations above, and the current installed compatibility baseline. It does not implement general collections or relationship behavior, node-postgres or other dialects, public blog rendering, a production example application, or the rest of V1. Runtime detection of incompatible schemas is limited to registration and operation validation; migration review and application remain explicit operator steps.
+
+## Blog plugin
+
+`deesse/plugins/blog` exports the database-backed Blog plugin and its statically imported admin page definitions. Compose both capabilities explicitly in the host application:
+
+```tsx
+import { admin } from "@deessejs/admin"
+import { blogAdminPages, blogPlugin } from "deesse/plugins/blog"
+
+plugins: [blogPlugin(), admin({ pages: [...blogAdminPages] })]
+```
+
+The plugin stores Markdown source in one `posts` model, exposes published reads and administrator-only management procedures at `client.api.blog`, and contributes a single page at `/admin/blog`. The host owns schema generation and migrations. The plugin never runs DDL during runtime composition. The consuming app must include React because the exported page component uses the React client and hooks.

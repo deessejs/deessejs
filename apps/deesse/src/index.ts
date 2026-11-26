@@ -2,6 +2,7 @@ import type { AnyRouter, BetterAuthOptions, DeesseConfig, ZodInput, ZodType } fr
 import type { AnyPlugin, ApiRouter, BetterAuthInstance, ComposedBetterAuthOptions, DeesseDatabaseAdapterContract, DeesseInstance, PluginOutput } from "./types.js"
 import { createRuntime } from "./runtime.js"
 export { createPluginApi } from "./plugin-api.js"
+export { resolveAdminAccess, type AdminAccess } from "./admin-access.js"
 import type { RuntimeOptions } from "./runtime-types.js"
 import type { ConfiguredRegistration, Definition, NoArgsRegistration } from "./index.types.js"
 
