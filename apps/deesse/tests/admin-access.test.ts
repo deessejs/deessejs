@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { resolveAdminAccess } from "../src/access.js"
+import { resolveAdminAccess } from "../src/internal/authorization/admin-access.js"
 
 describe("admin dashboard access", () => {
   it("requires a session", () => {

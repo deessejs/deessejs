@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server"
 import { createPluginApi } from "../../plugin-api.js"
-import { resolveAdminAccess } from "../../admin-access.js"
+import { resolveAdminAccess } from "../../internal/authorization/admin-access.js"
 import type { DeesseDatabaseResult, DeesseDatabaseService, DeesseRequestContext } from "../../types.js"
 import { blogSchema, type BlogPostStatus } from "./schema.js"
 import { z } from "zod"

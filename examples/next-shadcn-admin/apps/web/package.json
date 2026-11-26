@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@deesse-admin-example/ui": "workspace:*",
-    "@deessejs/admin": "workspace:*",
     "@deessejs/ui": "catalog:",
     "@deessejs/drizzle-adapter": "workspace:*",
     "@orpc/server": "catalog:",

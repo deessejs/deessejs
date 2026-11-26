@@ -1,8 +1,8 @@
 # DeesseJS Next.js shadcn admin example
 
-This private example keeps the existing `next-shadcn-monorepo` example intact and adds the `@deessejs/admin` package to a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
+This private example keeps the existing `next-shadcn-monorepo` example intact and opts into Deesse's built-in Admin plugin from a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
 
-The app imports `blogPlugin` and `blogAdminPages` from `deesse/plugins/blog`, then explicitly passes the page definitions to `admin({ pages })`. The Blog plugin contributes one static `/admin/blog` management page and typed published and administrator-only procedures. The optional catch-all Server Component passes only the runtime to `AdminPage`, which reads the pages from the admin plugin's processed runtime output. The admin package owns page matching, navigation, unknown-path not-found behavior, and dashboard access checks; the Blog procedures enforce the same administrator role on the server.
+The app imports `admin` from `deesse/plugins/admin`, `AdminPage` from `deesse/plugins/admin/next`, and `blogAdminPages` from `deesse/plugins/blog/admin`, then explicitly passes the page definitions to `admin({ pages })`. The Blog plugin contributes one static `/admin/blog` management page and typed published and administrator-only procedures. The optional catch-all Server Component passes only the runtime to `AdminPage`, which reads the pages from the admin plugin's processed runtime output. The built-in Admin plugin owns page matching, navigation, unknown-path not-found behavior, and dashboard access checks; the Blog procedures enforce the same administrator role on the server.
 
 ## Requirements
 

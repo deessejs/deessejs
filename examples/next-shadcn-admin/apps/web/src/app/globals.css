@@ -1,6 +1,6 @@
 @import "@deesse-admin-example/ui/globals.css";
 @import "@deessejs/ui/tailwind.css";
-@import "@deessejs/admin/styles.css";
+@import "deesse/plugins/admin/styles.css";
 
 * {
   box-sizing: border-box;

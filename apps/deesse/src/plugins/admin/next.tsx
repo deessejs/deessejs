@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import type { ComponentType, ReactNode } from "react"
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@deessejs/ui"
 import { admin, normalizeAdminPath, resolveAdminPage, type AdminPageContext, type AdminPluginOutput } from "./index.js"
-import { resolveAdminAccess } from "./access.js"
+import { resolveAdminAccess } from "../../internal/authorization/admin-access.js"
 
 type AdminSession = {
   session: object

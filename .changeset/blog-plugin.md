@@ -1,7 +1,6 @@
 ---
-"deesse": minor
-"@deessejs/admin": major
+"deesse": major
 "@deessejs/drizzle-adapter": major
 ---
 
-Add the Blog plugin subpath and share administrator role checks with plugin API procedures.
+Move the optional Admin plugin into Deesse, expose it through opt-in plugin subpaths, and add the Blog plugin. The Deesse 1.0 API contains both capabilities; the separate Admin package is retired.
