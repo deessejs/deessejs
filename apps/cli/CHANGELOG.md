@@ -1,5 +1,11 @@
 # @deessejs/cli
 
+## 3.3.0
+
+### Minor Changes
+
+- Add local major, minor, and patch version bump commands for template descriptors.
+
 ## 3.2.0
 
 ### Minor Changes
