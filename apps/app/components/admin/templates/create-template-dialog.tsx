@@ -2,14 +2,10 @@
 
 import { client } from "@/lib/client"
 import { useState } from "react"
-import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
 import { toast } from "sonner"
-import {
-  CATEGORY_LABELS,
-  CATEGORY_SLUGS,
-} from "@workspace/api/templates-labels"
+import { CATEGORY_SLUGS } from "@workspace/api/templates-labels"
 import { TEMPLATE_IMAGE_FILENAMES } from "@workspace/api/templates-images"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -20,50 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
-import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
-import { Textarea } from "@workspace/ui/components/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@workspace/ui/components/select"
 import { useForm } from "@tanstack/react-form"
-import { z } from "zod"
+import { TemplateFormFields, templateFormSchema } from "./template-form-fields"
+import type {
+  EditableTemplate,
+  TemplateFormValues,
+} from "./template-form-fields"
 
-const formSchema = z.object({
-  repositoryUrl: z
-    .string()
-    .trim()
-    .min(1, "Enter a GitHub repository URL.")
-    .max(2048),
-  slug: z.string().trim().min(1, "Enter a public template slug.").max(100),
-  name: z.string().trim().min(1, "Enter a display name.").max(200),
-  descriptionOverride: z.string().max(10000),
-  category: z.enum(CATEGORY_SLUGS),
-  labels: z.string(),
-  licenseFallback: z.string().max(128),
-  access: z.enum(["free", "paid"]),
-  imageName: z.string(),
-})
-type FormValues = z.infer<typeof formSchema>
-
-type EditableTemplate = {
-  id: string
-  slug: string
-  name: string
-  descriptionOverride: string | null
-  canonicalUrl: string
-  category: string
-  labels: string[]
-  licenseFallback: string | null
-  access: "free" | "paid"
-  imageName: string | null
-}
-
-const defaults: FormValues = {
+const defaults: TemplateFormValues = {
   repositoryUrl: "",
   slug: "",
   name: "",
@@ -112,7 +72,7 @@ export function CreateTemplateDialog({
           imageName: template.imageName ?? "none",
         }
       : defaults,
-    validators: { onSubmit: formSchema },
+    validators: { onSubmit: templateFormSchema },
     onSubmit: async ({ value }) => {
       setFailure(null)
       try {
@@ -174,6 +134,29 @@ export function CreateTemplateDialog({
     onOpenChange(next)
   }
 
+  function handleFieldChange(name: keyof TemplateFormValues, value: string) {
+    switch (name) {
+      case "category": {
+        const category = CATEGORY_SLUGS.find((item) => item === value)
+        if (category) form.setFieldValue("category", category)
+        return
+      }
+      case "access":
+        if (value === "free" || value === "paid") {
+          form.setFieldValue("access", value)
+        }
+        return
+      case "repositoryUrl":
+      case "slug":
+      case "name":
+      case "descriptionOverride":
+      case "labels":
+      case "licenseFallback":
+      case "imageName":
+        form.setFieldValue(name, value)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
@@ -194,180 +177,18 @@ export function CreateTemplateDialog({
             void form.handleSubmit()
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            {!template && (
-              <Field
-                label="GitHub repository URL"
-                controlId="template-repository-url"
-                error={
-                  form.state.fieldMeta.repositoryUrl?.errors[0] as
-                    | string
-                    | undefined
-                }
-              >
-                <form.Field name="repositoryUrl">
-                  {(field) => (
-                    <Input
-                      id="template-repository-url"
-                      value={field.state.value}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      placeholder="https://github.com/owner/repository"
-                      autoComplete="url"
-                    />
-                  )}
-                </form.Field>
-              </Field>
-            )}
-            <Field
-              label={template ? "Template slug (read-only)" : "Template slug"}
-              controlId="template-slug"
-              error={form.state.fieldMeta.slug?.errors[0] as string | undefined}
-            >
-              <form.Field name="slug">
-                {(field) => (
-                  <Input
-                    id="template-slug"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="my-template"
-                    autoComplete="off"
-                    readOnly={Boolean(template)}
-                  />
-                )}
-              </form.Field>
-            </Field>
-            <Field
-              label="Display name"
-              controlId="template-name"
-              error={form.state.fieldMeta.name?.errors[0] as string | undefined}
-            >
-              <form.Field name="name">
-                {(field) => (
-                  <Input
-                    id="template-name"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="My Template"
-                  />
-                )}
-              </form.Field>
-            </Field>
-            <Field label="Category" controlId="template-category">
-              <Select
-                value={form.getFieldValue("category")}
-                onValueChange={(value) => {
-                  const nextCategory = CATEGORY_SLUGS.find(
-                    (category) => category === value
-                  )
-                  if (nextCategory) form.setFieldValue("category", nextCategory)
-                }}
-              >
-                <SelectTrigger id="template-category" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_SLUGS.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {CATEGORY_LABELS[category]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field
-              label="Labels"
-              controlId="template-labels"
-              hint="Comma-separated, for example nextjs, drizzle"
-            >
-              <form.Field name="labels">
-                {(field) => (
-                  <Input
-                    id="template-labels"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="nextjs, drizzle"
-                  />
-                )}
-              </form.Field>
-            </Field>
-            <Field
-              label="License fallback"
-              controlId="template-license"
-              hint="Optional editorial value"
-            >
-              <form.Field name="licenseFallback">
-                {(field) => (
-                  <Input
-                    id="template-license"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="MIT"
-                  />
-                )}
-              </form.Field>
-            </Field>
-            <Field label="Access" controlId="template-access">
-              <Select
-                value={form.getFieldValue("access")}
-                onValueChange={(value) => {
-                  const nextAccess =
-                    value === "free" || value === "paid" ? value : undefined
-                  if (nextAccess) form.setFieldValue("access", nextAccess)
-                }}
-              >
-                <SelectTrigger id="template-access" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field
-              label="Template image"
-              controlId="template-image"
-              hint="Optional deployed image"
-            >
-              <Select
-                value={form.getFieldValue("imageName")}
-                onValueChange={(value) => {
-                  if (value) form.setFieldValue("imageName", value)
-                }}
-              >
-                <SelectTrigger id="template-image" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No image</SelectItem>
-                  {TEMPLATE_IMAGE_FILENAMES.map((image) => (
-                    <SelectItem key={image} value={image}>
-                      {image}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field
-            label="Description override"
-            controlId="template-description"
-            hint="Optional. Leave empty to use the repository description."
-          >
-            <form.Field name="descriptionOverride">
-              {(field) => (
-                <Textarea
-                  id="template-description"
-                  value={field.state.value}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                  className="min-h-20"
-                  maxLength={10000}
-                />
-              )}
-            </form.Field>
-          </Field>
+          <TemplateFormFields
+            values={form.state.values}
+            errors={{
+              repositoryUrl: form.state.fieldMeta.repositoryUrl?.errors[0] as
+                | string
+                | undefined,
+              slug: form.state.fieldMeta.slug?.errors[0] as string | undefined,
+              name: form.state.fieldMeta.name?.errors[0] as string | undefined,
+            }}
+            template={template}
+            onChange={handleFieldChange}
+          />
           {failure && (
             <p className="text-sm text-destructive" role="alert">
               {failure}
@@ -395,32 +216,5 @@ export function CreateTemplateDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function Field({
-  label,
-  controlId,
-  hint,
-  error,
-  children,
-}: {
-  label: string
-  controlId?: string
-  hint?: string
-  error?: string | undefined
-  children: ReactNode
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <Label htmlFor={controlId}>{label}</Label>
-      {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && (
-        <p className="text-xs text-destructive" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
   )
 }
