@@ -91,7 +91,7 @@ export function createObjectOperations(
       return toMetadata(response)
     },
 
-    async putObject({ body, contentLength, contentType, key }) {
+    async putObject({ body, contentLength, contentType, ifNoneMatch, key }) {
       assertKey(key)
       await client.send(
         new PutObjectCommand({
@@ -99,6 +99,7 @@ export function createObjectOperations(
           Bucket: bucket,
           ContentLength: contentLength,
           ContentType: contentType,
+          IfNoneMatch: ifNoneMatch,
           Key: key,
         }),
       )

@@ -14,9 +14,11 @@ import { organizationBlocksRouter } from "./organization-blocks.js"
 import { adminBlockPublicationsRouter } from "./admin-block-publications.js"
 import { adminBlocksRouter } from "./admin-blocks.js"
 import { blocksRouter } from "./blocks.js"
+import { managedReleasesRouter } from "./managed-releases.js"
 
 export const appRouter = {
   blocks: blocksRouter,
+  managedReleases: managedReleasesRouter,
   templates: templatesRouter,
   admin: {
     blocks: adminBlocksRouter,

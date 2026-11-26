@@ -9,6 +9,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
 
+vi.mock("../../src/core/organization/entitlement.js", () => ({
+  callerHasActiveOrganizationPro: vi.fn().mockResolvedValue(true),
+}))
+
 vi.mock("@workspace/database", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@workspace/database")>()
   return { ...actual, db: { select: selectMock } }
@@ -40,6 +44,7 @@ const templateRow = {
   readme: "# SaaS Starter",
   repositoryUpdatedAt: new Date("2026-01-02T03:04:05.000Z"),
   stars: 42,
+  access: "free" as const,
 }
 
 const mockQuery = (rows: unknown[]) => {
@@ -71,6 +76,7 @@ describe("templates.list", () => {
     expect(selectMock).toHaveBeenCalledWith(
       expect.not.objectContaining({ readme: expect.anything() })
     )
+    expect(result.templates[0]).not.toHaveProperty("requiresManaged")
     expect(result).toEqual({
       templates: [
         {
@@ -119,9 +125,30 @@ describe("templates.detail", () => {
     await expect(
       call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
     ).resolves.toMatchObject({ slug: "saas-starter", readme: "# SaaS Starter" })
+    expect(
+      await call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+    ).not.toHaveProperty("requiresManaged")
     expect(selectMock).toHaveBeenCalledWith(
       expect.objectContaining({ readme: expect.anything() })
     )
+  })
+
+  it("marks an entitled paid template as requiring managed resolution", async () => {
+    mockQuery([{ ...templateRow, access: "paid" }])
+
+    const result = await call(
+      appRouter.templates.detail,
+      { slug: "saas-starter" },
+      {
+        context: {
+          ...context,
+          user: { id: "member-1" },
+          session: { activeOrganizationId: "org-1" },
+        },
+      }
+    )
+
+    expect(result).toMatchObject({ requiresManaged: true })
   })
 
   it("returns null for a missing official template", async () => {

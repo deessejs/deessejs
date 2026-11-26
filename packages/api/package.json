@@ -75,6 +75,7 @@
     "vitest": "catalog:",
     "@workspace/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "tar": "catalog:",
     "oxlint": "catalog:"
   }
 }

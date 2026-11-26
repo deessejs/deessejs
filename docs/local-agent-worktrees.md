@@ -18,6 +18,7 @@ Useful commands:
 
 ```sh
 pnpm dev:agent start
+pnpm dev:agent start --r2-local
 pnpm dev:agent status
 pnpm dev:agent credentials
 pnpm dev:agent prepare
@@ -31,7 +32,17 @@ The local files `.env.development.local` and `.local/` hold database credentials
 
 The launcher constructs an explicit environment for app, migration, seed, test, CLI, and dependency-install children. It keeps runtime essentials and worktree-local settings, uses a private `.local/runtime-home`, and does not inherit arbitrary host variables. It also scans root and app dotenv files and inserts blank values for their otherwise-unset keys before Next starts. `packages/env` skips dotenv loading when `DEV_AGENT_LOCAL_RUNTIME=true`; Next's own loader gives existing `process.env` values precedence over dotenv values. This prevents root or app dotenv credentials from silently enabling a remote service in the launched app.
 
-R2 avatar storage is unavailable in the default local runtime because all `R2_*` values are blank. Avatar upload/read/delete and avatar cleanup were not part of the local functional acceptance. The cleanup endpoint returns its not-configured response because `CRON_SECRET` is blank. Resend and Stripe credentials are blank; mail uses the console transport. GitHub OAuth/App credentials and `GITHUB_TOKEN` are blank. Public template metadata enrichment still calls GitHub anonymously when invoked, so it is an external read-only dependency. No runtime Redis/cache client or queue worker was found; Upstash values occur only in generated CLI setup text. CI's avatar integration E2E uses MinIO, but regular local startup does not provision MinIO or pass its E2E credentials. Supporting local avatar storage requires a deliberate MinIO/service-adapter option.
+R2 storage is unavailable in the default local runtime because all `R2_*` values are blank. Managed release publishing can opt into Wrangler's local R2 simulator:
+
+```sh
+pnpm dev:agent start --r2-local
+```
+
+This command starts one Wrangler worker with a loopback-only experimental S3 endpoint and the app/API. The app process alone receives generated dummy R2 credentials for the dedicated per-worktree staging and sealed buckets. The credentials, generated Wrangler config, and bucket state live under the private ignored `.local/dev-agent-r2/<worktree-id>/` directory. Wrangler gets no R2 credentials, API tokens, or inherited Cloudflare credentials. The normal `pnpm dev:agent start` path remains R2-disabled. Stop the combined app and Wrangler processes with Ctrl-C before changing modes. `--r2-local` refuses to attach to an already running app that was started without the opt-in.
+
+The endpoint is Wrangler's experimental S3-compatible local endpoint. It accepts only the generated `http://127.0.0.1:<port>/cdn-cgi/local/r2/s3` URL, and startup verifies that the app environment still targets this worktree's loopback development database. It does not configure avatar storage. The managed release adapter uses S3 `PutObject`, `GetObject`, `HeadObject`, `DeleteObject`, presigned PUT/GET URLs, and conditional immutable writes. It does not use copy or multipart operations. Cloudflare documents these object operations for its [experimental local S3 endpoint](https://developers.cloudflare.com/r2/local-development/); the local simulator is not a substitute for a production R2 smoke test.
+
+Avatar upload/read/delete and avatar cleanup remain unavailable locally. The cleanup endpoint returns its not-configured response because `CRON_SECRET` is blank. Resend and Stripe credentials are blank; mail uses the console transport. GitHub OAuth/App credentials and `GITHUB_TOKEN` are blank. Public template metadata enrichment still calls GitHub anonymously when invoked, so it is an external read-only dependency. No runtime Redis/cache client or queue worker was found; Upstash values occur only in generated CLI setup text. CI's avatar integration E2E uses MinIO, independently of this managed release workflow.
 
 `pnpm install` also runs with the sanitized child environment and private home. The checked-in `.npmrc` contains only workspace hoisting settings and no registry credential keys. Dependency lifecycle scripts still execute package code and can access the repository and configured package registry; dependency installation therefore remains a package supply-chain trust boundary, not an isolated sandbox. Proxy and arbitrary registry-auth environment variables are not inherited.
 

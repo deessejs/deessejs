@@ -10,6 +10,14 @@ import {
 import net from "node:net"
 import path from "node:path"
 import process from "node:process"
+import {
+  LOCAL_R2_PORT_RANGE,
+  LOCAL_R2_S3_PATH,
+  loadOrCreateLocalR2State,
+  localR2RuntimeEnvironment,
+  preferredLocalR2Port,
+  writeLocalR2WranglerConfig,
+} from "./local-r2.mjs"
 
 export function createDevelopmentServer(context) {
   return { start: (args) => startServer(context, args) }
@@ -39,56 +47,186 @@ function processStartTime(pid) {
   }
 }
 
-async function startServer(context, args) {
-  const {
-    root,
+async function startLocalR2Service({ context, values, worktreeId, port, state }) {
+  const config = writeLocalR2WranglerConfig({
+    localDir: context.localDir,
     worktreeId,
-    fail,
-    prepare,
-    localEnv,
-    run,
-    spawnChild,
-    persistPort,
-  } = context
-  const reset = args.includes("--reset-db")
-  const values = await prepare({ reset })
-  const preferredPort = Number(values.DEV_AGENT_PORT)
-  const existingUrl = `http://localhost:${preferredPort}`
+    state,
+    port: port.port,
+  })
+  const child = context.spawnChild(
+    "pnpm",
+    [
+      "exec",
+      "wrangler",
+      "dev",
+      "--config",
+      config.configPath,
+      "--local",
+      "--ip",
+      "127.0.0.1",
+      "--port",
+      String(port.port),
+      "--persist-to",
+      config.persistencePath,
+    ],
+    {
+      cwd: context.root,
+      env: context.localEnv(values),
+      stdio: "inherit",
+      detached: process.platform !== "win32",
+    }
+  )
+  let spawnError = null
+  child.once("error", (error) => {
+    spawnError = error
+  })
+  const endpoint = `http://127.0.0.1:${port.port}`
+  const deadline = Date.now() + 60_000
+  while (Date.now() < deadline) {
+    if (spawnError) {
+      throw new Error(`Could not start Wrangler local R2: ${spawnError.message}`)
+    }
+    if (child.exitCode !== null) {
+      throw new Error(`Wrangler local R2 exited during startup with code ${child.exitCode}.`)
+    }
+    try {
+      const response = await fetch(endpoint, {
+        signal: AbortSignal.timeout(1000),
+      })
+      if (
+        response.ok &&
+        (await response.text()).includes("dev-agent local R2 is running")
+      ) {
+        return child
+      }
+    } catch {
+      // Wrangler binds after loading the generated local-only config.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+  }
+  throw new Error("Wrangler local R2 did not become ready within 60 seconds.")
+}
+
+async function waitForAppReadiness({ context, values, url, portNumber, stopWithFailure }) {
+  const deadline = Date.now() + 180_000
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${url}/api/v1/ready`, {
+        signal: AbortSignal.timeout(2500),
+      })
+      if (response.ok) {
+        if (response.headers.get("x-deesse-worktree") !== context.worktreeId) {
+          stopWithFailure(
+            `Port ${portNumber} answered readiness for a different worktree. The process was stopped.`
+          )
+          return
+        }
+        process.stdout.write(
+          "Creating verified local accounts and organization fixtures...\n"
+        )
+        context.run(
+          "pnpm",
+          [
+            "--dir",
+            "packages/database",
+            "exec",
+            "node",
+            "scripts/dev-agent-seed.mjs",
+          ],
+          context.localEnv(values)
+        )
+        process.stdout.write(
+          `Ready: ${url}\nBrowser: use T3 preview on environment port ${portNumber}\nAPI: ${url}/api/v1\nCLI: pnpm dev:agent cli -- template list\nCLI login: pnpm dev:agent cli -- auth login --no-open\n`
+        )
+        return
+      }
+    } catch {
+      // The app may refuse connections until the next readiness attempt.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
+  stopWithFailure(
+    `Readiness timed out at ${url}/api/v1/ready. Check app output, PostgreSQL, and migrations above.`
+  )
+}
+
+async function reuseExistingApp(context, values, preferredPort, enableLocalR2) {
+  const url = `http://localhost:${preferredPort}`
   try {
-    const response = await fetch(`${existingUrl}/api/v1/ready`, {
+    const response = await fetch(`${url}/api/v1/ready`, {
       signal: AbortSignal.timeout(1500),
     })
     if (
-      response.ok &&
-      response.headers.get("x-deesse-worktree") === worktreeId
-    ) {
-      run(
-        "pnpm",
-        [
-          "--dir",
-          "packages/database",
-          "exec",
-          "node",
-          "scripts/dev-agent-seed.mjs",
-        ],
-        localEnv(values)
-      )
-      process.stdout.write(
-        `Already ready: ${existingUrl}\nBrowser: use T3 preview on environment port ${preferredPort}\n`
-      )
-      return
+      !response.ok ||
+      response.headers.get("x-deesse-worktree") !== context.worktreeId
+    ) return false
+    if (enableLocalR2) {
+      context.fail("This app is already running without the local R2 opt-in. Stop it before starting with --r2-local.")
     }
+    context.run("pnpm", ["--dir", "packages/database", "exec", "node", "scripts/dev-agent-seed.mjs"], context.localEnv(values))
+    process.stdout.write(`Already ready: ${url}\nBrowser: use T3 preview on environment port ${preferredPort}\n`)
+    return true
   } catch {
     // A failed bounded readiness request means the reserved port may be unused.
+    return false
   }
+}
+
+async function configureLocalR2(context, values, worktreePort) {
+  const { worktreeId, localDir, fail } = context
+  let port = null
+  try {
+    const state = loadOrCreateLocalR2State({ localDir, worktreeId })
+    port = await reservePort(context, preferredLocalR2Port(worktreeId), LOCAL_R2_PORT_RANGE)
+    const config = writeLocalR2WranglerConfig({ localDir, worktreeId, state, port: port.port })
+    const appEnvironment = localR2RuntimeEnvironment(context.localEnv(values), config.state, worktreeId, localDir)
+    return { port, state: config.state, appEnvironment }
+  } catch (error) {
+    if (port) {
+      closeSync(port.lockFd)
+      unlinkSync(port.lockPath)
+    }
+    closeSync(worktreePort.lockFd)
+    unlinkSync(worktreePort.lockPath)
+    fail(error instanceof Error ? error.message : String(error))
+  }
+}
+
+async function startServer(context, args) {
+  const { root, worktreeId, localEnv } = context
+  const values = await context.prepare({ reset: args.includes("--reset-db") })
+  const enableLocalR2 = args.includes("--r2-local")
+  const preferredPort = Number(values.DEV_AGENT_PORT)
+  if (await reuseExistingApp(context, values, preferredPort, enableLocalR2)) return
 
   const port = await reservePort(context, preferredPort)
   values.DEV_AGENT_PORT = String(port.port)
-  persistPort(values.DEV_AGENT_PORT)
+  context.persistPort(values.DEV_AGENT_PORT)
 
   const portNumber = port.port
   const url = `http://localhost:${portNumber}`
-  process.stdout.write(`Starting app and API at ${url}\n`)
+  let localR2Port = null
+  let appEnvironment = localEnv(values)
+  let localR2State = null
+  if (enableLocalR2) {
+    const localRuntime = await configureLocalR2(context, values, port)
+    localR2Port = localRuntime.port
+    localR2State = localRuntime.state
+    appEnvironment = localRuntime.appEnvironment
+  }
+  await startApplication(context, { root, worktreeId, values, port, portNumber, url, enableLocalR2, localR2Port, localR2State, appEnvironment })
+}
+
+async function startApplication(context, state) {
+  const { root, worktreeId, values, port, portNumber, url, enableLocalR2, localR2Port, localR2State, appEnvironment } = state
+  const { fail, spawnChild } = context
+  let localR2Child = null
+  process.stdout.write(
+    enableLocalR2
+      ? `Starting app and API at ${url} with worktree-local R2 at http://127.0.0.1:${localR2Port.port}${LOCAL_R2_S3_PATH}\n`
+      : `Starting app and API at ${url}\n`
+  )
   const nextCommand = [
     "--filter",
     "app",
@@ -100,6 +238,7 @@ async function startServer(context, args) {
     "--port",
     String(portNumber),
   ]
+  if (enableLocalR2) nextCommand.push("--webpack")
   const nextRetryDirs = [
     path.join(root, "apps/app/.next/cache/next-agentic-upgrade-retries"),
     path.join(root, "apps/app/.next/dev/cache/next-agentic-upgrade-retries"),
@@ -133,27 +272,91 @@ async function startServer(context, args) {
       }
     }
   }
+  let localR2PortReleased = false
+  const releaseLocalR2Port = () => {
+    if (!localR2Port || localR2PortReleased) return
+    localR2PortReleased = true
+    closeSync(localR2Port.lockFd)
+    try {
+      unlinkSync(localR2Port.lockPath)
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        fail(`Could not release local R2 port lock ${localR2Port.lockPath}: ${error.message}`)
+      }
+    }
+  }
+  const stopProcess = (target, signal = "SIGTERM") => {
+    if (!target || target.exitCode !== null) return
+    try {
+      if (target.pid && process.platform !== "win32")
+        process.kill(-target.pid, signal)
+      else target.kill(signal)
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error
+    }
+  }
+  const stopLocalR2 = async () => {
+    if (!localR2Child) {
+      releaseLocalR2Port()
+      return
+    }
+    const target = localR2Child
+    if (target.exitCode === null) {
+      stopProcess(target)
+      await Promise.race([
+        new Promise((resolve) => target.once("exit", resolve)),
+        new Promise((resolve) => setTimeout(resolve, 5000)),
+      ])
+      if (target.exitCode === null) {
+        const exited = new Promise((resolve) => target.once("exit", resolve))
+        stopProcess(target, "SIGKILL")
+        await Promise.race([
+          exited,
+          new Promise((resolve) => setTimeout(resolve, 2000)),
+        ])
+      }
+    }
+    releaseLocalR2Port()
+  }
+  if (enableLocalR2) {
+    try {
+      localR2Child = await startLocalR2Service({
+        context,
+        values,
+        worktreeId,
+        port: localR2Port,
+        state: localR2State,
+      })
+    } catch (error) {
+      await stopLocalR2()
+      releasePort()
+      fail(error instanceof Error ? error.message : String(error))
+    }
+  }
   const launchApp = () => {
     const launched = spawnChild("pnpm", nextCommand, {
       cwd: root,
-      env: localEnv(values),
+      env: appEnvironment,
       stdio: "inherit",
       detached: process.platform !== "win32",
     })
     let settled = false
-    const complete = (code, spawnError = null) => {
+    const complete = async (code, spawnError = null) => {
       if (settled) return
       settled = true
       if (shutdownSignal) {
+        await stopLocalR2()
         releasePort()
         process.exit(shutdownSignal === "SIGINT" ? 130 : 143)
       }
       if (spawnError) {
+        await stopLocalR2()
         releasePort()
         fail(`Could not start Next.js: ${spawnError.message}`)
       }
       if (failureAfterStop) {
         if (forceStopTimer) clearTimeout(forceStopTimer)
+        await stopLocalR2()
         releasePort()
         fail(failureAfterStop)
       }
@@ -169,6 +372,7 @@ async function startServer(context, args) {
         child = launchApp()
         return
       }
+      await stopLocalR2()
       releasePort()
       process.exit(code ?? 1)
     }
@@ -178,13 +382,8 @@ async function startServer(context, args) {
   }
   child = launchApp()
   const stop = () => {
-    try {
-      if (child.pid && process.platform !== "win32")
-        process.kill(-child.pid, "SIGTERM")
-      else child.kill("SIGTERM")
-    } catch (error) {
-      if (error?.code !== "ESRCH") throw error
-    }
+    stopProcess(child)
+    stopProcess(localR2Child)
   }
   const stopWithFailure = (message) => {
     failureAfterStop = message
@@ -212,55 +411,23 @@ async function startServer(context, args) {
     shutdownSignal = "SIGTERM"
     stop()
   })
-
-  const deadline = Date.now() + 180_000
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`${url}/api/v1/ready`, {
-        signal: AbortSignal.timeout(2500),
-      })
-      if (response.ok) {
-        if (response.headers.get("x-deesse-worktree") !== worktreeId) {
-          stopWithFailure(
-            `Port ${portNumber} answered readiness for a different worktree. The process was stopped.`
-          )
-          return
-        }
-        process.stdout.write(
-          "Creating verified local accounts and organization fixtures...\n"
-        )
-        run(
-          "pnpm",
-          [
-            "--dir",
-            "packages/database",
-            "exec",
-            "node",
-            "scripts/dev-agent-seed.mjs",
-          ],
-          localEnv(values)
-        )
-        process.stdout.write(
-          `Ready: ${url}\nBrowser: use T3 preview on environment port ${portNumber}\nAPI: ${url}/api/v1\nCLI: pnpm dev:agent cli -- template list\nCLI login: pnpm dev:agent cli -- auth login --no-open\n`
-        )
-        return
+  if (localR2Child) {
+    localR2Child.once("exit", (code) => {
+      if (!shutdownSignal && !failureAfterStop && child?.exitCode === null) {
+        stopWithFailure(`Wrangler local R2 exited unexpectedly with code ${code ?? 1}.`)
       }
-    } catch {
-      // The app may refuse connections until the next readiness attempt.
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    })
   }
-  stopWithFailure(
-    `Readiness timed out at ${url}/api/v1/ready. Check app output, PostgreSQL, and migrations above.`
-  )
+
+  await waitForAppReadiness({ context, values, url, portNumber, stopWithFailure })
 }
 
-async function reservePort(context, preferredPort) {
+async function reservePort(context, preferredPort, range = { start: 41000, end: 50999 }) {
   const portsDir = path.join(context.localDir, "ports")
   mkdirSync(portsDir, { recursive: true, mode: 0o700 })
-  const span = 10000
+  const span = range.end - range.start + 1
   for (let offset = 0; offset < span; offset += 1) {
-    const candidate = 41000 + ((preferredPort - 41000 + offset + span) % span)
+    const candidate = range.start + ((preferredPort - range.start + offset + span) % span)
     const reservation = await reserveCandidate(candidate, context)
     if (reservation === "retry") {
       offset -= 1
@@ -269,7 +436,7 @@ async function reservePort(context, preferredPort) {
     if (reservation) return reservation
   }
   context.fail(
-    "No free development port was found in the worktree port range 41000-50999."
+    `No free development port was found in the worktree port range ${range.start}-${range.end}.`
   )
 }
 

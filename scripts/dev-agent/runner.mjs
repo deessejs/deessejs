@@ -289,7 +289,7 @@ async function main() {
   const handler = commandHandlers[command]
   if (!handler && command !== "test") {
     fail(
-      `Unknown command '${command}'. Use start, prepare, status, credentials, test, reset --yes, clean --yes, or cli -- <command>.`
+      `Unknown command '${command}'. Use start [--r2-local], prepare, status, credentials, test, reset --yes, clean --yes, or cli -- <command>.`
     )
   }
   if (command === "test") return runDisposableTests()

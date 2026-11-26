@@ -23,6 +23,7 @@ import { getAvatarStorage } from "../../core/avatars/storage.js"
 import { templatePublications, templates } from "@workspace/database/schema"
 import { user } from "@workspace/database/schema"
 import { cleanupTemplateImageUploads } from "../../core/templates/images.js"
+import { cleanupExpiredManagedReleaseUploads } from "../../core/managed-releases/lifecycle.js"
 import { mountBlogRoutes } from "./blog.js"
 import { mountChangelogRoutes } from "./changelog.js"
 import { mountRegistryRoutes } from "./registry.js"
@@ -253,6 +254,18 @@ export const mountHttp = (api: Hono<ApiEnv>): void => {
     const avatars = await cleanupAvatars()
     const templateImages = await cleanupTemplateImageUploads()
     return c.json({ ...avatars, templateImages })
+  })
+
+  api.get("/internal/managed-releases/cleanup", async (c) => {
+    const secret = serverEnv.CRON_SECRET
+    if (!secret) return c.json({ error: "Cleanup is not configured." }, 503)
+    const authorization = c.req.header("authorization") ?? ""
+    const provided = Buffer.from(authorization.replace(/^Bearer\s+/i, ""))
+    const expected = Buffer.from(secret)
+    if (!/^Bearer\s+/i.test(authorization) || provided.byteLength !== expected.byteLength || !timingSafeEqual(provided, expected)) {
+      return c.json({ error: "Unauthorized." }, 401)
+    }
+    return c.json(await cleanupExpiredManagedReleaseUploads())
   })
 
   // Better Auth — login, signup, session, etc.

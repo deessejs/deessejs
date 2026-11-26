@@ -18,6 +18,8 @@ import { templateVersionCommand } from "./commands/version.js"
 import { printError } from "./output/index.js"
 import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
+import { templatePublishCommand, blockPublishCommand } from "./commands/publish.js"
+import { releasesCommand } from "./commands/releases.js"
 
 const program = new Command()
 program.configureHelp({
@@ -48,6 +50,8 @@ templateCommand.configureHelp({
 })
 templateCommand.addHelpText("after", "\nAlias: templates")
 templateCommand.addCommand(templateVersionCommand)
+templateCommand.addCommand(templatePublishCommand)
+templateCommand.addCommand(releasesCommand)
 templateCommand.addCommand(
   new Command("list")
     .description("List available templates")
@@ -81,6 +85,7 @@ templateCommand.addCommand(
     )
     .option("--dir <path>", "target directory")
     .option("--ref <branch>", "git ref to use")
+    .option("--organization <slug>", "initialize an organization-owned managed template")
     .option("--no-install", "skip the install step")
     .option("--force", "allow an existing empty target directory")
     .option(
@@ -92,6 +97,7 @@ templateCommand.addCommand(
 )
 program.addCommand(templateCommand)
 program.addCommand(blockCommand)
+blockCommand.addCommand(blockPublishCommand)
 program.addCommand(addCommand)
 program.addCommand(cacheCommand)
 program.addCommand(organizationCommand)
