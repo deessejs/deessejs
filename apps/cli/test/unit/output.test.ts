@@ -118,6 +118,8 @@ describe("print", () => {
         description: "",
         owner: "acme",
         repo: "starter",
+        sourceType: "github",
+        installable: true,
         category: "saas",
         labels: [],
         license: "MIT",
@@ -135,8 +137,8 @@ describe("print", () => {
       },
     ])
     expect(stdoutWrites.join("")).toBe(
-      "slug         name                                       ownership           publication  review \n" +
-        "starter-kit  A particularly long starter template name  organization-owned  current      pending\n"
+      "slug         name                                       source  release  publication  review \n" +
+        "starter-kit  A particularly long starter template name  GitHub  ready    current      pending\n"
     )
   })
 
