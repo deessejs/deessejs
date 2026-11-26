@@ -108,7 +108,7 @@ export function BlogAdminPage() {
                 <tr className="border-b last:border-0" key={post.id}>
                   <td className="p-3"><span className="font-medium">{post.title}</span><span className="block text-muted-foreground">/{post.slug}</span></td>
                   <td className="p-3">{post.status}</td>
-                  <td className="p-3">{new Date(String(post.updatedAt)).toLocaleDateString()}</td>
+                  <td className="p-3">{new Date(String(post.updatedAt)).toLocaleDateString("en-GB", { timeZone: "UTC" })}</td>
                   <td className="p-3"><div className="flex flex-wrap gap-2">
                     <button className="underline" onClick={() => beginEdit(post)} type="button">Edit</button>
                     <button className="underline" onClick={() => void changePublication(post)} type="button">{post.status === "published" ? "Unpublish" : "Publish"}</button>

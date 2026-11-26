@@ -232,10 +232,10 @@ try {
     throw new Error("Better Auth admin role assignment was not persisted")
   }
 
-  const adminCookie = await signIn(ordinaryEmail)
+  const adminCookie = ordinaryCookie
   const adminSession = await readSession(adminCookie)
   if (adminSession?.user?.id !== adminRow.id || adminSession?.user?.role !== "admin") {
-    throw new Error(`admin sign-in did not return the persisted admin role: ${adminSession?.user?.role}`)
+    throw new Error(`promoted user session did not return the persisted admin role: ${adminSession?.user?.role}`)
   }
   const adminAllowed = {
     "/admin": await expectAllowed("/admin", adminCookie, "Your admin dashboard is ready"),
@@ -276,12 +276,26 @@ try {
   }
   await sql`update "user" set role = 'admin' where id = ${adminRow.id}`
 
+  const blogReaderEmail = makeEmail("blog-reader")
+  await signUp(blogReaderEmail, "Blog Reader")
+  const [blogReaderRow] = await sql`
+    select id, role from "user" where email = ${blogReaderEmail}
+  `
+  if (!blogReaderRow || blogReaderRow.role !== "user") {
+    throw new Error(`Blog API reader did not persist the ordinary role: ${blogReaderRow?.role ?? "missing"}`)
+  }
+  const blogReaderCookie = await signIn(blogReaderEmail)
+  const blogReaderSession = await readSession(blogReaderCookie)
+  if (blogReaderSession?.user?.role !== "user") {
+    throw new Error(`Blog API reader sign-in returned an unexpected role: ${blogReaderSession?.user?.role}`)
+  }
+
   const ordinaryClient = createClient({
     server: deesseServer(),
     baseURL,
     fetch: (input, init) => {
       const headers = new Headers(init?.headers)
-      headers.set("cookie", ordinaryCookie)
+      headers.set("cookie", blogReaderCookie)
       return fetch(input, { ...init, headers })
     },
   })
