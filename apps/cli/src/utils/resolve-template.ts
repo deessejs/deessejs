@@ -13,8 +13,8 @@ export type TemplateSource = Pick<Template, "slug"> &
     requiresManaged?: boolean | undefined
     sourceCommit?: string
     templateSlug?: string
-    sourceType?: "github" | "managed"
-    installable?: boolean
+    sourceType?: "github" | "managed" | undefined
+    installable?: boolean | undefined
   }
 
 export type ResolvedTemplateSource = {

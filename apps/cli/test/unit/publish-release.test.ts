@@ -4,6 +4,8 @@ import { join } from "node:path"
 import { execFileSync } from "node:child_process"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+const GIT_EXECUTABLE = "/usr/bin/git"
+
 const mocks = vi.hoisted(() => ({
   readAuth: vi.fn(),
   begin: vi.fn(),
@@ -26,11 +28,15 @@ const roots: string[] = []
 async function makeCleanTemplate() {
   const root = await mkdtemp(join(tmpdir(), "deesse-template-publish-"))
   roots.push(root)
-  execFileSync("git", ["init", "--quiet"], { cwd: root })
-  execFileSync("git", ["config", "user.name", "CLI Test"], { cwd: root })
-  execFileSync("git", ["config", "user.email", "cli-test@example.test"], {
+  execFileSync(GIT_EXECUTABLE, ["init", "--quiet"], { cwd: root })
+  execFileSync(GIT_EXECUTABLE, ["config", "user.name", "CLI Test"], {
     cwd: root,
   })
+  execFileSync(
+    GIT_EXECUTABLE,
+    ["config", "user.email", "cli-test@example.test"],
+    { cwd: root }
+  )
   await writeFile(
     join(root, "deesse-template.json"),
     JSON.stringify({
@@ -46,12 +52,16 @@ async function makeCleanTemplate() {
     })
   )
   await writeFile(join(root, "README.md"), "Private template source files.")
-  execFileSync("git", ["add", "deesse-template.json", "README.md"], {
-    cwd: root,
-  })
-  execFileSync("git", ["commit", "--quiet", "-m", "initial template"], {
-    cwd: root,
-  })
+  execFileSync(
+    GIT_EXECUTABLE,
+    ["add", "deesse-template.json", "README.md"],
+    { cwd: root }
+  )
+  execFileSync(
+    GIT_EXECUTABLE,
+    ["commit", "--quiet", "-m", "initial template"],
+    { cwd: root }
+  )
   return root
 }
 
