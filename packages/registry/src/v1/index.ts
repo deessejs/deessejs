@@ -42,6 +42,8 @@ export {
   type TemplateSourceRequest,
   type TemplateSourceSnapshot,
 } from "./template-source.js"
+export { inspectManagedReleaseArchive, MAX_MANAGED_ARCHIVE_BYTES, type ManagedReleaseArchiveInfo } from "./managed-release-archive.js"
+export { createManagedTemplateSourceAdapter } from "./managed-template-source.js"
 export {
   PROJECT_CONFIG_SCHEMA_URL,
   ProjectConfigV1Schema,

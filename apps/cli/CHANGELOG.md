@@ -1,5 +1,11 @@
 # @deessejs/cli
 
+## 3.2.0
+
+### Minor Changes
+
+- Add authenticated managed template and block release publishing, release listing, and managed artifact initialization.
+
 ## 3.1.0
 
 ### Minor Changes

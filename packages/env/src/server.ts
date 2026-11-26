@@ -104,6 +104,8 @@ function getServerEnv(): Readonly<ServerEnv> {
     R2_AVATARS_BUCKET: env.R2_AVATARS_BUCKET,
     R2_ENDPOINT: env.R2_ENDPOINT,
     R2_REGION: env.R2_REGION,
+    R2_TEMPLATE_RELEASES_BUCKET: env.R2_TEMPLATE_RELEASES_BUCKET,
+    R2_TEMPLATE_RELEASES_STAGING_BUCKET: env.R2_TEMPLATE_RELEASES_STAGING_BUCKET,
     CRON_SECRET: env.CRON_SECRET,
     // Test-only override for the email-verification-on-invitation
     // contract. See `schema.ts` for the rationale. The default

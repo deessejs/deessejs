@@ -120,6 +120,13 @@
       "when": 1795442337125,
       "tag": "0017_chilly_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795610576745,
+      "tag": "0018_managed_releases",
+      "breakpoints": true
     }
   ]
 }

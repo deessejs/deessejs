@@ -9,6 +9,7 @@ import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
 
 export type TemplateSource = Pick<Template, "slug" | "owner" | "repo"> & {
   community?: true
+  requiresManaged?: boolean | undefined
   sourceCommit?: string
   templateSlug?: string
 }

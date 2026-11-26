@@ -27,7 +27,6 @@ import {
   SearchIcon,
 } from "lucide-react"
 import { CreateTemplateDialog } from "./create-template-dialog"
-import { TemplateImageUpload } from "./template-image-upload"
 
 type AdminClient = RouterClient<typeof appRouter>
 type AdminTemplate = Awaited<
@@ -129,10 +128,6 @@ const columns = column.columns([
             No image
           </div>
         )}
-        <TemplateImageUpload
-          templateId={row.original.id}
-          onUploaded={() => window.location.reload()}
-        />
       </div>
     ),
   }),

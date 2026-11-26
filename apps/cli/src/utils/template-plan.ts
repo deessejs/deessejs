@@ -2,6 +2,7 @@ import {
   createTemplateDescriptorInfo,
   createGitHubTemplateSourceAdapter,
   createTemplateInstallationPlan,
+  createManagedTemplateSourceAdapter,
   type TemplateDescriptorInfo,
   type TemplateInstallationPlan,
 } from "@workspace/registry/v1"
@@ -10,6 +11,30 @@ import {
   repositoryNotFound,
   templateInvalid,
 } from "../errors/index.js"
+import { downloadManagedArchive } from "./download-managed-archive.js"
+import { createAuthenticatedORPCClient, orpc } from "../api/client.js"
+
+export async function resolveManagedTemplateInstallationPlan(input: {
+  slug: string
+  repository: string
+  organizationSlug?: string
+  accessToken?: string
+}): Promise<{ plan: TemplateInstallationPlan | null; requiresManaged: boolean }> {
+  const client = input.accessToken ? createAuthenticatedORPCClient(input.accessToken) : orpc
+  let response
+  try {
+    response = await client.managedReleases.resolve({ kind: "template", slug: input.slug, ...(input.organizationSlug ? { organizationSlug: input.organizationSlug } : {}) })
+  } catch (error) {
+    if (input.organizationSlug) throw templateInvalid(`@${input.organizationSlug}/${input.slug}`, "this organization template is unavailable or you do not have access")
+    throw error
+  }
+  if (!response.release) return { plan: null, requiresManaged: response.requiresManaged }
+  const archive = await downloadManagedArchive(response.release.downloadUrl, response.release.digest)
+  const adapter = await createManagedTemplateSourceAdapter({ archive, repository: input.repository, version: response.release.version })
+  const result = await createTemplateInstallationPlan({ repository: input.repository }, adapter)
+  if (result.success) return { plan: result.plan, requiresManaged: true }
+  throw templateInvalid(input.slug, result.diagnostics.map((item) => `${item.code}: ${item.message}`).join("\n"))
+}
 
 const NETWORK_DIAGNOSTIC_CODES = [
   "source.unavailable",
