@@ -5,6 +5,7 @@ import { useState } from "react"
 import type { ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ORPCError } from "@orpc/client"
+import { toast } from "sonner"
 import {
   CATEGORY_LABELS,
   CATEGORY_SLUGS,
@@ -49,6 +50,19 @@ const formSchema = z.object({
 })
 type FormValues = z.infer<typeof formSchema>
 
+type EditableTemplate = {
+  id: string
+  slug: string
+  name: string
+  descriptionOverride: string | null
+  canonicalUrl: string
+  category: string
+  labels: string[]
+  licenseFallback: string | null
+  access: "free" | "paid"
+  imageName: string | null
+}
+
 const defaults: FormValues = {
   repositoryUrl: "",
   slug: "",
@@ -73,43 +87,80 @@ const REFUSALS: Record<string, string> = {
 export function CreateTemplateDialog({
   open,
   onOpenChange,
+  template,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  template: EditableTemplate | null
 }) {
   const router = useRouter()
   const [failure, setFailure] = useState<string | null>(null)
   const form = useForm({
-    defaultValues: defaults,
+    defaultValues: template
+      ? {
+          ...defaults,
+          repositoryUrl: template.canonicalUrl,
+          slug: template.slug,
+          name: template.name,
+          descriptionOverride: template.descriptionOverride ?? "",
+          category:
+            CATEGORY_SLUGS.find((category) => category === template.category) ??
+            "saas",
+          labels: template.labels.join(", "),
+          licenseFallback: template.licenseFallback ?? "",
+          access: template.access,
+          imageName: template.imageName ?? "none",
+        }
+      : defaults,
     validators: { onSubmit: formSchema },
     onSubmit: async ({ value }) => {
       setFailure(null)
       try {
-        await client.rpc.admin.templates.create({
-          repositoryUrl: value.repositoryUrl,
-          slug: value.slug,
-          name: value.name,
-          descriptionOverride: value.descriptionOverride.trim() || null,
-          category: value.category,
-          labels: value.labels
-            .split(",")
-            .map((label) => label.trim())
-            .filter(Boolean),
-          licenseFallback: value.licenseFallback.trim() || null,
-          access: value.access,
-          imageName:
-            TEMPLATE_IMAGE_FILENAMES.find(
-              (imageName) => imageName === value.imageName
-            ) ?? null,
-        })
+        const labels = value.labels
+          .split(",")
+          .map((label) => label.trim())
+          .filter(Boolean)
+        const imageName =
+          TEMPLATE_IMAGE_FILENAMES.find(
+            (imageName) => imageName === value.imageName
+          ) ?? null
+
+        if (template) {
+          await client.rpc.admin.templates.update({
+            id: template.id,
+            name: value.name,
+            descriptionOverride: value.descriptionOverride.trim() || null,
+            category: value.category,
+            labels,
+            licenseFallback: value.licenseFallback.trim() || null,
+            access: value.access,
+            imageName,
+          })
+          toast.success("Template updated")
+        } else {
+          await client.rpc.admin.templates.create({
+            repositoryUrl: value.repositoryUrl,
+            slug: value.slug,
+            name: value.name,
+            descriptionOverride: value.descriptionOverride.trim() || null,
+            category: value.category,
+            labels,
+            licenseFallback: value.licenseFallback.trim() || null,
+            access: value.access,
+            imageName,
+          })
+        }
         form.reset()
         onOpenChange(false)
         router.refresh()
       } catch (error) {
+        const failureMessage = template
+          ? "The template could not be updated. Refresh and try again."
+          : FAILURE_MESSAGE
         setFailure(
           error instanceof ORPCError
-            ? (REFUSALS[error.code] ?? FAILURE_MESSAGE)
-            : FAILURE_MESSAGE
+            ? (REFUSALS[error.code] ?? failureMessage)
+            : failureMessage
         )
       }
     },
@@ -127,10 +178,13 @@ export function CreateTemplateDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add a template</DialogTitle>
+          <DialogTitle>
+            {template ? "Edit template" : "Add a template"}
+          </DialogTitle>
           <DialogDescription>
-            Enter a public GitHub repository. Its repository details and README
-            will be fetched and saved with your catalog entry.
+            {template
+              ? "Update the catalog details. The GitHub repository snapshot and slug will stay unchanged."
+              : "Enter a public GitHub repository. Its repository details and README will be fetched and saved with your catalog entry."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -141,29 +195,33 @@ export function CreateTemplateDialog({
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
+            {!template && (
+              <Field
+                label="GitHub repository URL"
+                controlId="template-repository-url"
+                error={
+                  form.state.fieldMeta.repositoryUrl?.errors[0] as
+                    | string
+                    | undefined
+                }
+              >
+                <form.Field name="repositoryUrl">
+                  {(field) => (
+                    <Input
+                      id="template-repository-url"
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="https://github.com/owner/repository"
+                      autoComplete="url"
+                    />
+                  )}
+                </form.Field>
+              </Field>
+            )}
             <Field
-              label="GitHub repository URL"
-              controlId="template-repository-url"
-              error={
-                form.state.fieldMeta.repositoryUrl?.errors[0] as
-                  | string
-                  | undefined
-              }
-            >
-              <form.Field name="repositoryUrl">
-                {(field) => (
-                  <Input
-                    id="template-repository-url"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="https://github.com/owner/repository"
-                    autoComplete="url"
-                  />
-                )}
-              </form.Field>
-            </Field>
-            <Field
-              label="Template slug"
+              label={template ? "Template slug (read-only)" : "Template slug"}
               controlId="template-slug"
               error={form.state.fieldMeta.slug?.errors[0] as string | undefined}
             >
@@ -175,6 +233,7 @@ export function CreateTemplateDialog({
                     onChange={(event) => field.handleChange(event.target.value)}
                     placeholder="my-template"
                     autoComplete="off"
+                    readOnly={Boolean(template)}
                   />
                 )}
               </form.Field>
@@ -325,8 +384,12 @@ export function CreateTemplateDialog({
             </Button>
             <Button type="submit" disabled={form.state.isSubmitting}>
               {form.state.isSubmitting
-                ? "Fetching from GitHub…"
-                : "Add template"}
+                ? template
+                  ? "Saving…"
+                  : "Fetching from GitHub…"
+                : template
+                  ? "Save changes"
+                  : "Add template"}
             </Button>
           </DialogFooter>
         </form>
