@@ -71,8 +71,8 @@ describe("managed release resolution", () => {
     it("publishes and resolves exact archive bytes through an injected private store", async () => {
       const suffix = randomUUID()
       const userId = `managed-publisher-${suffix}`
-      const templateId = randomUUID()
       const slug = `release-${suffix.slice(0, 8)}`
+      let templateId: string | undefined
       const root = await mkdtemp(join(tmpdir(), "managed-release-api-"))
       const objects = new Map<string, Uint8Array>()
       const fakeStore: ObjectStorage = {
@@ -87,7 +87,7 @@ describe("managed release resolution", () => {
       const context = { headers: new Headers(), user: { id: userId, role: "admin" }, session: { activeOrganizationId: null }, requestId: "managed-release-e2e" } as never
       try {
         await db.insert(user).values({ id: userId, name: userId, email: `${userId}@example.test`, emailVerified: true, role: "admin" })
-        await db.insert(templates).values({ id: templateId, slug, ownerType: "platform", name: slug, owner: "fixture", repo: slug, category: "saas" })
+        templateId = (await call(appRouter.admin.templates.create, { sourceType: "managed", slug, name: slug, category: "saas", labels: [] }, { context })).id
         const descriptor = {
           $schema: "https://app.deessejs.com/schema/template/v1.json", formatVersion: 1, name: slug, title: slug,
           description: "API archive publication fixture", type: "template:starter", version: "1.0.0", excludes: [],
@@ -133,8 +133,8 @@ describe("managed release resolution", () => {
       } finally {
         setManagedReleaseStorageForTests(undefined)
         await rm(root, { recursive: true, force: true })
-        await db.delete(managedReleases).where(eq(managedReleases.templateId, templateId))
-        await db.delete(templates).where(eq(templates.id, templateId))
+        if (templateId) await db.delete(managedReleases).where(eq(managedReleases.templateId, templateId))
+        if (templateId) await db.delete(templates).where(eq(templates.id, templateId))
         await db.delete(user).where(eq(user.id, userId))
       }
     })

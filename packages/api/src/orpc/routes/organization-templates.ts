@@ -8,6 +8,7 @@ import { hasManagingRole } from "@workspace/auth/organization/roles"
 import {
   db,
   member,
+  managedReleases,
   organization,
   templatePublications,
   templateRepositorySnapshots,
@@ -69,6 +70,7 @@ export const list = base
         descriptionOverride: templates.descriptionOverride,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
         category: templates.category,
         labels: templates.labels,
         imageObjectId: templates.imageObjectId,
@@ -82,7 +84,7 @@ export const list = base
         fetchedAt: templateRepositorySnapshots.fetchedAt,
       })
       .from(templates)
-      .innerJoin(
+      .leftJoin(
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
@@ -109,6 +111,24 @@ export const list = base
               )
             )
         : []
+    const managedIds = rows
+      .filter((row) => row.sourceType === "managed")
+      .map((row) => row.id)
+    const readyReleases = managedIds.length
+      ? await db
+          .select({ templateId: managedReleases.templateId })
+          .from(managedReleases)
+          .where(
+            and(
+              inArray(managedReleases.templateId, managedIds),
+              eq(managedReleases.kind, "template"),
+              eq(managedReleases.status, "ready")
+            )
+          )
+      : []
+    const readyTemplateIds = new Set(
+      readyReleases.map((release) => release.templateId)
+    )
     const currentlyPublished = new Set(
       currentPublications.map((publication) => publication.templateId)
     )
@@ -150,15 +170,20 @@ export const list = base
             row.descriptionOverride ?? row.repositoryDescription ?? "",
           owner: row.owner,
           repo: row.repo,
+          sourceType: row.sourceType,
+          installable:
+            row.sourceType === "github" || readyTemplateIds.has(row.id),
           category: row.category,
           labels: row.labels,
           license: row.licenseFallback ?? row.snapshotLicense ?? "",
           canonicalUrl: row.canonicalUrl,
           repositoryName: row.repositoryName,
           stars: row.stars,
-          fetchedAt: row.fetchedAt.toISOString(),
+          fetchedAt: row.fetchedAt?.toISOString() ?? null,
           ...(row.imageObjectId
-            ? { imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}` }
+            ? {
+                imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+              }
             : {}),
           currentlyPublished: currentlyPublished.has(row.id),
           publication: publication
@@ -226,9 +251,13 @@ export const create = base
       throw errors.ORGANIZATION_ACCESS_DENIED()
     }
 
-    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>>
+    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>> | null =
+      null
     try {
-      acquired = await acquireTemplateRepository(input.repositoryUrl)
+      if (input.sourceType === "github") {
+        if (!input.repositoryUrl) throw new InvalidTemplateSourceError()
+        acquired = await acquireTemplateRepository(input.repositoryUrl)
+      } else if (input.repositoryUrl) throw new InvalidTemplateSourceError()
     } catch (error) {
       if (error instanceof InvalidTemplateSourceError) {
         throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
@@ -280,8 +309,9 @@ export const create = base
             slug: input.slug,
             name: input.name,
             descriptionOverride: input.descriptionOverride || null,
-            owner: acquired.owner,
-            repo: acquired.repo,
+            owner: acquired?.owner ?? null,
+            repo: acquired?.repo ?? null,
+            sourceType: input.sourceType,
             category: input.category,
             labels: input.labels,
             licenseFallback: input.licenseFallback || null,
@@ -297,10 +327,10 @@ export const create = base
 
         if (!template) throw new Error("Template insert returned no row.")
 
-        await tx.insert(templateRepositorySnapshots).values({
-          templateId: template.id,
-          ...acquired.snapshot,
-        })
+        if (acquired)
+          await tx
+            .insert(templateRepositorySnapshots)
+            .values({ templateId: template.id, ...acquired.snapshot })
 
         return template
       })
@@ -381,6 +411,7 @@ export const submit = base
         descriptionOverride: templates.descriptionOverride,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
         category: templates.category,
         labels: templates.labels,
         imageName: templates.imageName,
@@ -398,6 +429,9 @@ export const submit = base
       .limit(1)
 
     if (!template) throw errors.ORGANIZATION_ACCESS_DENIED()
+    if (template.sourceType !== "github" || !template.owner || !template.repo) {
+      throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
+    }
     if (!/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(template.slug)) {
       throw errors.TEMPLATE_SLUG_INVALID()
     }

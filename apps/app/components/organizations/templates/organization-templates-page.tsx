@@ -333,17 +333,31 @@ function TemplateRows({
                 No image
               </div>
             )}
-            <a
-              className="font-medium underline-offset-4 hover:underline"
-              href={template.canonicalUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {template.name}
-            </a>
+            {template.canonicalUrl ? (
+              <a
+                className="font-medium underline-offset-4 hover:underline"
+                href={template.canonicalUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {template.name}
+              </a>
+            ) : (
+              <span className="font-medium">{template.name}</span>
+            )}
             <div className="mt-1 truncate text-xs text-muted-foreground">
-              {template.slug} · {template.owner}/{template.repo}
+              {template.slug} ·{" "}
+              {template.sourceType === "managed"
+                ? "managed archive"
+                : `${template.owner}/${template.repo}`}
             </div>
+            {template.sourceType === "managed" ? (
+              <div className="text-xs text-muted-foreground">
+                {template.installable
+                  ? "Release ready to install"
+                  : "Not installable until the first release is published"}
+              </div>
+            ) : null}
           </td>
           <td className="px-4 py-3 capitalize">{template.category}</td>
           <td className="px-4 py-3 text-muted-foreground">
@@ -353,9 +367,13 @@ function TemplateRows({
             {template.stars?.toLocaleString("en-US") ?? "-"}
           </td>
           <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-            <time dateTime={template.fetchedAt}>
-              {dateFormatter.format(new Date(template.fetchedAt))}
-            </time>
+            {template.fetchedAt ? (
+              <time dateTime={template.fetchedAt}>
+                {dateFormatter.format(new Date(template.fetchedAt))}
+              </time>
+            ) : (
+              "Not fetched"
+            )}
           </td>
           <td className="min-w-56 px-4 py-3">
             <TemplatePublicationStatus

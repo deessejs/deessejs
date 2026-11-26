@@ -127,6 +127,20 @@
       "when": 1795610576745,
       "tag": "0018_managed_releases",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795708191415,
+      "tag": "0019_magenta_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795711596367,
+      "tag": "0020_violet_pete_wisdom",
+      "breakpoints": true
     }
   ]
 }

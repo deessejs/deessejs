@@ -10,6 +10,7 @@ import {
 import {
   db,
   templatePublications,
+  managedReleases,
   templateRepositorySnapshots,
   templates,
 } from "@workspace/database"
@@ -20,11 +21,13 @@ import { API_BASE_PATH } from "../../constants/base-path.js"
 import { callerHasActiveOrganizationPro } from "../../core/organization/entitlement.js"
 
 const publicTemplateColumns = {
+  id: templates.id,
   slug: templates.slug,
   name: templates.name,
   descriptionOverride: templates.descriptionOverride,
   owner: templates.owner,
   repo: templates.repo,
+  sourceType: templates.sourceType,
   category: templates.category,
   labels: templates.labels,
   licenseFallback: templates.licenseFallback,
@@ -41,6 +44,7 @@ const publicTemplateDetailColumns = {
   ...publicTemplateColumns,
   readme: templateRepositorySnapshots.readme,
   access: templates.access,
+  sourceType: templates.sourceType,
 }
 
 const communityListColumns = {
@@ -125,26 +129,27 @@ type PublicTemplateRow = {
   slug: string
   name: string
   descriptionOverride: string | null
-  owner: string
-  repo: string
+  owner: string | null
+  repo: string | null
   category: string
   labels: string[]
   licenseFallback: string | null
   imageName: string | null
   imageObjectId: string | null
   repositoryDescription: string | null
-  canonicalUrl: string
+  canonicalUrl: string | null
   license: string | null
   readme?: string | null
   repositoryUpdatedAt: Date | null
   stars: number | null
   access?: "free" | "paid"
+  sourceType?: "github" | "managed"
 }
 
 /**
- * Project the editorial template and its latest GitHub snapshot onto the
- * existing public V1 contract. Editorial values remain authoritative; the
- * snapshot supplies repository details that are not curated in the dashboard.
+ * Project editorial metadata and an optional GitHub snapshot onto the public
+ * V1 contract. Managed-only entries omit GitHub identity and resolve through
+ * ready private artifacts instead of repository snapshots.
  */
 function toPublicTemplate(
   row: PublicTemplateRow,
@@ -154,8 +159,8 @@ function toPublicTemplate(
     slug: row.slug,
     name: row.name,
     description: row.descriptionOverride ?? row.repositoryDescription ?? "",
-    owner: row.owner,
-    repo: row.repo,
+    ...(row.owner ? { owner: row.owner } : {}),
+    ...(row.repo ? { repo: row.repo } : {}),
     license: row.licenseFallback ?? row.license ?? "",
     category: row.category,
     labels: row.labels,
@@ -166,7 +171,7 @@ function toPublicTemplate(
       : row.imageName
         ? { image: `/${row.imageName}` }
         : {}),
-    cloneUrl: row.canonicalUrl,
+    ...(row.canonicalUrl ? { cloneUrl: row.canonicalUrl } : {}),
     ...(row.readme !== null ? { readme: row.readme } : {}),
     ...(row.repositoryUpdatedAt
       ? { updatedAt: row.repositoryUpdatedAt.toISOString() }
@@ -175,6 +180,8 @@ function toPublicTemplate(
     ...(includeManagedRequirement && row.access === "paid"
       ? { requiresManaged: true }
       : {}),
+    ...(row.sourceType ? { sourceType: row.sourceType } : {}),
+    ...(row.sourceType === "managed" ? { requiresManaged: true } : {}),
   }
 }
 
@@ -219,7 +226,7 @@ export const list = base
       const rows = await db
         .select(publicTemplateColumns)
         .from(templates)
-        .innerJoin(
+        .leftJoin(
           templateRepositorySnapshots,
           eq(templates.id, templateRepositorySnapshots.templateId)
         )
@@ -233,10 +240,29 @@ export const list = base
         )
         .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
+      const managedIds = rows
+        .filter((row) => row.sourceType === "managed")
+        .map((row) => row.id)
+      const ready = managedIds.length
+        ? await db
+            .select({ templateId: managedReleases.templateId })
+            .from(managedReleases)
+            .where(
+              and(
+                eq(managedReleases.kind, "template"),
+                eq(managedReleases.status, "ready")
+              )
+            )
+            .orderBy(asc(managedReleases.createdAt))
+        : []
+      const readyIds = new Set(ready.map((item) => item.templateId))
       return {
-        templates: rows.map((row) =>
-          toPublicTemplate({ ...row, readme: null })
-        ),
+        templates: rows.map((row) => ({
+          ...toPublicTemplate({ ...row, readme: null }),
+          ...(row.sourceType === "managed"
+            ? { installable: readyIds.has(row.id) }
+            : {}),
+        })),
       }
     } catch (error) {
       const message =
@@ -260,7 +286,7 @@ export const detail = base
     const [row] = await db
       .select(publicTemplateDetailColumns)
       .from(templates)
-      .innerJoin(
+      .leftJoin(
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
@@ -272,7 +298,24 @@ export const detail = base
         )
       )
       .limit(1)
-    return row ? toPublicTemplate(row as PublicTemplateRow, true) : null
+    if (!row) return null
+    const installable =
+      row.sourceType === "github"
+        ? true
+        : (
+            await db
+              .select({ id: managedReleases.id })
+              .from(managedReleases)
+              .where(
+                and(
+                  eq(managedReleases.templateId, row.id),
+                  eq(managedReleases.kind, "template"),
+                  eq(managedReleases.status, "ready")
+                )
+              )
+              .limit(1)
+          ).length > 0
+    return { ...toPublicTemplate(row as PublicTemplateRow, true), installable }
   })
 
 /** Resolve a catalog slug without loading its GitHub snapshot payload. */
@@ -282,8 +325,10 @@ export const resolve = base
     z
       .object({
         slug: z.string(),
-        owner: z.string(),
-        repo: z.string(),
+        owner: z.string().nullable(),
+        repo: z.string().nullable(),
+        sourceType: z.enum(["github", "managed"]),
+        requiresManaged: z.boolean(),
       })
       .nullable()
   )
@@ -291,12 +336,15 @@ export const resolve = base
     const hasPro = await callerHasActiveOrganizationPro(context)
     const [template] = await db
       .select({
+        id: templates.id,
         slug: templates.slug,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
+        access: templates.access,
       })
       .from(templates)
-      .innerJoin(
+      .leftJoin(
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
@@ -310,7 +358,14 @@ export const resolve = base
       .limit(1)
 
     if (!template) return null
-    return { slug: template.slug, owner: template.owner, repo: template.repo }
+    return {
+      slug: template.slug,
+      owner: template.owner,
+      repo: template.repo,
+      sourceType: template.sourceType,
+      requiresManaged:
+        template.sourceType === "managed" || template.access === "paid",
+    }
   })
 
 const community = {

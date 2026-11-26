@@ -1,8 +1,9 @@
 import { ORPCError } from "@orpc/server"
-import { and, asc, eq, max } from "drizzle-orm"
+import { and, asc, eq, inArray, max } from "drizzle-orm"
 import { z } from "zod"
 import {
   db,
+  managedReleases,
   templateRepositorySnapshots,
   templates,
   user,
@@ -24,24 +25,27 @@ const adminTemplate = z.object({
   slug: z.string(),
   name: z.string(),
   descriptionOverride: z.string().nullable(),
-  owner: z.string(),
-  repo: z.string(),
+  owner: z.string().nullable(),
+  repo: z.string().nullable(),
+  sourceType: z.enum(["github", "managed"]),
+  installable: z.boolean(),
   category: z.string(),
   labels: z.array(z.string()),
   licenseFallback: z.string().nullable(),
   access: z.enum(["free", "paid"]),
   imageName: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
-  repositoryName: z.string(),
-  canonicalUrl: z.string().url(),
+  repositoryName: z.string().nullable(),
+  canonicalUrl: z.string().url().nullable(),
   stars: z.number().int().nonnegative().nullable(),
-  fetchedAt: z.string().datetime(),
+  fetchedAt: z.string().datetime().nullable(),
 })
 
 const adminTemplatesList = z.object({ templates: z.array(adminTemplate) })
 
 const createTemplateInput = z.object({
-  repositoryUrl: z.string().trim().min(1).max(2048),
+  sourceType: z.enum(["github", "managed"]).default("github"),
+  repositoryUrl: z.string().trim().min(1).max(2048).optional(),
   slug: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(200),
   descriptionOverride: z.string().trim().max(10000).nullable().optional(),
@@ -94,6 +98,7 @@ export const list = adminProcedure
         descriptionOverride: templates.descriptionOverride,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
         category: templates.category,
         labels: templates.labels,
         licenseFallback: templates.licenseFallback,
@@ -106,17 +111,37 @@ export const list = adminProcedure
         fetchedAt: templateRepositorySnapshots.fetchedAt,
       })
       .from(templates)
-      .innerJoin(
+      .leftJoin(
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
       .where(eq(templates.ownerType, "platform"))
       .orderBy(asc(templates.sortOrder), asc(templates.slug))
 
+    const managedIds = rows
+      .filter((row) => row.sourceType === "managed")
+      .map((row) => row.id)
+    const readyReleases = managedIds.length
+      ? await db
+          .select({ templateId: managedReleases.templateId })
+          .from(managedReleases)
+          .where(
+            and(
+              inArray(managedReleases.templateId, managedIds),
+              eq(managedReleases.kind, "template"),
+              eq(managedReleases.status, "ready")
+            )
+          )
+      : []
+    const readyTemplateIds = new Set(
+      readyReleases.map((release) => release.templateId)
+    )
     return {
       templates: rows.map((row) => ({
         ...row,
-        fetchedAt: row.fetchedAt.toISOString(),
+        installable:
+          row.sourceType === "github" || readyTemplateIds.has(row.id),
+        fetchedAt: row.fetchedAt?.toISOString() ?? null,
         imageUrl: row.imageObjectId
           ? `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`
           : null,
@@ -139,9 +164,15 @@ export const create = adminProcedure
 
     if (existing) throw errors.TEMPLATE_SLUG_CONFLICT()
 
-    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>>
+    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>> | null =
+      null
     try {
-      acquired = await acquireTemplateRepository(input.repositoryUrl)
+      if (input.sourceType === "github") {
+        if (!input.repositoryUrl) throw new InvalidTemplateSourceError()
+        acquired = await acquireTemplateRepository(input.repositoryUrl)
+      } else if (input.repositoryUrl) {
+        throw new InvalidTemplateSourceError()
+      }
     } catch (error) {
       if (error instanceof InvalidTemplateSourceError) {
         throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
@@ -187,8 +218,9 @@ export const create = adminProcedure
           ownerType: "platform",
           name: input.name,
           descriptionOverride: input.descriptionOverride || null,
-          owner: acquired.owner,
-          repo: acquired.repo,
+          owner: acquired?.owner ?? null,
+          repo: acquired?.repo ?? null,
+          sourceType: input.sourceType,
           category: input.category,
           labels: input.labels,
           licenseFallback: input.licenseFallback || null,
@@ -205,10 +237,10 @@ export const create = adminProcedure
 
         if (!template) throw new Error("Template insert returned no row.")
 
-        await tx.insert(templateRepositorySnapshots).values({
-          templateId: template.id,
-          ...acquired.snapshot,
-        })
+        if (acquired)
+          await tx
+            .insert(templateRepositorySnapshots)
+            .values({ templateId: template.id, ...acquired.snapshot })
 
         return template
       })

@@ -32,24 +32,31 @@ import {
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 
-const formSchema = z.object({
-  repositoryUrl: z
-    .string()
-    .trim()
-    .min(1, "Enter a GitHub repository URL.")
-    .max(2048),
-  slug: z.string().trim().min(1, "Enter a public template slug.").max(100),
-  name: z.string().trim().min(1, "Enter a display name.").max(200),
-  descriptionOverride: z.string().max(10000),
-  category: z.enum(CATEGORY_SLUGS),
-  labels: z.string(),
-  licenseFallback: z.string().max(128),
-  access: z.enum(["free", "paid"]),
-  imageName: z.string(),
-})
+const formSchema = z
+  .object({
+    sourceType: z.enum(["github", "managed"]),
+    repositoryUrl: z.string().trim().max(2048),
+    slug: z.string().trim().min(1, "Enter a public template slug.").max(100),
+    name: z.string().trim().min(1, "Enter a display name.").max(200),
+    descriptionOverride: z.string().max(10000),
+    category: z.enum(CATEGORY_SLUGS),
+    labels: z.string(),
+    licenseFallback: z.string().max(128),
+    access: z.enum(["free", "paid"]),
+    imageName: z.string(),
+  })
+  .superRefine((value, context) => {
+    if (value.sourceType === "github" && !value.repositoryUrl)
+      context.addIssue({
+        code: "custom",
+        path: ["repositoryUrl"],
+        message: "Enter a GitHub repository URL.",
+      })
+  })
 type FormValues = z.infer<typeof formSchema>
 
 const defaults: FormValues = {
+  sourceType: "github",
   repositoryUrl: "",
   slug: "",
   name: "",
@@ -86,7 +93,10 @@ export function CreateTemplateDialog({
       setFailure(null)
       try {
         await client.rpc.admin.templates.create({
-          repositoryUrl: value.repositoryUrl,
+          sourceType: value.sourceType,
+          ...(value.repositoryUrl
+            ? { repositoryUrl: value.repositoryUrl }
+            : {}),
           slug: value.slug,
           name: value.name,
           descriptionOverride: value.descriptionOverride.trim() || null,
@@ -129,8 +139,8 @@ export function CreateTemplateDialog({
         <DialogHeader>
           <DialogTitle>Add a template</DialogTitle>
           <DialogDescription>
-            Enter a public GitHub repository. Its repository details and README
-            will be fetched and saved with your catalog entry.
+            Add a GitHub-backed catalog template or a template that will be
+            published from a managed archive.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -141,27 +151,50 @@ export function CreateTemplateDialog({
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="GitHub repository URL"
-              controlId="template-repository-url"
-              error={
-                form.state.fieldMeta.repositoryUrl?.errors[0] as
-                  | string
-                  | undefined
-              }
-            >
-              <form.Field name="repositoryUrl">
-                {(field) => (
-                  <Input
-                    id="template-repository-url"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="https://github.com/owner/repository"
-                    autoComplete="url"
-                  />
-                )}
-              </form.Field>
+            <Field label="Source" controlId="template-source">
+              <Select
+                value={form.getFieldValue("sourceType")}
+                onValueChange={(value) => {
+                  if (value === "github" || value === "managed")
+                    form.setFieldValue("sourceType", value)
+                }}
+              >
+                <SelectTrigger id="template-source" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="github">
+                    Public GitHub repository
+                  </SelectItem>
+                  <SelectItem value="managed">Managed archive</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
+            {form.getFieldValue("sourceType") === "github" && (
+              <Field
+                label="GitHub repository URL"
+                controlId="template-repository-url"
+                error={
+                  form.state.fieldMeta.repositoryUrl?.errors[0] as
+                    | string
+                    | undefined
+                }
+              >
+                <form.Field name="repositoryUrl">
+                  {(field) => (
+                    <Input
+                      id="template-repository-url"
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="https://github.com/owner/repository"
+                      autoComplete="url"
+                    />
+                  )}
+                </form.Field>
+              </Field>
+            )}
             <Field
               label="Template slug"
               controlId="template-slug"

@@ -3,7 +3,10 @@ import ora from "ora"
 import { CliError, internal, templateInvalid } from "../errors/index.js"
 import { printError, printJson, printTemplateInfo } from "../output/index.js"
 import { resolveTemplateSource } from "../utils/resolve-template.js"
-import { resolveTemplateDescriptorInfo } from "../utils/template-plan.js"
+import {
+  resolveManagedTemplateInstallationPlan,
+  resolveTemplateDescriptorInfo,
+} from "../utils/template-plan.js"
 import type { TemplateSource } from "../utils/resolve-template.js"
 
 function getTemplateRef(
@@ -52,11 +55,35 @@ export const infoCommand = new Command("info")
           useLocalCache: true,
           refresh: opts.refresh ?? false,
         })
-        const repository = `${resolved.template.owner}/${resolved.template.repo}`
-        const info = await resolveTemplateDescriptorInfo(
-          repository,
-          getTemplateRef(resolved.template, opts.ref)
-        )
+        if (resolved.template.sourceType === "managed" && opts.ref)
+          throw templateInvalid(
+            resolved.template.slug,
+            "managed templates use their published version; remove --ref"
+          )
+        const managed =
+          resolved.template.sourceType === "managed"
+            ? await resolveManagedTemplateInstallationPlan({
+                slug: resolved.template.slug,
+              })
+            : null
+        if (managed && !managed.plan)
+          throw templateInvalid(
+            resolved.template.slug,
+            "no managed release has been published yet"
+          )
+        const info = managed?.plan
+          ? { descriptor: managed.plan.descriptor, source: managed.plan.source }
+          : resolved.template.owner && resolved.template.repo
+            ? await resolveTemplateDescriptorInfo(
+                `${resolved.template.owner}/${resolved.template.repo}`,
+                getTemplateRef(resolved.template, opts.ref)
+              )
+            : (() => {
+                throw templateInvalid(
+                  resolved.template.slug,
+                  "this template has no GitHub source"
+                )
+              })()
         spinner?.succeed("Template details loaded")
 
         const installSource = resolved.directRepository
