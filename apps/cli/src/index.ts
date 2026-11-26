@@ -14,6 +14,7 @@ import { organizationCommand } from "./commands/organization.js"
 import { updateCommand } from "./commands/update.js"
 import { addCommand } from "./commands/add.js"
 import { cacheCommand } from "./commands/cache.js"
+import { templateVersionCommand } from "./commands/version.js"
 import { printError } from "./output/index.js"
 import { CliError } from "./errors/index.js"
 import { normalizeTemplateCommandArgs } from "./template-command-args.js"
@@ -48,6 +49,7 @@ templateCommand.configureHelp({
   subcommandTerm: (command) => command.name(),
 })
 templateCommand.addHelpText("after", "\nAlias: templates")
+templateCommand.addCommand(templateVersionCommand)
 templateCommand.addCommand(templatePublishCommand)
 templateCommand.addCommand(releasesCommand)
 templateCommand.addCommand(
