@@ -122,8 +122,7 @@ function TemplatesHeader({
   return (
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="flex flex-col gap-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Library</p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Templates</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Templates</h1>
         <p className="text-sm text-muted-foreground">
           Private templates for {organizationName}. Only members of this
           organization can see them.
