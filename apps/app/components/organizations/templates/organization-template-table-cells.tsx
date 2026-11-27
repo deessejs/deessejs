@@ -3,6 +3,11 @@ import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@workspace/ui/components/tooltip"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,83 +38,108 @@ import {
   formatLabel,
 } from "./template-table-format"
 
-export function TemplateIdentity({
+export function TemplateThumbnail({
   template,
 }: {
   template: OrganizationTemplate
 }) {
   const imageUrl = template.previewImageUrl ?? template.imageUrl
+  return imageUrl ? (
+    <Image
+      src={imageUrl}
+      alt=""
+      width={48}
+      height={48}
+      sizes="48px"
+      unoptimized
+      className="size-12 shrink-0 rounded-md border bg-muted object-cover"
+    />
+  ) : (
+    <div
+      className="flex size-12 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
+      aria-hidden
+    >
+      <BoxesIcon className="size-5" />
+    </div>
+  )
+}
+
+export function TemplateIdentity({
+  template,
+}: {
+  template: OrganizationTemplate
+}) {
   const repository =
     template.sourceType === "managed"
       ? "Managed archive"
       : [template.owner, template.repo].filter(Boolean).join("/")
 
   return (
-    <div className="flex min-w-0 items-start gap-3">
-      {imageUrl ? (
-        <Image
-          src={imageUrl}
-          alt=""
-          width={48}
-          height={48}
-          sizes="48px"
-          unoptimized
-          className="size-12 shrink-0 rounded-md border bg-muted object-cover"
-        />
-      ) : (
-        <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground"
-          aria-hidden
+    <div className="min-w-0">
+      {template.canonicalUrl ? (
+        <Link
+          className="block truncate font-medium underline-offset-4 hover:underline focus-visible:underline"
+          href={template.canonicalUrl}
+          target="_blank"
+          rel="noreferrer"
         >
-          <BoxesIcon className="size-5" />
-        </div>
+          {template.name}
+        </Link>
+      ) : (
+        <p className="truncate font-medium">{template.name}</p>
       )}
-      <div className="min-w-0 flex-1">
-        {template.canonicalUrl ? (
-          <Link
-            className="block truncate font-medium underline-offset-4 hover:underline focus-visible:underline"
-            href={template.canonicalUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {template.name}
-          </Link>
-        ) : (
-          <p className="truncate font-medium">{template.name}</p>
-        )}
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          <span className="font-mono">{template.slug}</span>
-          {repository ? <span> · {repository}</span> : null}
-          {template.sourceType === "managed" && !template.installable ? (
-            <span> · First release not published</span>
-          ) : null}
-        </p>
-        {template.fetchedAt ? (
-          <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <CalendarClockIcon className="size-3 shrink-0" aria-hidden />
-            <time dateTime={template.fetchedAt}>
-              Last fetched {formatFetchedDate(template.fetchedAt)}
-            </time>
-          </p>
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+        <span className="font-mono">{template.slug}</span>
+        {repository ? <span> · {repository}</span> : null}
+        {template.sourceType === "managed" && !template.installable ? (
+          <span> · First release not published</span>
         ) : null}
-      </div>
+      </p>
     </div>
   )
 }
 
-export function TemplateClassification({
+export function TemplateFetchedAt({
+  template,
+}: {
+  template: OrganizationTemplate
+}) {
+  return template.fetchedAt ? (
+    <p className="inline-flex items-center gap-1.5 text-xs whitespace-nowrap text-muted-foreground">
+      <CalendarClockIcon className="size-3.5 shrink-0" aria-hidden />
+      <time dateTime={template.fetchedAt}>
+        {formatFetchedDate(template.fetchedAt)}
+      </time>
+    </p>
+  ) : (
+    <span className="text-xs whitespace-nowrap text-muted-foreground">
+      Not fetched yet
+    </span>
+  )
+}
+
+export function TemplateCategory({
   template,
 }: {
   template: OrganizationTemplate
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Badge
-        variant="outline"
-        className={categoryStyles[template.category] ?? categoryStyles.default}
-      >
-        {formatCategory(template.category)}
-      </Badge>
+    <Badge
+      variant="outline"
+      className={categoryStyles[template.category] ?? categoryStyles.default}
+    >
+      {formatCategory(template.category)}
+    </Badge>
+  )
+}
+
+export function TemplateLabels({
+  template,
+}: {
+  template: OrganizationTemplate
+}) {
+  return (
+    <div className="flex min-w-40 flex-wrap items-center gap-1.5">
       {template.labels.slice(0, 4).map((label) => (
         <Badge
           key={label}
@@ -144,20 +174,11 @@ export function TemplateStatus({
   const secondary = statuses.filter((status) => status !== primary)
 
   return (
-    <div className="flex min-w-36 flex-col items-start gap-1.5">
+    <div className="flex items-center gap-1.5">
       <StatusBadge status={primary} />
       {secondary.map((status) => (
         <StatusBadge key={status} status={status} />
       ))}
-      {template.publication?.reviewStatus === "rejected" &&
-      template.publication.reviewReason ? (
-        <p
-          className="max-w-48 truncate text-xs text-muted-foreground"
-          title={template.publication.reviewReason}
-        >
-          {template.publication.reviewReason}
-        </p>
-      ) : null}
     </div>
   )
 }
@@ -166,14 +187,19 @@ function StatusBadge({ status }: { status: TemplateStatusFilter }) {
   const config = statusConfig[status]
   const Icon = config.icon
   return (
-    <Badge
-      variant="outline"
-      title={config.label}
-      className={`gap-1.5 ${config.className}`}
-    >
-      <Icon className="size-3.5" aria-hidden />
-      {config.label}
-    </Badge>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          role="img"
+          aria-label={config.label}
+          tabIndex={0}
+          className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none ${config.className}`}
+        >
+          <Icon className="size-3.5" aria-hidden />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{config.label}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -196,7 +222,7 @@ export function TemplateActions({
   const actionLabel = isPending
     ? "Withdraw publication request"
     : template.currentlyPublished
-      ? "Submit template update"
+      ? "Submit template updates"
       : "Request template publication"
 
   return (
@@ -211,7 +237,10 @@ export function TemplateActions({
           <EllipsisIcon aria-hidden />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="end"
+        className="w-max max-w-[calc(100vw-1rem)] min-w-[min(16rem,calc(100vw-1rem))] overflow-x-auto"
+      >
         <DropdownMenuLabel className="max-w-56 truncate">
           {template.name}
         </DropdownMenuLabel>
@@ -222,7 +251,7 @@ export function TemplateActions({
               ? onWithdrawPublication(template.id)
               : onRequestPublication(template)
           }
-          className={isPending ? "text-destructive focus:text-destructive" : ""}
+          className={`whitespace-nowrap ${isPending ? "text-destructive focus:text-destructive" : ""}`}
         >
           {isPending ? (
             <Undo2Icon aria-hidden />
