@@ -450,7 +450,9 @@ WCAG 2.1 AA. Every component must:
 The DS that ships now includes:
 
 - **Tokens:** full color, typography, spacing, radius, shadow, easing.
+- **Behavior layer:** UI SDK provides reusable interaction and accessibility behavior inside `@workspace/ui`. Applications continue importing UI components from `@workspace/ui`; UI SDK components are not app dependencies. Existing DeesseJS visuals and primitive APIs remain the source of truth.
 - **24 shadcn primitives** (installed via `pnpm dlx shadcn@latest add` on 2026-06-24, base-nova / Base UI style; `Avatar` and `Table` added 2026-06-26 to support `AuthorBadge` and the `/pricing` feature matrix; `Collapsible` and `ScrollArea` added subsequently; `Sidebar`, `Sheet`, and `Skeleton` added 2026-06-30 to support the Cloud v0 `(protected)` shell — `Sidebar` ships with its own mobile drawer via `Sheet` and a loading primitive via `Skeleton`): `Button`, `Input`, `Textarea`, `Field`, `Label`, `Card`, `Dialog`, `DropdownMenu`, `Popover`, `Tooltip`, `Sonner`, `Checkbox`, `Switch`, `Separator`, `Accordion`, `Badge`, `Select`, `Avatar`, `Table`, `Collapsible`, `ScrollArea`, `Sidebar`, `Sheet`, `Skeleton`.
+  - **1 async behavior primitive:** `AsyncButton` uses UI SDK's async button behavior and the existing Button tokens and variants. The existing `Button` API and styles are unchanged.
   - **Note on `Form`:** Forms use `react-hook-form` + `Zod` as a pattern (§4.2) — there is no shadcn `Form` primitive in the CLI registry.
 - **1 custom component (still to ship, will live in `src/components/`, not in `src/components/ui/`):** `InteractiveFiletree` — the visual centerpiece of the v1 landing page. Built with Motion for hover/click animations. Renders the monorepo structure as a monospaced tree with paired code panels (the "supastarter pattern" from §6 of `landing-page.md`). Not a shadcn primitive — has its own docs entry.
 

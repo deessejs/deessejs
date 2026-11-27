@@ -41,12 +41,14 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@testing-library/react": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@workspace/typescript-config": "workspace:*",
     "@workspace/vitest-config": "workspace:*",
+    "jsdom": "catalog:",
     "oxlint": "catalog:",
     "tailwindcss": "^4",
     "typescript": "catalog:",

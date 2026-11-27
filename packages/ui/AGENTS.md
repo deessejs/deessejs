@@ -28,6 +28,8 @@ There is no build step. The applications resolve this package as source, through
 | `./components/*` | `src/components/*.tsx` |
 | `./hooks/*` | `src/hooks/*.ts` |
 
+`@ui-sdk/core` and `@ui-sdk/react` are internal behavior dependencies of this package. Use them to supply reusable interaction and accessibility behavior while keeping DeesseJS tokens, styles, and public component APIs in `@workspace/ui`. Application code imports the `@workspace/ui` wrapper, never UI SDK directly. Keep feature-specific business logic and messages in the owning application.
+
 ## Conventions
 
 - **Semantic tokens only.** A component references `--primary`, `bg-primary`, `text-foreground`. It never hardcodes a color, and it never reaches for a raw hex value. The token table lives in `DESIGN.md`.
