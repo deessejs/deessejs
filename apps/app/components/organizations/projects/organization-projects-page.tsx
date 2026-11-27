@@ -4,11 +4,15 @@ import Link from "next/link"
 import { client } from "@/lib/client"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
 import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { CardGridSkeleton } from "@/components/loading/page-skeleton"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group"
+import { SearchIcon } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import {
   Card,
   CardContent,
@@ -88,7 +92,8 @@ export function OrganizationProjectsPage({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Projects</h1>
           <p className="text-sm text-muted-foreground">
             Projects imported from GitHub for {organizationName}.
           </p>
@@ -188,9 +193,41 @@ function ProjectList({
   organizationSlug: string
   projects: OrganizationProject[]
 }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | "attention" | "valid">("all")
+  const [search, setSearch] = useState("")
+  const counts = useMemo(() => ({
+    all: projects.length,
+    attention: projects.filter((project) => project.status !== "valid").length,
+    valid: projects.filter((project) => project.status === "valid").length,
+  }), [projects])
+  const visibleProjects = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase()
+    return projects.filter((project) => {
+      const matchesStatus = statusFilter === "all" || (statusFilter === "valid" ? project.status === "valid" : project.status !== "valid")
+      const matchesSearch = !term || `${project.name} ${project.repositoryFullName}`.toLocaleLowerCase().includes(term)
+      return matchesStatus && matchesSearch
+    })
+  }, [projects, search, statusFilter])
+
   return (
-    <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {projects.map((project) => {
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+          <TabsList variant="line" aria-label="Filter projects by status" className="h-auto w-full justify-start gap-5 rounded-none p-0 sm:w-fit">
+            {(["all", "attention", "valid"] as const).map((filter) => (
+              <TabsTrigger key={filter} value={filter} className="h-auto flex-none justify-start gap-2 rounded-none px-1 pb-3 pt-1">
+                {filter === "all" ? "All projects" : filter === "attention" ? "Needs attention" : "Valid"}<span className="font-mono text-xs tabular-nums">{counts[filter]}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <InputGroup className="mb-2 w-full sm:mb-2 sm:max-w-sm">
+          <InputGroupAddon><SearchIcon aria-hidden /></InputGroupAddon>
+          <InputGroupInput aria-label="Search projects" placeholder="Search by project or repository" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </InputGroup>
+      </div>
+      {visibleProjects.length === 0 ? <p className="rounded-md border px-5 py-10 text-center text-sm text-muted-foreground">No projects match these filters.</p> : <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {visibleProjects.map((project) => {
         const status = projectStatus[project.status]
         return (
           <li key={project.id}>
@@ -252,6 +289,7 @@ function ProjectList({
           </li>
         )
       })}
-    </ul>
+    </ul>}
+    </div>
   )
 }

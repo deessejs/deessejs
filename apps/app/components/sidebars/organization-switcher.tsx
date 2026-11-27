@@ -20,12 +20,13 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import {
-  Building2Icon,
   BoxesIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   PlusIcon,
 } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar"
+import { getInitials } from "@/lib/initials"
 
 import {
   ORGANIZATIONS_PATH,
@@ -130,7 +131,12 @@ export function OrganizationSwitcher({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton size="lg" tooltip={currentLabel}>
-                <Building2Icon className="size-4 shrink-0" aria-hidden />
+                <Avatar className="size-8 shrink-0 rounded-md">
+                  {current?.logo && <AvatarImage src={current.logo} alt="" />}
+                  <AvatarFallback className="rounded-md bg-primary/10 text-xs font-semibold text-primary">
+                    {getInitials(currentLabel)}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
                   <span className="truncate font-medium">{currentLabel}</span>
                   <span className="truncate text-xs text-sidebar-foreground/70">

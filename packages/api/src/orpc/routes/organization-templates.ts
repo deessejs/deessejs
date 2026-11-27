@@ -5,6 +5,7 @@ import {
   OrganizationTemplatesListResponseV1,
 } from "@workspace/contracts/v1"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
+import { hasOrganizationProEntitlement } from "@workspace/auth/organization/entitlement"
 import {
   db,
   member,
@@ -29,6 +30,7 @@ import { transitionPendingPublicationImageReference } from "../../core/templates
 import { base } from "../base.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
+import { getManagedTemplateReleaseSummaries } from "../../core/managed-releases/template-previews.js"
 
 const accessDeniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
@@ -69,6 +71,7 @@ export const list = base
         descriptionOverride: templates.descriptionOverride,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
         category: templates.category,
         labels: templates.labels,
         imageObjectId: templates.imageObjectId,
@@ -82,7 +85,7 @@ export const list = base
         fetchedAt: templateRepositorySnapshots.fetchedAt,
       })
       .from(templates)
-      .innerJoin(
+      .leftJoin(
         templateRepositorySnapshots,
         eq(templates.id, templateRepositorySnapshots.templateId)
       )
@@ -109,6 +112,18 @@ export const list = base
               )
             )
         : []
+    const managedIds = rows
+      .filter((row) => row.sourceType === "managed")
+      .map((row) => row.id)
+    const releaseSummaries = await getManagedTemplateReleaseSummaries(
+      managedIds,
+      {
+        includePreviews: await hasOrganizationProEntitlement(
+          context.user.id,
+          context.organization.id
+        ),
+      }
+    )
     const currentlyPublished = new Set(
       currentPublications.map((publication) => publication.templateId)
     )
@@ -150,16 +165,23 @@ export const list = base
             row.descriptionOverride ?? row.repositoryDescription ?? "",
           owner: row.owner,
           repo: row.repo,
+          sourceType: row.sourceType,
+          installable:
+            row.sourceType === "github" || releaseSummaries.has(row.id),
           category: row.category,
           labels: row.labels,
           license: row.licenseFallback ?? row.snapshotLicense ?? "",
           canonicalUrl: row.canonicalUrl,
           repositoryName: row.repositoryName,
           stars: row.stars,
-          fetchedAt: row.fetchedAt.toISOString(),
+          fetchedAt: row.fetchedAt?.toISOString() ?? null,
           ...(row.imageObjectId
-            ? { imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}` }
+            ? {
+                imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+              }
             : {}),
+          previewImageUrl:
+            releaseSummaries.get(row.id)?.previewImageUrl ?? null,
           currentlyPublished: currentlyPublished.has(row.id),
           publication: publication
             ? {
@@ -226,9 +248,13 @@ export const create = base
       throw errors.ORGANIZATION_ACCESS_DENIED()
     }
 
-    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>>
+    let acquired: Awaited<ReturnType<typeof acquireTemplateRepository>> | null =
+      null
     try {
-      acquired = await acquireTemplateRepository(input.repositoryUrl)
+      if (input.sourceType === "github") {
+        if (!input.repositoryUrl) throw new InvalidTemplateSourceError()
+        acquired = await acquireTemplateRepository(input.repositoryUrl)
+      } else if (input.repositoryUrl) throw new InvalidTemplateSourceError()
     } catch (error) {
       if (error instanceof InvalidTemplateSourceError) {
         throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
@@ -280,8 +306,9 @@ export const create = base
             slug: input.slug,
             name: input.name,
             descriptionOverride: input.descriptionOverride || null,
-            owner: acquired.owner,
-            repo: acquired.repo,
+            owner: acquired?.owner ?? null,
+            repo: acquired?.repo ?? null,
+            sourceType: input.sourceType,
             category: input.category,
             labels: input.labels,
             licenseFallback: input.licenseFallback || null,
@@ -297,10 +324,10 @@ export const create = base
 
         if (!template) throw new Error("Template insert returned no row.")
 
-        await tx.insert(templateRepositorySnapshots).values({
-          templateId: template.id,
-          ...acquired.snapshot,
-        })
+        if (acquired)
+          await tx
+            .insert(templateRepositorySnapshots)
+            .values({ templateId: template.id, ...acquired.snapshot })
 
         return template
       })
@@ -353,6 +380,35 @@ const submissionErrors = {
   },
 }
 
+function hasPublicGithubSource(template: {
+  sourceType: "github" | "managed"
+  owner: string | null
+  repo: string | null
+}): boolean {
+  return (
+    template.sourceType === "github" &&
+    Boolean(template.owner) &&
+    Boolean(template.repo)
+  )
+}
+
+async function acquirePublicTemplateSource(
+  repositoryUrl: string,
+  errors: { invalidSource: () => Error; fetchFailed: () => Error }
+) {
+  try {
+    return await acquireTemplateRepositoryRevision(repositoryUrl)
+  } catch (error) {
+    if (error instanceof InvalidTemplateSourceError) {
+      throw errors.invalidSource()
+    }
+    if (error instanceof TemplateSourceFetchError) {
+      throw errors.fetchFailed()
+    }
+    throw error
+  }
+}
+
 export const submit = base
   .input(submitInput)
   .errors(submissionErrors)
@@ -381,6 +437,7 @@ export const submit = base
         descriptionOverride: templates.descriptionOverride,
         owner: templates.owner,
         repo: templates.repo,
+        sourceType: templates.sourceType,
         category: templates.category,
         labels: templates.labels,
         imageName: templates.imageName,
@@ -398,24 +455,20 @@ export const submit = base
       .limit(1)
 
     if (!template) throw errors.ORGANIZATION_ACCESS_DENIED()
+    if (!hasPublicGithubSource(template)) {
+      throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
+    }
     if (!/^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/.test(template.slug)) {
       throw errors.TEMPLATE_SLUG_INVALID()
     }
 
-    let acquired: Awaited<ReturnType<typeof acquireTemplateRepositoryRevision>>
-    try {
-      acquired = await acquireTemplateRepositoryRevision(
-        `https://github.com/${template.owner}/${template.repo}`
-      )
-    } catch (error) {
-      if (error instanceof InvalidTemplateSourceError) {
-        throw errors.TEMPLATE_GITHUB_SOURCE_INVALID()
+    const acquired = await acquirePublicTemplateSource(
+      `https://github.com/${template.owner}/${template.repo}`,
+      {
+        invalidSource: () => errors.TEMPLATE_GITHUB_SOURCE_INVALID(),
+        fetchFailed: () => errors.TEMPLATE_GITHUB_FETCH_FAILED(),
       }
-      if (error instanceof TemplateSourceFetchError) {
-        throw errors.TEMPLATE_GITHUB_FETCH_FAILED()
-      }
-      throw error
-    }
+    )
 
     const license = template.licenseFallback ?? acquired.snapshot.license
     if (!license?.trim()) throw errors.TEMPLATE_LICENSE_REQUIRED()

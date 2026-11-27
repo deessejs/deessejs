@@ -38,7 +38,7 @@ export function OrganizationProjectImportPage({
   const settingsPath = workspaceOrganizationSettingsPath(organizationSlug)
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <header className="flex flex-col gap-3">
         <Button variant="ghost" asChild className="w-fit px-0">
           <Link href={workspaceProjectsPath(organizationSlug)}>
@@ -47,7 +47,8 @@ export function OrganizationProjectImportPage({
           </Link>
         </Button>
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Import Project</h1>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">GitHub</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Import project</h1>
           <p className="text-sm text-muted-foreground">
             Add a GitHub project to {organizationName}.
           </p>

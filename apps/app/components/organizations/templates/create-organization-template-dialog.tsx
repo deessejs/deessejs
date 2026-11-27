@@ -29,24 +29,35 @@ import {
 } from "@workspace/ui/components/select"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
+import {
+  repositoryUrlForSource,
+  switchTemplateSource,
+} from "@/lib/template-source-form"
 
-const formSchema = z.object({
-  repositoryUrl: z
-    .string()
-    .trim()
-    .min(1, "Enter a GitHub repository URL.")
-    .max(2048),
-  slug: z.string().trim().min(1, "Enter a template slug.").max(100),
-  name: z.string().trim().min(1, "Enter a display name.").max(200),
-  descriptionOverride: z.string().max(10000),
-  category: z.enum(CATEGORY_SLUGS),
-  labels: z.string(),
-  licenseFallback: z.string().max(128),
-})
+const formSchema = z
+  .object({
+    sourceType: z.enum(["github", "managed"]),
+    repositoryUrl: z.string().trim().max(2048),
+    slug: z.string().trim().min(1, "Enter a template slug.").max(100),
+    name: z.string().trim().min(1, "Enter a display name.").max(200),
+    descriptionOverride: z.string().max(10000),
+    category: z.enum(CATEGORY_SLUGS),
+    labels: z.string(),
+    licenseFallback: z.string().max(128),
+  })
+  .superRefine((value, context) => {
+    if (value.sourceType === "github" && !value.repositoryUrl)
+      context.addIssue({
+        code: "custom",
+        path: ["repositoryUrl"],
+        message: "Enter a GitHub repository URL.",
+      })
+  })
 
 type FormValues = z.infer<typeof formSchema>
 
 const defaults: FormValues = {
+  sourceType: "github",
   repositoryUrl: "",
   slug: "",
   name: "",
@@ -115,9 +126,10 @@ export function CreateOrganizationTemplateDialog({
       try {
         await client.rpc.organization.templates.create({
           organizationSlug,
+          sourceType: value.sourceType,
+          ...repositoryUrlForSource(value.sourceType, value.repositoryUrl),
           slug: value.slug,
           name: value.name,
-          repositoryUrl: value.repositoryUrl,
           descriptionOverride: value.descriptionOverride.trim() || null,
           category: value.category,
           labels: value.labels
@@ -138,6 +150,7 @@ export function CreateOrganizationTemplateDialog({
       }
     },
   })
+  const repositoryError = form.state.fieldMeta.repositoryUrl?.errors[0]
 
   function handleOpenChange(next: boolean) {
     if (!next && !form.state.isSubmitting) {
@@ -153,8 +166,8 @@ export function CreateOrganizationTemplateDialog({
         <DialogHeader>
           <DialogTitle>Add a private template</DialogTitle>
           <DialogDescription>
-            Add a public GitHub repository. Its repository details and README
-            are fetched and saved for {organizationSlug}.
+            Add a GitHub-backed template or create a managed template for{" "}
+            {organizationSlug} and publish its archive from the local project.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -165,27 +178,62 @@ export function CreateOrganizationTemplateDialog({
           }}
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="GitHub repository URL"
-              controlId="organization-template-repository-url"
-              error={
-                form.state.fieldMeta.repositoryUrl?.errors[0] as
-                  | string
-                  | undefined
-              }
-            >
-              <form.Field name="repositoryUrl">
-                {(field) => (
-                  <Input
-                    id="organization-template-repository-url"
-                    value={field.state.value}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="https://github.com/owner/repository"
-                    autoComplete="url"
-                  />
-                )}
-              </form.Field>
+            <Field label="Source" controlId="organization-template-source">
+              <Select
+                value={form.getFieldValue("sourceType")}
+                onValueChange={(value) => {
+                  if (value === "github" || value === "managed") {
+                    const next = switchTemplateSource(
+                      {
+                        sourceType: form.getFieldValue("sourceType"),
+                        repositoryUrl: form.getFieldValue("repositoryUrl"),
+                      },
+                      value
+                    )
+                    form.setFieldValue("sourceType", next.sourceType)
+                    form.setFieldValue("repositoryUrl", next.repositoryUrl)
+                  }
+                }}
+              >
+                <SelectTrigger
+                  id="organization-template-source"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="github">
+                    Public GitHub repository
+                  </SelectItem>
+                  <SelectItem value="managed">Managed archive</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
+            {form.getFieldValue("sourceType") === "github" && (
+              <Field
+                label="GitHub repository URL"
+                controlId="organization-template-repository-url"
+                error={
+                  typeof repositoryError === "string"
+                    ? repositoryError
+                    : undefined
+                }
+              >
+                <form.Field name="repositoryUrl">
+                  {(field) => (
+                    <Input
+                      id="organization-template-repository-url"
+                      value={field.state.value}
+                      onChange={(event) =>
+                        field.handleChange(event.target.value)
+                      }
+                      placeholder="https://github.com/owner/repository"
+                      autoComplete="url"
+                    />
+                  )}
+                </form.Field>
+              </Field>
+            )}
             <Field
               label="Template slug"
               controlId="organization-template-slug"

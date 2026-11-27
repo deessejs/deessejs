@@ -130,11 +130,15 @@ async function resolveTemplatePlan(input: {
 }): Promise<Awaited<ReturnType<typeof resolveTemplateInstallationPlan>>> {
   if (
     input.useCatalog &&
-    (input.organizationSlug || input.template.requiresManaged)
+    (input.organizationSlug ||
+      input.template.requiresManaged ||
+      input.template.sourceType === "managed")
   ) {
     const managed = await resolveManagedTemplateInstallationPlan({
       slug: input.template.slug,
-      repository: `${input.template.owner}/${input.template.repo}`,
+      ...(input.template.owner && input.template.repo
+        ? { repository: `${input.template.owner}/${input.template.repo}` }
+        : {}),
       ...(input.organizationSlug
         ? { organizationSlug: input.organizationSlug }
         : {}),
@@ -147,6 +151,12 @@ async function resolveTemplatePlan(input: {
         "this protected template must be initialized from its managed release"
       )
     }
+  }
+  if (!input.template.owner || !input.template.repo) {
+    throw templateInvalid(
+      input.template.slug,
+      "this managed template has no published release yet"
+    )
   }
   return resolveTemplateInstallationPlan(
     `${input.template.owner}/${input.template.repo}`,
@@ -165,7 +175,10 @@ async function createTemplateProject(
   showProgress: boolean,
   verbose: boolean
 ): Promise<string> {
-  const repository = `${template.owner}/${template.repo}`
+  const repository =
+    template.owner && template.repo
+      ? `${template.owner}/${template.repo}`
+      : template.slug
   if (template.community && ref) {
     throw templateInvalid(
       template.slug,
@@ -173,7 +186,9 @@ async function createTemplateProject(
     )
   }
   const resolvedRef = template.community ? template.sourceCommit : ref
-  logVerbose(verbose, `Source repository: https://github.com/${repository}`)
+  if (template.owner && template.repo)
+    logVerbose(verbose, `Source repository: https://github.com/${repository}`)
+  else logVerbose(verbose, "Source: managed release archive")
   logVerbose(verbose, `Requested ref: ${resolvedRef ?? "default branch"}`)
   logVerbose(verbose, `Target directory: ${dir}`)
   const downloadSpinner = showProgress
@@ -304,7 +319,7 @@ async function loadTemplateState(
     accessToken = auth.access_token
     // The API's org-scoped release resolver is authoritative. Do not discover
     // private releases through the public template catalog or template.list.
-    template = { slug: slugOrUrl, owner: options.organization, repo: slugOrUrl }
+    template = { slug: slugOrUrl, sourceType: "managed", requiresManaged: true }
     directRepository = null
   } else {
     const resolved = await resolveTemplateSource(slugOrUrl)

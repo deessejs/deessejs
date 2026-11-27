@@ -165,6 +165,7 @@ function findDescriptor(
 }
 
 function normalizeRepository(repository: string): string | null {
+  if (repository.startsWith("managed-release:")) return repository.toLowerCase()
   const match = /^([A-Za-z0-9-]+)\/([A-Za-z0-9_.-]+)$/.exec(repository)
   const owner = match?.[1]
   const name = match?.[2]
@@ -239,6 +240,7 @@ function validateDescriptorSource(
   request: TemplateSourceRequest,
   snapshot: Pick<TemplateSourceSnapshot, "repository">
 ): TemplateInstallationDiagnostic[] {
+  if (request.repository.startsWith("managed-release:")) return []
   const diagnostics: TemplateInstallationDiagnostic[] = []
   const expectedRepository = normalizeRepository(request.repository)
   const actualRepository = descriptor.source
@@ -266,6 +268,7 @@ async function validateDescriptorRef(
   snapshot: Pick<TemplateSourceSnapshot, "repository" | "revision">,
   resolveRevision: (repository: string, ref: string) => Promise<string>
 ): Promise<TemplateInstallationDiagnostic[]> {
+  if (snapshot.repository.startsWith("managed-release:")) return []
   if (!descriptor.source?.ref) return []
 
   try {

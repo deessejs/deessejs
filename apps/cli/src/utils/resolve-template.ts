@@ -7,12 +7,15 @@ import {
 import { networkError, notFound, templateInvalid } from "../errors/index.js"
 import { looksLikeUrl, parseGitHubRepositoryUrl } from "./github-repository.js"
 
-export type TemplateSource = Pick<Template, "slug" | "owner" | "repo"> & {
-  community?: true
-  requiresManaged?: boolean | undefined
-  sourceCommit?: string
-  templateSlug?: string
-}
+export type TemplateSource = Pick<Template, "slug"> &
+  Partial<Pick<Template, "owner" | "repo">> & {
+    community?: true
+    requiresManaged?: boolean | undefined
+    sourceCommit?: string
+    templateSlug?: string
+    sourceType?: "github" | "managed" | undefined
+    installable?: boolean | undefined
+  }
 
 export type ResolvedTemplateSource = {
   template: TemplateSource

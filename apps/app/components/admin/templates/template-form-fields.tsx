@@ -18,21 +18,28 @@ import {
 } from "@workspace/ui/components/select"
 import { z } from "zod"
 
-export const templateFormSchema = z.object({
-  repositoryUrl: z
-    .string()
-    .trim()
-    .min(1, "Enter a GitHub repository URL.")
-    .max(2048),
-  slug: z.string().trim().min(1, "Enter a public template slug.").max(100),
-  name: z.string().trim().min(1, "Enter a display name.").max(200),
-  descriptionOverride: z.string().max(10000),
-  category: z.enum(CATEGORY_SLUGS),
-  labels: z.string(),
-  licenseFallback: z.string().max(128),
-  access: z.enum(["free", "paid"]),
-  imageName: z.string(),
-})
+export const templateFormSchema = z
+  .object({
+    sourceType: z.enum(["github", "managed"]),
+    repositoryUrl: z.string().trim().max(2048),
+    slug: z.string().trim().min(1, "Enter a public template slug.").max(100),
+    name: z.string().trim().min(1, "Enter a display name.").max(200),
+    descriptionOverride: z.string().max(10000),
+    category: z.enum(CATEGORY_SLUGS),
+    labels: z.string(),
+    licenseFallback: z.string().max(128),
+    access: z.enum(["free", "paid"]),
+    imageName: z.string(),
+  })
+  .superRefine((value, context) => {
+    if (value.sourceType === "github" && !value.repositoryUrl) {
+      context.addIssue({
+        code: "custom",
+        path: ["repositoryUrl"],
+        message: "Enter a GitHub repository URL.",
+      })
+    }
+  })
 
 export type TemplateFormValues = z.infer<typeof templateFormSchema>
 
@@ -41,7 +48,7 @@ export type EditableTemplate = {
   slug: string
   name: string
   descriptionOverride: string | null
-  canonicalUrl: string
+  canonicalUrl: string | null
   category: string
   labels: string[]
   licenseFallback: string | null
@@ -54,6 +61,7 @@ type TemplateFormFieldsProps = {
   errors: Partial<Record<keyof TemplateFormValues, string | undefined>>
   template: EditableTemplate | null
   onChange: (name: keyof TemplateFormValues, value: string) => void
+  allowManagedSource?: boolean
 }
 
 export function TemplateFormFields({
@@ -61,10 +69,31 @@ export function TemplateFormFields({
   errors,
   template,
   onChange,
+  allowManagedSource = false,
 }: TemplateFormFieldsProps) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {!template && (
+      {!template && allowManagedSource && (
+        <Field label="Source" controlId="template-source">
+          <Select
+            value={values.sourceType}
+            onValueChange={(value) => {
+              if (value === "github" || value === "managed") {
+                onChange("sourceType", value)
+              }
+            }}
+          >
+            <SelectTrigger id="template-source" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="github">Public GitHub repository</SelectItem>
+              <SelectItem value="managed">Managed archive</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
+      {!template && values.sourceType === "github" && (
         <Field
           label="GitHub repository URL"
           controlId="template-repository-url"
