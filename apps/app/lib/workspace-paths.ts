@@ -30,8 +30,16 @@ export const workspaceHomePath = (slug: string): string => `/${slug}/home`
 export const workspaceTemplatesPath = (slug: string): string =>
   `/${slug}/templates`
 
+/** The public template catalogue inside an organization's workspace. */
+export const workspaceBrowseTemplatesPath = (slug: string): string =>
+  `${workspaceTemplatesPath(slug)}/browse`
+
 /** The organization's private capability blocks. */
 export const workspaceBlocksPath = (slug: string): string => `/${slug}/blocks`
+
+/** The public blocks catalogue inside an organization's workspace. */
+export const workspaceBrowseBlocksPath = (slug: string): string =>
+  `${workspaceBlocksPath(slug)}/browse`
 
 /** The organization's imported projects. */
 export const workspaceProjectsPath = (slug: string): string =>

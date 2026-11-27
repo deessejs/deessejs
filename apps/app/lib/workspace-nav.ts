@@ -5,10 +5,13 @@ import {
   SettingsIcon,
   FilesIcon,
   BlocksIcon,
+  CompassIcon,
 } from "lucide-react"
 
 import {
   workspaceHomePath,
+  workspaceBrowseBlocksPath,
+  workspaceBrowseTemplatesPath,
   workspaceBlocksPath,
   workspaceOrganizationSettingsPath,
   workspaceProjectsPath,
@@ -52,19 +55,39 @@ export const workspaceNavGroups = (slug: string): WorkspaceNavGroup[] => [
     entries: [
       { label: "Home", href: workspaceHomePath(slug), icon: HomeIcon },
       {
-        label: "Templates",
+        label: "Projects",
+        href: workspaceProjectsPath(slug),
+        icon: FolderGit2Icon,
+      },
+    ],
+  },
+  {
+    label: "Templates",
+    entries: [
+      {
+        label: "My templates",
         href: workspaceTemplatesPath(slug),
         icon: FilesIcon,
       },
       {
-        label: "Blocks",
+        label: "Browse templates",
+        href: workspaceBrowseTemplatesPath(slug),
+        icon: CompassIcon,
+      },
+    ],
+  },
+  {
+    label: "Blocks",
+    entries: [
+      {
+        label: "My blocks",
         href: workspaceBlocksPath(slug),
         icon: BlocksIcon,
       },
       {
-        label: "Projects",
-        href: workspaceProjectsPath(slug),
-        icon: FolderGit2Icon,
+        label: "Browse blocks",
+        href: workspaceBrowseBlocksPath(slug),
+        icon: CompassIcon,
       },
     ],
   },

@@ -2,7 +2,13 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
-import { BlocksIcon, FilesIcon, FolderGit2Icon, HomeIcon } from "lucide-react"
+import {
+  BlocksIcon,
+  CompassIcon,
+  FilesIcon,
+  FolderGit2Icon,
+  HomeIcon,
+} from "lucide-react"
 
 import {
   activeWorkspaceHref,
@@ -35,6 +41,8 @@ describe("the workspace navigation", () => {
   it("holds the groups the shell shows today", () => {
     expect(workspaceNavGroups("acme").map((group) => group.label)).toEqual([
       "Workspace",
+      "Templates",
+      "Blocks",
       "Settings",
     ])
   })
@@ -42,22 +50,28 @@ describe("the workspace navigation", () => {
   it("holds the entries of an organization", () => {
     expect(workspaceNavEntries("acme").map((entry) => entry.label)).toEqual([
       "Home",
-      "Templates",
-      "Blocks",
       "Projects",
+      "My templates",
+      "Browse templates",
+      "My blocks",
+      "Browse blocks",
       "General",
     ])
-    expect(workspaceNavEntries("acme")[1]?.icon).toBe(FilesIcon)
-    expect(workspaceNavEntries("acme")[2]?.icon).toBe(BlocksIcon)
-    expect(workspaceNavEntries("acme")[3]?.icon).toBe(FolderGit2Icon)
+    expect(workspaceNavEntries("acme")[2]?.icon).toBe(FilesIcon)
+    expect(workspaceNavEntries("acme")[3]?.icon).toBe(CompassIcon)
+    expect(workspaceNavEntries("acme")[4]?.icon).toBe(BlocksIcon)
+    expect(workspaceNavEntries("acme")[5]?.icon).toBe(CompassIcon)
+    expect(workspaceNavEntries("acme")[1]?.icon).toBe(FolderGit2Icon)
   })
 
   it("builds every path from the slug", () => {
     expect(workspaceNavEntries("acme").map((entry) => entry.href)).toEqual([
       "/acme/home",
-      "/acme/templates",
-      "/acme/blocks",
       "/acme/projects",
+      "/acme/templates",
+      "/acme/templates/browse",
+      "/acme/blocks",
+      "/acme/blocks/browse",
       "/acme/settings/organization",
     ])
   })
