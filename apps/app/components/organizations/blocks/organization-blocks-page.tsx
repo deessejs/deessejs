@@ -46,7 +46,7 @@ export function OrganizationBlocksPage({
   )
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Library</p>
