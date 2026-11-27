@@ -19,11 +19,15 @@ const shared = vitestConfig()
 // tests point it at an empty module.
 export default defineConfig({
   ...shared,
+  test: {
+    ...shared.test,
+    include: ["tests/**/*.test.{ts,tsx}"],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL(".", import.meta.url)),
       "server-only": fileURLToPath(
-        new URL("./tests/stubs/server-only.ts", import.meta.url),
+        new URL("./tests/stubs/server-only.ts", import.meta.url)
       ),
     },
   },

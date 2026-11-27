@@ -1,65 +1,14 @@
 "use client"
 
-import { client } from "@/lib/client"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 
-import { workspaceHomePath } from "@/lib/workspace-paths"
+import { useAccountInvitations } from "@/hooks/organizations/use-account-invitations"
 
-const invitationsQuery = queryOptions({
-  queryKey: ["account-invitations"],
-  queryFn: () => client.rpc.organization.accountInvitations(),
-})
+import { AccountInvitationList } from "./account-invitation-list"
 
-export function AccountInvitations() {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const session = client.auth.useSession()
-  const query = useQuery(invitationsQuery)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [processed, setProcessed] = useState<string | null>(null)
-  const [failure, setFailure] = useState<string | null>(null)
-
-  async function respond(
-    invitationId: string,
-    action: "accept" | "decline",
-    slug: string
-  ) {
-    setBusyId(invitationId)
-    setFailure(null)
-    setProcessed(null)
-    try {
-      const result =
-        action === "accept"
-          ? await client.auth.organization.acceptInvitation({ invitationId })
-          : await client.auth.organization.rejectInvitation({ invitationId })
-      if (result.error) {
-        setFailure(
-          result.error.message ??
-            `The invitation could not be ${action === "accept" ? "accepted" : "declined"}.`
-        )
-        return
-      }
-      setProcessed(
-        `Invitation ${action === "accept" ? "accepted" : "declined"}.`
-      )
-      await queryClient.invalidateQueries({
-        queryKey: invitationsQuery.queryKey,
-      })
-      if (action === "accept") router.push(workspaceHomePath(slug))
-    } catch {
-      setFailure(
-        `The invitation could not be ${action === "accept" ? "accepted" : "declined"}. It may have expired or already been processed.`
-      )
-      await queryClient.invalidateQueries({
-        queryKey: invitationsQuery.queryKey,
-      })
-    } finally {
-      setBusyId(null)
-    }
-  }
+function AccountInvitations() {
+  const { session, query, activeAction, status, error, respond } =
+    useAccountInvitations()
 
   if (!session.data?.user.emailVerified) {
     return (
@@ -68,8 +17,10 @@ export function AccountInvitations() {
       </p>
     )
   }
+
   if (query.isPending)
     return <p className="text-sm text-muted-foreground">Loading invitations…</p>
+
   if (query.isError) {
     return (
       <div className="flex flex-col items-start gap-3" role="alert">
@@ -88,14 +39,14 @@ export function AccountInvitations() {
       className="flex flex-col gap-4"
       aria-label="Incoming organization invitations"
     >
-      {failure && (
+      {error && (
         <p className="text-sm text-destructive" role="alert">
-          {failure}
+          {error}
         </p>
       )}
-      {processed && (
+      {status && (
         <p className="text-sm text-muted-foreground" role="status">
-          {processed}
+          {status}
         </p>
       )}
       {query.data.length === 0 ? (
@@ -103,65 +54,14 @@ export function AccountInvitations() {
           You have no pending organization invitations.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y rounded-lg border">
-          {query.data.map((invitation) => {
-            const expired = invitation.expired
-            return (
-              <li
-                key={invitation.id}
-                className="flex flex-wrap items-center justify-between gap-4 p-4"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium">{invitation.organizationName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Invited by {invitation.inviterName} as{" "}
-                    {invitation.role ?? "member"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Expires{" "}
-                    {new Date(invitation.expiresAt).toLocaleDateString(
-                      "en-US",
-                      { timeZone: "UTC" }
-                    )}
-                  </p>
-                  {expired && (
-                    <p className="text-sm text-destructive">
-                      This invitation has expired.
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={expired || busyId !== null}
-                    onClick={() =>
-                      void respond(
-                        invitation.id,
-                        "accept",
-                        invitation.organizationSlug
-                      )
-                    }
-                  >
-                    {busyId === invitation.id ? "Working…" : "Accept"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={expired || busyId !== null}
-                    onClick={() =>
-                      void respond(
-                        invitation.id,
-                        "decline",
-                        invitation.organizationSlug
-                      )
-                    }
-                  >
-                    Decline
-                  </Button>
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        <AccountInvitationList
+          invitations={query.data}
+          activeAction={activeAction}
+          onRespond={respond}
+        />
       )}
     </section>
   )
 }
+
+export { AccountInvitations }

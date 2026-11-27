@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@workspace/env": "workspace:*",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/react": "catalog:",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "catalog:",
