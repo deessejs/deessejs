@@ -45,6 +45,131 @@ const REFUSALS: Record<string, string> = {
     "GitHub data could not be fetched. Check the URL and try again.",
 }
 
+function getDefaultValues(template: EditableTemplate | null) {
+  if (!template) return defaults
+  return {
+    ...defaults,
+    repositoryUrl: template.canonicalUrl ?? "",
+    slug: template.slug,
+    name: template.name,
+    descriptionOverride: template.descriptionOverride ?? "",
+    category:
+      CATEGORY_SLUGS.find((category) => category === template.category) ??
+      "saas",
+    labels: template.labels.join(", "),
+    licenseFallback: template.licenseFallback ?? "",
+    access: template.access,
+    imageName: template.imageName ?? "none",
+  }
+}
+
+async function saveTemplate(
+  value: TemplateFormValues,
+  template: EditableTemplate | null
+) {
+  const labels = value.labels
+    .split(",")
+    .map((label) => label.trim())
+    .filter(Boolean)
+  const imageName =
+    TEMPLATE_IMAGE_FILENAMES.find(
+      (candidate) => candidate === value.imageName
+    ) ?? null
+
+  if (template) {
+    await client.rpc.admin.templates.update({
+      id: template.id,
+      name: value.name,
+      descriptionOverride: value.descriptionOverride.trim() || null,
+      category: value.category,
+      labels,
+      licenseFallback: value.licenseFallback.trim() || null,
+      access: value.access,
+      imageName,
+    })
+    toast.success("Template updated")
+    return
+  }
+
+  await client.rpc.admin.templates.create({
+    sourceType: value.sourceType,
+    ...(value.repositoryUrl ? { repositoryUrl: value.repositoryUrl } : {}),
+    slug: value.slug,
+    name: value.name,
+    descriptionOverride: value.descriptionOverride.trim() || null,
+    category: value.category,
+    labels,
+    licenseFallback: value.licenseFallback.trim() || null,
+    access: value.access,
+    imageName,
+  })
+}
+
+function getFailureMessage(error: unknown, isEditing: boolean) {
+  const fallbackMessage = isEditing
+    ? "The template could not be updated. Refresh and try again."
+    : FAILURE_MESSAGE
+  return error instanceof ORPCError
+    ? (REFUSALS[error.code] ?? fallbackMessage)
+    : fallbackMessage
+}
+
+function changeTemplateField(
+  name: keyof TemplateFormValues,
+  value: string,
+  setFieldValue: (name: keyof TemplateFormValues, value: string) => void
+) {
+  switch (name) {
+    case "category": {
+      const category = CATEGORY_SLUGS.find((item) => item === value)
+      if (category) setFieldValue("category", category)
+      return
+    }
+    case "access":
+      if (value === "free" || value === "paid") {
+        setFieldValue("access", value)
+      }
+      return
+    case "sourceType":
+      if (value === "github" || value === "managed") {
+        setFieldValue("sourceType", value)
+      }
+      return
+    case "repositoryUrl":
+    case "slug":
+    case "name":
+    case "descriptionOverride":
+    case "labels":
+    case "licenseFallback":
+    case "imageName":
+      setFieldValue(name, value)
+  }
+}
+
+function closeTemplateDialog(
+  next: boolean,
+  isSubmitting: boolean,
+  reset: () => void,
+  clearFailure: () => void,
+  onOpenChange: (open: boolean) => void
+) {
+  if (!next && !isSubmitting) {
+    clearFailure()
+    reset()
+  }
+  onOpenChange(next)
+}
+
+function getSubmitLabel(
+  isSubmitting: boolean,
+  isEditing: boolean,
+  isGitHubSource: boolean
+) {
+  if (!isSubmitting) return isEditing ? "Save changes" : "Add template"
+  if (isEditing) return "Saving…"
+  return isGitHubSource ? "Fetching from GitHub…" : "Creating entry…"
+}
+
 export function CreateTemplateDialog({
   open,
   onOpenChange,
@@ -57,127 +182,38 @@ export function CreateTemplateDialog({
   const router = useRouter()
   const [failure, setFailure] = useState<string | null>(null)
   const form = useForm({
-    defaultValues: template
-      ? {
-          ...defaults,
-          repositoryUrl: template.canonicalUrl ?? "",
-          slug: template.slug,
-          name: template.name,
-          descriptionOverride: template.descriptionOverride ?? "",
-          category:
-            CATEGORY_SLUGS.find((category) => category === template.category) ??
-            "saas",
-          labels: template.labels.join(", "),
-          licenseFallback: template.licenseFallback ?? "",
-          access: template.access,
-          imageName: template.imageName ?? "none",
-        }
-      : defaults,
+    defaultValues: getDefaultValues(template),
     validators: { onSubmit: templateFormSchema },
     onSubmit: async ({ value }) => {
       setFailure(null)
       try {
-        const labels = value.labels
-          .split(",")
-          .map((label) => label.trim())
-          .filter(Boolean)
-        const imageName =
-          TEMPLATE_IMAGE_FILENAMES.find(
-            (candidate) => candidate === value.imageName
-          ) ?? null
-
-        if (template) {
-          await client.rpc.admin.templates.update({
-            id: template.id,
-            name: value.name,
-            descriptionOverride: value.descriptionOverride.trim() || null,
-            category: value.category,
-            labels,
-            licenseFallback: value.licenseFallback.trim() || null,
-            access: value.access,
-            imageName,
-          })
-          toast.success("Template updated")
-        } else {
-          await client.rpc.admin.templates.create({
-            sourceType: value.sourceType,
-            ...(value.repositoryUrl
-              ? { repositoryUrl: value.repositoryUrl }
-              : {}),
-            slug: value.slug,
-            name: value.name,
-            descriptionOverride: value.descriptionOverride.trim() || null,
-            category: value.category,
-            labels,
-            licenseFallback: value.licenseFallback.trim() || null,
-            access: value.access,
-            imageName,
-          })
-        }
+        await saveTemplate(value, template)
         form.reset()
         onOpenChange(false)
         router.refresh()
       } catch (error) {
-        const fallbackMessage = template
-          ? "The template could not be updated. Refresh and try again."
-          : FAILURE_MESSAGE
-        setFailure(
-          error instanceof ORPCError
-            ? (REFUSALS[error.code] ?? fallbackMessage)
-            : fallbackMessage
-        )
+        setFailure(getFailureMessage(error, Boolean(template)))
       }
     },
   })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !form.state.isSubmitting) {
-      setFailure(null)
-      form.reset()
-    }
-    onOpenChange(next)
-  }
-
-  function handleFieldChange(name: keyof TemplateFormValues, value: string) {
-    switch (name) {
-      case "category": {
-        const category = CATEGORY_SLUGS.find((item) => item === value)
-        if (category) form.setFieldValue("category", category)
-        return
-      }
-      case "access":
-        if (value === "free" || value === "paid") {
-          form.setFieldValue("access", value)
-        }
-        return
-      case "sourceType":
-        if (value === "github" || value === "managed") {
-          form.setFieldValue("sourceType", value)
-        }
-        return
-      case "repositoryUrl":
-      case "slug":
-      case "name":
-      case "descriptionOverride":
-      case "labels":
-      case "licenseFallback":
-      case "imageName":
-        form.setFieldValue(name, value)
-    }
+    closeTemplateDialog(
+      next,
+      form.state.isSubmitting,
+      form.reset,
+      () => setFailure(null),
+      onOpenChange
+    )
   }
 
   const isEditing = Boolean(template)
   const isGitHubSource = form.state.values.sourceType === "github"
-  let submitLabel = "Add template"
-  if (form.state.isSubmitting) {
-    submitLabel = isEditing
-      ? "Saving…"
-      : isGitHubSource
-        ? "Fetching from GitHub…"
-        : "Creating entry…"
-  } else if (isEditing) {
-    submitLabel = "Save changes"
-  }
+  const submitLabel = getSubmitLabel(
+    form.state.isSubmitting,
+    isEditing,
+    isGitHubSource
+  )
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -204,7 +240,9 @@ export function CreateTemplateDialog({
               name: form.state.fieldMeta.name?.errors[0] as string | undefined,
             }}
             template={template}
-            onChange={handleFieldChange}
+            onChange={(name, value) =>
+              changeTemplateField(name, value, form.setFieldValue)
+            }
             allowManagedSource
           />
           {failure && (
