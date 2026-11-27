@@ -2,9 +2,12 @@ import type { OrganizationTemplate } from "./template-table-model"
 import { StarIcon } from "lucide-react"
 import {
   TemplateActions,
-  TemplateClassification,
+  TemplateCategory,
+  TemplateFetchedAt,
   TemplateIdentity,
+  TemplateLabels,
   TemplateStatus,
+  TemplateThumbnail,
 } from "./organization-template-table-cells"
 
 type ResultsProps = {
@@ -34,25 +37,34 @@ function DesktopTemplateTable({
   ...actionProps
 }: ResultsProps) {
   return (
-    <table className="w-full min-w-[960px] caption-bottom text-sm">
+    <table className="w-full min-w-[1200px] caption-bottom text-sm">
       <caption className="sr-only">
         Templates owned by {organizationName}
       </caption>
       <thead className="border-b bg-muted/50 text-left text-muted-foreground">
         <tr>
-          <th scope="col" className="h-11 w-48 px-4 font-medium">
+          <th scope="col" className="h-11 w-40 px-4 text-center font-medium">
             Publication status
           </th>
-          <th scope="col" className="h-11 min-w-80 px-4 font-medium">
-            Template
+          <th scope="col" className="h-11 w-20 px-4 font-medium">
+            Preview
           </th>
           <th scope="col" className="h-11 min-w-64 px-4 font-medium">
-            Category and labels
+            Template and repository
+          </th>
+          <th scope="col" className="h-11 w-40 px-4 font-medium">
+            Last fetched
+          </th>
+          <th scope="col" className="h-11 w-36 px-4 font-medium">
+            Category
+          </th>
+          <th scope="col" className="h-11 min-w-48 px-4 font-medium">
+            Labels
           </th>
           <th scope="col" className="h-11 w-24 px-4 text-right font-medium">
             Stars
           </th>
-          <th scope="col" className="h-11 w-20 px-4 text-right font-medium">
+          <th scope="col" className="h-11 w-24 px-4 text-right font-medium">
             Actions
           </th>
         </tr>
@@ -78,14 +90,23 @@ function DesktopTemplateRow({
 }) {
   return (
     <tr className="align-middle">
-      <td className="px-4 py-4">
+      <td className="px-4 py-4 text-center">
         <TemplateStatus template={template} />
+      </td>
+      <td className="px-4 py-3">
+        <TemplateThumbnail template={template} />
       </td>
       <td className="max-w-lg px-4 py-3">
         <TemplateIdentity template={template} />
       </td>
       <td className="px-4 py-3">
-        <TemplateClassification template={template} />
+        <TemplateFetchedAt template={template} />
+      </td>
+      <td className="px-4 py-3">
+        <TemplateCategory template={template} />
+      </td>
+      <td className="px-4 py-3">
+        <TemplateLabels template={template} />
       </td>
       <td className="px-4 py-3 text-right tabular-nums">
         <StarsCount stars={template.stars} />
@@ -114,9 +135,13 @@ function MobileTemplateCards({
           onWithdrawPublication={onWithdrawPublication}
         />
       </div>
-      <TemplateIdentity template={template} />
-      <div className="mt-3">
-        <TemplateClassification template={template} />
+      <div className="flex min-w-0 items-start gap-3">
+        <TemplateThumbnail template={template} />
+        <TemplateIdentity template={template} />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <TemplateCategory template={template} />
+        <TemplateLabels template={template} />
       </div>
       <div className="mt-3 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
         <StarsCount stars={template.stars} emptyLabel="No star data" />
