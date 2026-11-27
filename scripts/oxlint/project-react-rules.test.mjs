@@ -16,6 +16,15 @@ function effectRule(filename, scope) {
   return { visitor, reports }
 }
 
+function anchorRule(filename) {
+  const reports = []
+  const visitor = plugin.rules["no-raw-jsx-anchor"].create({
+    filename,
+    report: (report) => reports.push(report),
+  })
+  return { visitor, reports }
+}
+
 function binding(name, definition) {
   return { set: new Map([[name, { defs: [definition] }]]), upper: null }
 }
@@ -25,6 +34,52 @@ function callIdentifier(name) {
 }
 
 describe("project React effect rules", () => {
+  it("rejects raw anchors in Next.js apps and leaves email anchors allowed", async () => {
+    const appDirectory = await mkdtemp(join(process.cwd(), "apps/app/components/.raw-anchor-rule-"))
+    const emailDirectory = await mkdtemp(join(process.cwd(), "packages/email/src/.raw-anchor-rule-"))
+    const appFile = join(appDirectory, "fixture.tsx")
+    const emailFile = join(emailDirectory, "fixture.tsx")
+    try {
+      await writeFile(appFile, 'export const Fixture = () => <a href="/">Home</a>\n')
+      await writeFile(emailFile, 'export const Fixture = () => <a href="https://example.com">Open</a>\n')
+      const oxlint = join(process.cwd(), "node_modules/.bin/oxlint")
+      const lint = (file) => spawnSync(oxlint, ["--config", ".oxlintrc.json", "--format", "json", file], { cwd: process.cwd(), encoding: "utf8" })
+      const appResult = lint(appFile)
+      assert.equal(appResult.error, undefined, appResult.error?.message)
+      assert.notEqual(appResult.status, 0)
+      const appDiagnostics = JSON.parse(appResult.stdout).diagnostics ?? []
+      assert.equal(appDiagnostics.filter((diagnostic) => diagnostic.code === "project(no-raw-jsx-anchor)").length, 1, appResult.stderr || appResult.stdout)
+
+      const emailResult = lint(emailFile)
+      assert.equal(emailResult.error, undefined, emailResult.error?.message)
+      assert.equal(emailResult.status, 0, emailResult.stderr || emailResult.stdout)
+      assert.equal((JSON.parse(emailResult.stdout).diagnostics ?? []).filter((diagnostic) => diagnostic.code === "project(no-raw-jsx-anchor)").length, 0)
+    } finally {
+      await Promise.all([
+        rm(appDirectory, { recursive: true, force: true }),
+        rm(emailDirectory, { recursive: true, force: true }),
+      ])
+    }
+  })
+
+  it("allows raw anchors only in content renderers and for the mailto handoff", () => {
+    const node = {
+      type: "JSXOpeningElement",
+      name: { type: "JSXIdentifier", name: "a" },
+      attributes: [{ type: "JSXAttribute", name: { type: "JSXIdentifier", name: "href" }, value: { type: "Literal", value: "mailto:team@example.com" } }],
+    }
+    const readme = anchorRule("/repo/apps/web/src/components/templates/template-readme.tsx")
+    assert.equal(Object.keys(readme.visitor).length, 0)
+
+    const mailto = anchorRule("/repo/apps/web/src/app/(marketing)/customers/page.tsx")
+    mailto.visitor.JSXOpeningElement(node)
+    assert.equal(mailto.reports.length, 0)
+
+    const otherFileMailto = anchorRule("/repo/apps/web/src/components/contact.tsx")
+    otherFileMailto.visitor.JSXOpeningElement(node)
+    assert.equal(otherFileMailto.reports.length, 1)
+  })
+
   it("requires project hooks that call hooks to live in the app hook directory", () => {
     const reports = []
     const visitor = plugin.rules["hooks-location"].create({

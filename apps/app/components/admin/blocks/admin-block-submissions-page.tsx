@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@workspace/ui/components/button"
@@ -57,13 +58,13 @@ export function AdminBlockSubmissionsPage({
               {item.organizationSlug ?? "Official"}/{item.slug} ·{" "}
               {item.category}
             </p>
-            <a
+            <Link
               href={`${item.repositoryUrl}/tree/${item.sourceCommit}`}
               target="_blank"
               rel="noreferrer"
             >
               Review pinned source {item.sourceCommit.slice(0, 7)}
-            </a>
+            </Link>
             <Textarea
               placeholder="Review note or rejection reason"
               value={reason}

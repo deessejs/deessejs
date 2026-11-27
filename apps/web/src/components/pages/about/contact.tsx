@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { CHANNELS } from "@/lib/about/channels"
 
 /**
@@ -13,7 +14,7 @@ import { CHANNELS } from "@/lib/about/channels"
  * wrapper in the route page.
  *
  * Lead paragraph + 1×3 grid (mobile: stacked, tablet: 3-col)
- * of contact channel cards. Each card is an `<a>` (external
+ * of contact channel cards. Each card is an `<Link>` (external
  * anchor or mailto:) with a label + body. The `href` prefix
  * decides whether `target="_blank"` is added.
  */
@@ -30,7 +31,7 @@ export function Contact() {
         </p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {CHANNELS.map((channel) => (
-            <a
+            <Link
               key={channel.label}
               href={channel.href}
               target={channel.href.startsWith("http") ? "_blank" : undefined}
@@ -47,7 +48,7 @@ export function Contact() {
               <span className="text-copy-13 leading-5 text-muted-foreground [&:not(:first-child)]:mt-0">
                 {channel.body}
               </span>
-            </a>
+            </Link>
           ))}
         </div>
       </div>

@@ -24,14 +24,14 @@ export function FooterColumn({
           return (
             <li key={link.label}>
               {isExternal ? (
-                <a
+                <Link
                   href={link.href}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={className}
                 >
                   {link.label}
-                </a>
+                </Link>
               ) : (
                 <Link href={link.href} className={className}>
                   {link.label}

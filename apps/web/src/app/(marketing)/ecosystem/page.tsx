@@ -159,7 +159,7 @@ export default function EcosystemPage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SUB_DOMAINS.map((product) => (
-            <a
+            <Link
               key={product.slug}
               href={product.url}
               target="_blank"
@@ -190,7 +190,7 @@ export default function EcosystemPage() {
                   {product.url.replace("https://", "")}
                 </code>
               </Card>
-            </a>
+            </Link>
           ))}
         </div>
       </section>

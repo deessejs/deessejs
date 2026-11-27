@@ -1,5 +1,5 @@
-import type { Metadata } from "next"
 import Link from "next/link"
+import type { Metadata } from "next"
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 
@@ -209,12 +209,12 @@ function StackProviderCard({
     // The whole card is a single outbound link to the provider's
     // homepage. The Card stays as a plain <div> inside the anchor
     // (Next/Link and shadcn's Card are both wrappers, not anchors,
-    // so nesting an <a> around the Card is the cleanest path).
+    // so nesting an <Link> around the Card is the cleanest path).
     // The `ExternalLink` icon at the bottom of the card is a visual
     // affordance — outbound link patterns should telegraph that
     // the user is leaving the site. `aria-label` on the anchor
     // gives screen readers the destination context.
-    <a
+    <Link
       id={`stack-${provider.slug}`}
       href={provider.homepage}
       target="_blank"
@@ -253,6 +253,6 @@ function StackProviderCard({
           Visit homepage
         </span>
       </Card>
-    </a>
+    </Link>
   )
 }

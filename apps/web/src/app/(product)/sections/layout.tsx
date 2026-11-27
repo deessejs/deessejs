@@ -1,6 +1,6 @@
+import Link from "next/link"
 import * as React from "react"
 import { ArrowRight } from "lucide-react"
-import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
@@ -35,10 +35,10 @@ export default function SectionsLayout({
             Need a section we don&apos;t ship yet?
           </h2>
           <p className="max-w-xl text-copy-16 leading-7 text-pretty text-muted-foreground [&:not(:first-child)]:mt-0">
-            Sections are still being carved out of the marketing pages. Until they
-            land in the registry, talk to our delivery team if you need a hand
-            porting a layout into your project. Same templates, same contracts,
-            same guarantees.
+            Sections are still being carved out of the marketing pages. Until
+            they land in the registry, talk to our delivery team if you need a
+            hand porting a layout into your project. Same templates, same
+            contracts, same guarantees.
           </p>
         </div>
         <div className="flex flex-col items-stretch justify-center gap-4 p-6 lg:p-10">
@@ -49,13 +49,13 @@ export default function SectionsLayout({
             </Link>
           </Button>
           <Button variant="outline" size="lg" asChild>
-            <a
+            <Link
               href="https://github.com/deessejs/deessejs"
               target="_blank"
               rel="noopener noreferrer"
             >
               View on GitHub
-            </a>
+            </Link>
           </Button>
         </div>
       </div>

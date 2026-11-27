@@ -107,15 +107,11 @@ function LicenseBody({
       </ul>
 
       <div className="mt-auto pt-2">
-        {license.cta.external ? (
-          <Button asChild size="lg" variant="outline" className="w-full">
-            <a href={hrefOverride ?? license.cta.href}>{license.cta.label}</a>
-          </Button>
-        ) : (
-          <Button asChild size="lg" variant="outline" className="w-full">
-            <Link href={hrefOverride ?? license.cta.href}>{license.cta.label}</Link>
-          </Button>
-        )}
+        <Button asChild size="lg" variant="outline" className="w-full">
+          <Link href={hrefOverride ?? license.cta.href}>
+            {license.cta.label}
+          </Link>
+        </Button>
       </div>
     </>
   )

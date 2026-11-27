@@ -332,6 +332,57 @@ const plugin = {
         }
       },
     },
+    "no-raw-jsx-anchor": {
+      meta: {
+        type: "problem",
+        schema: [],
+        docs: {
+          description:
+            "Require next/link in the Next.js apps. Preserve native anchors in the two Markdown renderers because they render content-provided links, and for the customer notification mailto handoff because it launches the user's email client.",
+        },
+        messages: {
+          raw: "Use <Link /> from next/link for navigation and external URLs.",
+        },
+      },
+      create(context) {
+        const filename = (
+          context.filename ??
+          context.getFilename?.() ??
+          ""
+        ).replaceAll("\\", "/")
+        const isMarkdownLinkRenderer = [
+          "/apps/web/src/components/templates/template-readme.tsx",
+          "/apps/web/src/lib/templates/safe-readme.tsx",
+        ].some((suffix) => filename.endsWith(suffix))
+        if (isMarkdownLinkRenderer) return {}
+
+        return {
+          JSXOpeningElement(node) {
+            if (node.name.type !== "JSXIdentifier" || node.name.name !== "a")
+              return
+
+            const href = node.attributes.find(
+              (attribute) =>
+                attribute.type === "JSXAttribute" &&
+                attribute.name.type === "JSXIdentifier" &&
+                attribute.name.name === "href"
+            )
+            const hrefValue = href?.value
+            if (
+              filename.endsWith(
+                "/apps/web/src/app/(marketing)/customers/page.tsx"
+              ) &&
+              hrefValue?.type === "Literal" &&
+              typeof hrefValue.value === "string" &&
+              hrefValue.value.startsWith("mailto:")
+            )
+              return
+
+            context.report({ node: node.name, messageId: "raw" })
+          },
+        }
+      },
+    },
     "no-raw-react-effects": {
       meta: {
         type: "problem",
