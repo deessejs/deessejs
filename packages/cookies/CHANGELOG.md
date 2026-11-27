@@ -1,5 +1,12 @@
 # @workspace/cookies
 
+## 0.0.2
+
+### Patch Changes
+
+- 2bd3a85: Reduce the mobile cookie consent banner footprint while keeping every consent action visible.
+  - @workspace/ui@0.0.1
+
 ## 0.0.1
 
 ### Patch Changes
