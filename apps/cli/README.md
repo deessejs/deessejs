@@ -22,6 +22,7 @@ Other release channels:
 | Command                                       | Role                                                            |
 | --------------------------------------------- | --------------------------------------------------------------- |
 | `deessejs template init <slug-or-github-url>` | Create a project from a catalog template or a GitHub repository |
+| `deessejs template version <patch\|minor\|major>` | Bump the local template descriptor version |
 | `deessejs template list`                      | List available templates                                        |
 | `deessejs template info <slug-or-github-url>` | Show validated descriptor details for a template                |
 | `deessejs cache clear`                        | Clear cached template catalog data                              |
@@ -55,6 +56,9 @@ deessejs template init saas-starter
 deessejs template init saas-starter --ref develop --no-install
 deessejs template init https://github.com/owner/repository
 deessejs template init saas-starter --verbose
+deessejs template version patch
+deessejs template version minor
+deessejs template version major
 deessejs auth login
 deessejs organization list
 deessejs organization info acme
@@ -70,6 +74,8 @@ deessejs organization template add acme --slug starter-kit --name "Starter Kit" 
 If the selected files include a root `deesse.json`, `init` validates it against project config V1 and preserves its contents. If the template does not include one, `init` creates a default config with the project schema URL and `formatVersion: 1`.
 
 `info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
+
+`deessejs template version patch|minor|major` reads `deesse-template.json` in the current directory and updates only its `version` field. It accepts canonical stable `MAJOR.MINOR.PATCH` versions with no prefix, prerelease, build metadata, or leading zeroes. Overflow beyond JavaScript's safe integer limit is rejected without changing the descriptor. The command is local-only and does not publish a release.
 
 Catalog list and targeted template detail responses used by `list` and `info` are cached locally for five minutes. `--refresh` bypasses and refreshes that cache. `init` always resolves current template details. `deessejs cache clear` removes cached response files under `~/.deessejs/` and preserves authentication state.
 

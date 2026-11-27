@@ -1,4 +1,4 @@
-const TEMPLATE_COMMANDS = new Set(["list", "info", "init"])
+const TEMPLATE_COMMANDS = new Set(["list", "info", "init", "publish", "releases"])
 
 /** Maps the template namespace and its legacy alias onto existing handlers. */
 export function normalizeTemplateCommandArgs(args: string[]): string[] {

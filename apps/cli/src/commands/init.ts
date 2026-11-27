@@ -20,8 +20,13 @@ import { resolveProjectConfig } from "../utils/project-config.js"
 import {
   resolveTemplateSource,
   type TemplateSource,
+  type ResolvedTemplateSource,
 } from "../utils/resolve-template.js"
-import { resolveTemplateInstallationPlan } from "../utils/template-plan.js"
+import {
+  resolveManagedTemplateInstallationPlan,
+  resolveTemplateInstallationPlan,
+} from "../utils/template-plan.js"
+import { readAuth } from "../lib/auth/store/store.js"
 
 const VALID_PACKAGE_MANAGERS = ["pnpm", "npm", "yarn", "bun"] as const
 type ValidPackageManager = (typeof VALID_PACKAGE_MANAGERS)[number]
@@ -116,8 +121,44 @@ async function installDependencies(
     console.log(pc.green(`✔ Dependencies installed · ${duration}`))
 }
 
+async function resolveTemplatePlan(input: {
+  template: TemplateSource
+  useCatalog: boolean
+  organizationSlug: string | undefined
+  accessToken: string | undefined
+  ref: string | undefined
+}): Promise<Awaited<ReturnType<typeof resolveTemplateInstallationPlan>>> {
+  if (
+    input.useCatalog &&
+    (input.organizationSlug || input.template.requiresManaged)
+  ) {
+    const managed = await resolveManagedTemplateInstallationPlan({
+      slug: input.template.slug,
+      repository: `${input.template.owner}/${input.template.repo}`,
+      ...(input.organizationSlug
+        ? { organizationSlug: input.organizationSlug }
+        : {}),
+      ...(input.accessToken ? { accessToken: input.accessToken } : {}),
+    })
+    if (managed.plan) return managed.plan
+    if (managed.requiresManaged) {
+      throw templateInvalid(
+        input.template.slug,
+        "this protected template must be initialized from its managed release"
+      )
+    }
+  }
+  return resolveTemplateInstallationPlan(
+    `${input.template.owner}/${input.template.repo}`,
+    input.template.community ? input.template.sourceCommit : input.ref
+  )
+}
+
 async function createTemplateProject(
   template: TemplateSource,
+  useCatalog: boolean,
+  organizationSlug: string | undefined,
+  accessToken: string | undefined,
   dir: string,
   ref: string | undefined,
   force: boolean,
@@ -140,7 +181,13 @@ async function createTemplateProject(
     : undefined
   let plan
   try {
-    plan = await resolveTemplateInstallationPlan(repository, resolvedRef)
+    plan = await resolveTemplatePlan({
+      template,
+      useCatalog,
+      organizationSlug,
+      accessToken,
+      ref: resolvedRef,
+    })
   } catch (error) {
     downloadSpinner?.fail("Template download failed")
     throw error
@@ -199,6 +246,10 @@ export const initCommand = new Command("init")
     "--ref <branch>",
     "git ref to use (default: the repository's default branch)"
   )
+  .option(
+    "--organization <slug>",
+    "initialize an organization-owned managed template"
+  )
   .option("--no-install", "skip the install step")
   .option("--force", "allow an existing empty target directory")
   .option("--verbose", "show initialization details and package manager output")
@@ -211,6 +262,7 @@ type InitCommandOptions = {
   pm?: string
   dir?: string
   ref?: string
+  organization?: string
   install: boolean
   force?: boolean
   verbose?: boolean
@@ -234,7 +286,31 @@ async function loadTemplateState(
   slugOrUrl: string,
   options: InitCommandOptions
 ) {
-  const { template, directRepository } = await resolveTemplateSource(slugOrUrl)
+  let template: TemplateSource
+  let directRepository: ResolvedTemplateSource["directRepository"]
+  let accessToken: string | undefined
+  if (options.organization) {
+    if (/^https?:\/\//i.test(slugOrUrl) || options.ref)
+      throw templateInvalid(
+        slugOrUrl,
+        "organization templates use a managed release slug and do not accept --ref or GitHub URLs"
+      )
+    const auth = readAuth()
+    if (!auth)
+      throw templateInvalid(
+        `@${options.organization}/${slugOrUrl}`,
+        "sign in with deessejs auth login and confirm organization access"
+      )
+    accessToken = auth.access_token
+    // The API's org-scoped release resolver is authoritative. Do not discover
+    // private releases through the public template catalog or template.list.
+    template = { slug: slugOrUrl, owner: options.organization, repo: slugOrUrl }
+    directRepository = null
+  } else {
+    const resolved = await resolveTemplateSource(slugOrUrl)
+    template = resolved.template
+    directRepository = resolved.directRepository
+  }
   const projectName =
     directRepository?.repo ?? template.templateSlug ?? template.slug
   const dir = resolve(process.cwd(), options.dir ?? `./${projectName}`)
@@ -249,6 +325,9 @@ async function loadTemplateState(
   )
   const revision = await createTemplateProject(
     template,
+    !directRepository,
+    options.organization,
+    accessToken,
     dir,
     options.ref,
     options.force ?? false,
@@ -309,18 +388,19 @@ async function installAndReport(
 }
 
 function reportInitError(error: unknown, json: boolean): never {
-  if (!(error instanceof CliError)) {
-    throw internal(error instanceof Error ? error.message : String(error))
-  }
+  const cliError =
+    error instanceof CliError
+      ? error
+      : internal(error instanceof Error ? error.message : String(error))
   if (json) {
     printJson({
       ok: false,
-      code: error.code,
-      message: error.message,
-      hint: error.hint,
+      code: cliError.code,
+      message: cliError.message,
+      hint: cliError.hint,
     })
   } else {
-    printError(error)
+    printError(cliError)
   }
-  process.exit(error.exitCode())
+  process.exit(cliError.exitCode())
 }

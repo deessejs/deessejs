@@ -1,0 +1,2 @@
+/* Register the compiled admin components with the consuming Tailwind v4 build. */
+@source "../../../dist";

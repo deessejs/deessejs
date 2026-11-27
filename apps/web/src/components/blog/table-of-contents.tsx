@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useSyncExternalStore } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { useActiveTocItem } from "@/hooks/blog/use-active-toc-item"
@@ -45,7 +46,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
       <ul className="space-y-1 border-l border-border/40">
         {items.map((item) => (
           <li key={item.id}>
-            <a
+            <Link
               href={`#${item.id}`}
               className={cn(
                 "-ml-px block border-l py-1 pl-3 text-xs leading-relaxed transition-colors",
@@ -56,7 +57,7 @@ export function TableOfContents({ targetId }: { targetId: string }) {
               )}
             >
               {item.text}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

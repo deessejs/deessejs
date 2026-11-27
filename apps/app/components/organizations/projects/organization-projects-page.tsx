@@ -1,7 +1,7 @@
 "use client"
 
-import { client } from "@/lib/client"
 import Link from "next/link"
+import { client } from "@/lib/client"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import type { UseQueryResult } from "@tanstack/react-query"
@@ -42,7 +42,7 @@ export type OrganizationProject = {
 }
 
 type OrganizationProjectsResult = Awaited<
-  ReturnType<typeof client.rpc["githubApp"]["projects"]["list"]>
+  ReturnType<(typeof client.rpc)["githubApp"]["projects"]["list"]>
 >
 
 const projectStatus: Record<
@@ -211,14 +211,14 @@ function ProjectList({
                       </Link>
                     </CardTitle>
                     <CardDescription className="mt-1 truncate">
-                      <a
+                      <Link
                         className="underline-offset-4 hover:underline"
                         href={project.repositoryUrl}
                         target="_blank"
                         rel="noreferrer"
                       >
                         {project.repositoryFullName}
-                      </a>
+                      </Link>
                     </CardDescription>
                     {project.isPrivate ? (
                       <Badge variant="outline" className="mt-2">

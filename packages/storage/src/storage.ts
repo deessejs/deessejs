@@ -16,6 +16,8 @@ export interface PutObjectInput {
   contentLength?: number
   contentType?: string
   key: string
+  /** Create only when no object exists at this key. */
+  ifNoneMatch?: "*"
 }
 
 export interface PresignedObjectInput {

@@ -10,7 +10,7 @@ name: Release
 #     yet on npm, then creates package-specific GitHub Releases.
 #   - @canary: push to staging (Tier 2), or on-demand workflow_dispatch
 #     with `canary: true`. Synthetic version string (date+SHA);
-#     currently publishes the CLI only. Framework, adapter, UI, and admin
+#     currently publishes the CLI only. Framework, adapter, and UI
 #     canaries are deferred until their prerelease peer dependency contracts
 #     are defined.
 #
@@ -174,10 +174,10 @@ jobs:
           echo "release_needed=true" >> "$GITHUB_OUTPUT"
           echo "Stable CLI release needed: $LOCAL_VERSION is ahead of npm latest $LATEST_VERSION."
 
-      # These are independent public package versions. The admin package is
-      # already registered on npm and uses its configured Trusted Publisher.
-      # The adapter is skipped until it exists on npm, unless a maintainer
-      # explicitly stages its first version from main with a temporary token.
+      # These are independent public package versions. Registered packages
+      # use their configured Trusted Publishers. The adapter is skipped until
+      # it exists on npm, unless a maintainer explicitly stages its first
+      # version from main with a temporary token.
       - name: Check stable framework and package releases
         id: stable-packages
         if: steps.channel.outputs.dist_tag == 'latest'
@@ -269,10 +269,6 @@ jobs:
           check_registered_package ui @deessejs/ui apps/ui/package.json
           ui_registered="$PACKAGE_REGISTERED"
           ui_release_needed="$PACKAGE_RELEASE_NEEDED"
-          check_registered_package admin @deessejs/admin apps/admin/package.json
-          admin_registered="$PACKAGE_REGISTERED"
-          admin_release_needed="$PACKAGE_RELEASE_NEEDED"
-
           if [ "${{ inputs.record_adapter_release }}" = "true" ]; then
             if [ "$adapter_registered" != "true" ] || [ "$adapter_release_needed" = "true" ]; then
               echo "::error::The manifest version is not published yet. Approve the staged npm version before recording its GitHub release."
@@ -301,15 +297,6 @@ jobs:
             echo "ui_mode=trusted" >> "$GITHUB_OUTPUT"
           else
             echo "ui_mode=skip" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ "$admin_registered" = "false" ]; then
-            echo "::error::@deessejs/admin must be registered on npm before its Trusted Publisher can release it."
-            exit 1
-          elif [ "$admin_release_needed" = "true" ]; then
-            echo "admin_mode=trusted" >> "$GITHUB_OUTPUT"
-          else
-            echo "admin_mode=skip" >> "$GITHUB_OUTPUT"
           fi
 
           if [ "$deesse_registered" = "false" ]; then
@@ -582,10 +569,6 @@ jobs:
         if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         run: pnpm turbo build --filter=@deessejs/ui --force
 
-      - name: Build admin package and workspace dependencies
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        run: pnpm turbo build --filter=@deessejs/admin... --force
-
       - name: Pack and verify UI package
         if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.ui_mode == 'trusted'
         run: |
@@ -641,6 +624,11 @@ jobs:
             package/dist/index.js \
             package/dist/react.js \
             package/dist/next.js \
+            package/dist/plugins/admin/index.js \
+            package/dist/plugins/admin/next.js \
+            package/dist/plugins/blog/index.js \
+            package/dist/plugins/blog/admin/index.js \
+            package/src/plugins/admin/styles.css \
             package/README.md \
             package/LICENSE
 
@@ -666,55 +654,6 @@ jobs:
         with:
           tag_name: deesse/v${{ steps.stable-packages.outputs.deesse_version }}
           name: "deesse v${{ steps.stable-packages.outputs.deesse_version }}"
-          prerelease: false
-          generate_notes: true
-          fail_on_unmatched_files: true
-
-      - name: Confirm admin Deesse peer range is published
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        run: |
-          set -euo pipefail
-          DEESSE_PEER_RANGE=$(node -e "console.log(require('./apps/admin/package.json').peerDependencies.deesse)")
-          npm view "deesse@${DEESSE_PEER_RANGE}" version
-
-      - name: Pack and verify admin package
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        run: |
-          set -euo pipefail
-          pnpm --dir apps/admin pack
-          TARBALL=$(find apps/admin -maxdepth 1 -type f -name '*.tgz' -print -quit)
-          node scripts/verify-npm-tarball.mjs \
-            "$TARBALL" \
-            @deessejs/admin \
-            "${{ steps.stable-packages.outputs.admin_version }}" \
-            package/dist/index.js \
-            package/dist/next.js \
-            package/src/admin.css \
-            package/README.md \
-            package/LICENSE
-
-      - name: Publish admin package to npm with Trusted Publishing
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        run: |
-          set -euo pipefail
-          TARBALL=$(find apps/admin -maxdepth 1 -type f -name '*.tgz' -print -quit)
-          npm publish "$TARBALL" --tag latest --provenance --no-git-checks
-
-      - name: Tag admin package release
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        env:
-          RELEASE_VERSION: ${{ steps.stable-packages.outputs.admin_version }}
-        run: |
-          set -euo pipefail
-          git tag -f "admin/v${RELEASE_VERSION}"
-          git push --force origin "admin/v${RELEASE_VERSION}"
-
-      - name: Create admin package GitHub Release
-        if: steps.channel.outputs.dist_tag == 'latest' && steps.stable-packages.outputs.admin_mode == 'trusted'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: admin/v${{ steps.stable-packages.outputs.admin_version }}
-          name: "@deessejs/admin v${{ steps.stable-packages.outputs.admin_version }}"
           prerelease: false
           generate_notes: true
           fail_on_unmatched_files: true

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -17,7 +18,6 @@ import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { CreateOrganizationTemplateDialog } from "./create-organization-template-dialog"
 import { RequestTemplatePublicationDialog } from "./request-template-publication-dialog"
-import { TemplateImageUpload } from "@/components/admin/templates/template-image-upload"
 
 type OrganizationTemplate = Awaited<
   ReturnType<
@@ -75,7 +75,6 @@ export function OrganizationTemplatesPage({
         onAdd={() => setDialogOpen(true)}
       />
       <TemplateContent
-        organizationSlug={organizationSlug}
         templates={templates}
         organizationName={organizationName}
         canManage={canManage}
@@ -141,7 +140,6 @@ function TemplatesHeader({
 }
 
 function TemplateContent({
-  organizationSlug,
   templates,
   organizationName,
   canManage,
@@ -151,7 +149,6 @@ function TemplateContent({
   onWithdrawPublication,
   actionError,
 }: {
-  organizationSlug: string
   templates: OrganizationTemplate[]
   organizationName: string
   canManage: boolean
@@ -178,7 +175,6 @@ function TemplateContent({
 
   return (
     <OrganizationTemplateTable
-      organizationSlug={organizationSlug}
       templates={templates}
       organizationName={organizationName}
       canManage={canManage}
@@ -215,7 +211,6 @@ function EmptyTemplates({
 }
 
 function OrganizationTemplateTable({
-  organizationSlug,
   templates,
   organizationName,
   canManage,
@@ -223,7 +218,6 @@ function OrganizationTemplateTable({
   onWithdrawPublication,
   actionError,
 }: {
-  organizationSlug: string
   templates: OrganizationTemplate[]
   organizationName: string
   canManage: boolean
@@ -300,7 +294,6 @@ function OrganizationTemplateTable({
             </thead>
             <TemplateRows
               templates={filtered}
-              organizationSlug={organizationSlug}
               canManage={canManage}
               onRequestPublication={onRequestPublication}
               onWithdrawPublication={onWithdrawPublication}
@@ -314,13 +307,11 @@ function OrganizationTemplateTable({
 
 function TemplateRows({
   templates,
-  organizationSlug,
   canManage,
   onRequestPublication,
   onWithdrawPublication,
 }: {
   templates: OrganizationTemplate[]
-  organizationSlug: string
   canManage: boolean
   onRequestPublication: (template: OrganizationTemplate) => void
   onWithdrawPublication: (templateId: string) => void
@@ -344,14 +335,14 @@ function TemplateRows({
                 No image
               </div>
             )}
-            <a
+            <Link
               className="font-medium underline-offset-4 hover:underline"
               href={template.canonicalUrl}
               target="_blank"
               rel="noreferrer"
             >
               {template.name}
-            </a>
+            </Link>
             <div className="mt-1 truncate text-xs text-muted-foreground">
               {template.slug} · {template.owner}/{template.repo}
             </div>
@@ -369,13 +360,6 @@ function TemplateRows({
             </time>
           </td>
           <td className="min-w-56 px-4 py-3">
-            {canManage ? (
-              <TemplateImageUpload
-                templateId={template.id}
-                organizationSlug={organizationSlug}
-                onUploaded={() => window.location.reload()}
-              />
-            ) : null}
             <TemplatePublicationStatus
               template={template}
               canManage={canManage}

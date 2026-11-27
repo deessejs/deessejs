@@ -3,17 +3,19 @@ title: Commands Reference
 description: The DeesseJS CLI command reference.
 ---
 
-The CLI has seven top-level command groups: `template`, `block`, `add`, `cache`, `organization`, `update`, and `auth`. The `template` group contains the `list`, `info`, and `init` subcommands.
+The CLI has seven top-level command groups: `template`, `block`, `add`, `cache`, `organization`, `update`, and `auth`. The `template` group also contains `publish` and `releases`. Catalog listing requests use the separate `organization template request-listing` command.
+
+See [Managed releases](./managed-releases) for publishing, storage, access, version, and initialization behavior.
 
 Use `deessejs --help` or `deessejs <command> --help` to see the options available in the installed version. `deessejs --version` prints the installed version.
 
-Commands with `--json` write machine-readable output to stdout and suppress progress spinners. Each command documents its success and error shapes. The process exit code reports whether the command succeeded.
+Commands that support both `--verbose` and `--json` emit machine-readable JSON to stdout by default. Use `--verbose` for human-readable output. When users pass both flags, `--json` wins. Prompts and diagnostics go to the standard error stream. This keeps the JSON output available for scripts.
 
 ---
 
 ## `deessejs list`
 
-Fetch templates from the public registry, including published community templates, and render them as a table.
+Fetch templates from the public registry, including published community templates, and emit a compact JSON response by default.
 
 ```bash
 deessejs list
@@ -24,11 +26,12 @@ deessejs list
 | Flag                | Effect                                                                                            |
 | ------------------- | ------------------------------------------------------------------------------------------------- |
 | `--category <name>` | Filter to a single category. Unknown categories yield an empty list (not an error).               |
-| `--json`            | Emit `{ templates: [...] }` instead of a table. The array includes published community templates. |
+| `--verbose`         | Render the template table for human reading. |
+| `--json`            | Emit `{ templates: [...] }`. JSON is the default and this flag overrides `--verbose`. The array includes published community templates. |
 
 ### Output
 
-The table columns are `slug`, `name`, `category`, and `license`. The footer prints the count and a hint about `--category` and `--json`.
+The human-readable table columns are `slug`, `name`, `category`, and `license`. The footer prints the count and a hint about `--category` and `--json`.
 
 ### Exit codes
 
@@ -65,7 +68,8 @@ deessejs info https://github.com/owner/repository --ref main
 | Flag             | Effect                                                                          |
 | ---------------- | ------------------------------------------------------------------------------- |
 | `--ref <branch>` | Inspect a branch or other Git ref. Defaults to the repository's default branch. |
-| `--json`         | Emit `{ descriptor, source }` for either input form.                            |
+| `--verbose`      | Show descriptor details in a human-readable format. |
+| `--json`         | Emit `{ descriptor, source }`; JSON is the default and this flag overrides `--verbose`. |
 
 ### Output
 
@@ -108,13 +112,14 @@ deessejs init https://github.com/owner/repository
 
 | Flag             | Effect                                                                                                                                                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--pm <name>`    | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`.                                                                                                                                                     |
-| `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`.                                                                                                                                  |
-| `--ref <branch>` | Git ref to use. Default: the repository's default branch.                                                                                                                                                                   |
-| `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images.                                                                                                                                                            |
-| `--force`        | Use an existing empty target directory. Existing files stay intact.                                                                                                                                                          |
-| `--verbose`      | Show template resolution details and the package manager's full output during installation.                                                                                                                                 |
-| `--json`         | When the CLI skips installation, emit `{ ok, slug, dir, ref, installed }`. Otherwise include `packageManager` (the detected name, or `null` if none appears). A handled CLI error emits `{ ok: false, code, message, hint }`. |
+| `--pm <name>`    | Override detected package manager. One of `pnpm`, `npm`, `yarn`, `bun`. |
+| `--dir <path>`   | Target directory. Resolves relative to the current working directory. Default: `./<slug>`. |
+| `--ref <branch>` | Git ref to use. Default: the repository's default branch. |
+| `--no-install`   | Skip the install step. Useful for CI or pre-baked Docker images. |
+| `--force`        | Use an existing empty target directory. Existing files stay intact. |
+| `--verbose`      | Show human-readable initialization details and the package manager's full output during installation. By default, the command returns JSON. |
+| `--json`         | Emit `{ ok, slug, dir, ref, installed }`. When installation runs, the result includes `packageManager`. Handled CLI errors return `{ ok: false, code, message, hint }`. This flag takes precedence over `--verbose`. |
+| `--organization <slug>` | Resolve an organization-owned managed template in that organization. |
 
 ### Package manager detection
 
@@ -136,7 +141,7 @@ If neither source identifies a package manager, the CLI creates the project with
 
 ### Exit codes
 
-- `0`: success (created + installed, or created only if `--no-install`).
+- `0`: success (created and installed, or created without installation when you pass `--no-install`).
 - `1`: public codes (`not_found`, `network_error`, `parse_error`).
 - `1`: internal codes (still exit 1, but with a different `code` field if you pass `--json`): `template_invalid`, `invalid_target`, `target_exists`, `target_not_empty`, `materialize_failed`, `install_failed`, `internal`.
 
@@ -155,9 +160,54 @@ deessejs init next-app-starter --pm pnpm
 # Use a feature branch without installing
 deessejs init next-app-starter --ref feat/new-thing --no-install
 
-# CI usage
-deessejs init next-app-starter --json --no-install | tee clone-result.json
+# Machine-readable output is the default
+deessejs init next-app-starter --no-install | tee clone-result.json
+
+# Human-readable details
+deessejs init next-app-starter --no-install --verbose
+
+# Explicit JSON keeps JSON when combined with --verbose
+deessejs init next-app-starter --no-install --verbose --json
+
+# Initialize a private organization template
+deessejs init starter --organization acme --no-install
 ```
+
+---
+
+## Managed template and block releases
+
+Publishing commands emit one JSON result by default. Use `--verbose` for a short human-readable confirmation. `--json` explicitly selects JSON and overrides `--verbose`.
+
+```bash
+deessejs template publish --slug starter --destination deessejs
+deessejs block publish --slug auth --destination acme
+deessejs template releases
+deessejs template releases starter --organization acme --verbose
+deessejs template releases --verbose --json
+```
+
+`template publish` and `block publish` read the stable version from the local descriptor and publish that exact version. Use the separate version bump command when available from PR #577 before publishing a higher release. `template releases` lists ready releases; add `--organization <slug>` to query private organization releases you can access. Errors produce a JSON error object and a nonzero process exit code in JSON mode.
+
+`organization template request-listing <organization> <template>` requests review for the public catalog. It is a separate operation from managed release publishing and approval. It emits JSON by default; add `--verbose` for a human confirmation. `--json` overrides `--verbose`.
+
+```bash
+deessejs organization template request-listing acme starter --confirm-distribution-rights
+deessejs organization template request-listing acme starter --confirm-distribution-rights --verbose
+deessejs organization template request-listing acme starter --confirm-distribution-rights --verbose --json
+```
+
+## `deessejs add <block-source>`
+
+Add a block to a declared project package. The command emits a JSON result by default. Use `--verbose` to display the planned file changes and human-readable progress. `--json` overrides `--verbose`.
+
+```bash
+deessejs add auth --target api --dry-run
+deessejs add auth --target api --organization acme --dry-run --verbose
+deessejs add auth --target api --organization acme --yes
+```
+
+Before writing files, `add` asks for confirmation in an interactive terminal. In a noninteractive environment, writes are refused unless `--yes` is supplied. `--yes` is explicit consent to apply the plan without a prompt. A dry run never writes files. Prompts and plan notices go to stderr in JSON mode; JSON result/error data stays on stdout. A failed command exits nonzero.
 
 ---
 
@@ -179,11 +229,11 @@ deessejs auth login
 | -------- | -------------------------------------------------------------------------------------------------------- |
 | `--json` | Emit `{ ok: true, user }` on success. A handled `CliError` uses `{ ok: false, code, message }`. |
 
-Exit codes: `0` on success and `1` on failure. Denying the request produces `cli_device_denied`; an expired, rejected, or otherwise unusable device flow produces `cli_device_expired`. Unexpected failures use the CLI's general error handler.
+Exit code `0` signals success. Exit code `1` signals failure. Denying the request produces `cli_device_denied`. An expired, rejected, or unusable device flow produces `cli_device_expired`. Unexpected failures use the CLI's general error handler.
 
 ### `deessejs auth status`
 
-Read-only diagnostic. Validates the stored bearer against the server and prints one of three states: no session, valid session, or stale session. These three states exit `0`; a request or server failure exits `1`.
+This diagnostic leaves the stored bearer unchanged. It checks the token with the server and prints one of three states: no session, valid session, or stale session. Each state returns `0`. Request or server failures return `1`.
 
 ```bash
 deessejs auth status
@@ -195,7 +245,7 @@ deessejs auth status
 
 ### `deessejs auth logout`
 
-Attempt to invalidate the server-side session, then delete the local token file. A non-2xx response still clears the local file and is reported as a warning in human-readable mode. A network failure also clears the local file, then exits with an error.
+Attempt to invalidate the server-side session, then delete the local token file. A non-2xx response still clears the local file. The CLI logs a warning in human-readable mode. A network failure also clears the local file and returns an error.
 
 ```bash
 deessejs auth logout
@@ -225,17 +275,17 @@ deessejs organization create "Acme Studio"
 | `organization info <slug>` | Show an organization the signed-in user belongs to. |
 | `organization create <name>` | Create an organization through the authenticated provisioning API. |
 
-Each command accepts `--json` for scripting. See the [CLI package reference](https://github.com/deessejs/deessejs/blob/staging/apps/cli/README.md) for details.
+These commands emit JSON by default. Use `--verbose` for human-readable output. If you pass both flags, `--json` keeps the JSON response. See the [CLI package reference](https://github.com/deessejs/deessejs/blob/staging/apps/cli/README.md) for details.
 
 ## Error codes reference
 
-These public error codes are intended for scripting. Some internal errors are also included in JSON output and may change between releases.
+Use these public error codes in scripts. The CLI may include some internal errors in JSON output. Those internal codes can change between releases.
 
 | Code                 | Meaning                                             | Remediation                                                         |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
-| `not_found`          | A requested identifier doesn't exist               | Check spelling or run `deessejs list`                            |
+| `not_found`          | Identifier not found | Check spelling or run `deessejs list` |
 | `network_error`      | Network request failed                              | Check connectivity, then retry                                      |
-| `parse_error`        | Server response didn't match the v1 contract        | Likely a server-side regression. Open an issue.                     |
+| `parse_error`        | Server response didn't match the v1 contract | This may signal a server-side regression. Open an issue. |
 | `cli_device_denied`  | You denied the device-flow request in the browser   | Re-run `deessejs auth login` and select Approve                     |
 | `cli_device_expired` | The 30-minute device-code window elapsed            | Re-run `deessejs auth login`                                        |
 

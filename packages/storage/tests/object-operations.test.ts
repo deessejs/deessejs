@@ -59,6 +59,11 @@ describe("createObjectOperations", () => {
     })
   })
 
+  it("supports create-only writes for immutable sealed artifacts", async () => {
+    await storage.putObject({ body: new Uint8Array([1]), key: "sealed/release.tar.gz", ifNoneMatch: "*" })
+    expect((commands[0] as PutObjectCommand).input.IfNoneMatch).toBe("*")
+  })
+
   it("returns the read stream and available metadata", async () => {
     const body = Readable.from(["fixture bytes"])
     const lastModified = new Date("2026-10-30T00:00:00.000Z")

@@ -58,6 +58,8 @@ export const TemplateV1 = z.object({
    * a soft signal of activity. Not used for ranking.
    */
   stars: z.number().int().nonnegative().optional(),
+  /** API-authoritative marker for templates that must resolve through managed releases. */
+  requiresManaged: z.boolean().optional(),
 })
 
 export type TemplateV1 = z.infer<typeof TemplateV1>

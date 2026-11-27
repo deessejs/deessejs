@@ -57,11 +57,11 @@
       "additionalProperties": false
     },
     "includes": {
+      "minItems": 1,
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "minItems": 1
+      }
     },
     "excludes": {
       "type": "array",
@@ -86,6 +86,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "previewImage": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "required": [

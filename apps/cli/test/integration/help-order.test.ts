@@ -51,13 +51,23 @@ describe("CLI help command ordering", () => {
       process.execPath,
       [cliPath, "templates", "--help"]
     )
+    const { stdout: templateVersionHelp } = await execFileAsync(
+      process.execPath,
+      [cliPath, "template", "version", "--help"]
+    )
 
     const authExpected = ["help", "login", "logout", "status"]
-    const templateExpected = ["help", "info", "init", "list"]
+    const templateExpected = ["help", "info", "init", "list", "version"]
     expect(commandEntries(authHelp, authExpected)).toEqual(authExpected)
     expect(commandEntries(templateHelp, templateExpected)).toEqual(
       templateExpected
     )
+    expect(commandEntries(templateVersionHelp, ["help", "major", "minor", "patch"])).toEqual([
+      "help",
+      "major",
+      "minor",
+      "patch",
+    ])
     expect(legacyTemplatesHelp).toContain("Usage: deessejs template")
   })
 })

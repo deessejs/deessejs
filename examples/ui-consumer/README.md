@@ -1,6 +1,6 @@
 # Public UI package consumer
 
-This standalone Next.js app demonstrates `@deessejs/ui` as a workspace dependency. It does not depend on the admin package, product apps, or the original `next-shadcn-monorepo` example.
+This standalone Next.js app demonstrates `@deessejs/ui` as a workspace dependency. It does not use Deesse's optional Admin plugin, product apps, or the original `next-shadcn-monorepo` example.
 
 The app owns its theme values and global CSS. Its Tailwind stylesheet imports Tailwind once, then imports the UI package's source-registration entry.
 

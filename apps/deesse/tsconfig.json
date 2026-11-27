@@ -1,13 +1,21 @@
 {
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "types": ["node"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "isolatedDeclarations": false,
     "declaration": false,
     "declarationMap": false,
     "paths": {
       "deesse": ["./src/index.ts"],
-      "deesse/react": ["./src/react.ts"]
+      "deesse/react": ["./src/react.ts"],
+      "deesse/plugins/admin": ["./src/plugins/admin/index.ts"],
+      "deesse/plugins/admin/next": ["./src/plugins/admin/next.tsx"],
+      "deesse/plugins/blog": ["./src/plugins/blog/index.ts"],
+      "deesse/plugins/blog/admin": ["./src/plugins/blog/admin/index.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*.ts"]
