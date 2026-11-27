@@ -10,7 +10,6 @@ import {
 import {
   db,
   templatePublications,
-  managedReleases,
   templateRepositorySnapshots,
   templates,
 } from "@workspace/database"
@@ -19,6 +18,7 @@ import { logger } from "../../constants/logger.js"
 import { serverEnv } from "@workspace/env/server"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { callerHasActiveOrganizationPro } from "../../core/organization/entitlement.js"
+import { getManagedTemplateReleaseSummaries } from "../../core/managed-releases/template-previews.js"
 
 const publicTemplateColumns = {
   id: templates.id,
@@ -243,26 +243,23 @@ export const list = base
       const managedIds = rows
         .filter((row) => row.sourceType === "managed")
         .map((row) => row.id)
-      const ready = managedIds.length
-        ? await db
-            .select({ templateId: managedReleases.templateId })
-            .from(managedReleases)
-            .where(
-              and(
-                eq(managedReleases.kind, "template"),
-                eq(managedReleases.status, "ready")
-              )
-            )
-            .orderBy(asc(managedReleases.createdAt))
-        : []
-      const readyIds = new Set(ready.map((item) => item.templateId))
+      const releaseSummaries =
+        await getManagedTemplateReleaseSummaries(managedIds)
       return {
-        templates: rows.map((row) => ({
-          ...toPublicTemplate({ ...row, readme: null }),
-          ...(row.sourceType === "managed"
-            ? { installable: readyIds.has(row.id) }
-            : {}),
-        })),
+        templates: rows.map((row) => {
+          const releaseSummary = releaseSummaries.get(row.id)
+          return {
+            ...toPublicTemplate({ ...row, readme: null }),
+            ...(row.sourceType === "managed"
+              ? {
+                  installable: releaseSummaries.has(row.id),
+                  ...(releaseSummary?.previewImageUrl
+                    ? { previewImageUrl: releaseSummary.previewImageUrl }
+                    : {}),
+                }
+              : {}),
+          }
+        }),
       }
     } catch (error) {
       const message =
@@ -299,23 +296,17 @@ export const detail = base
       )
       .limit(1)
     if (!row) return null
-    const installable =
-      row.sourceType === "github"
-        ? true
-        : (
-            await db
-              .select({ id: managedReleases.id })
-              .from(managedReleases)
-              .where(
-                and(
-                  eq(managedReleases.templateId, row.id),
-                  eq(managedReleases.kind, "template"),
-                  eq(managedReleases.status, "ready")
-                )
-              )
-              .limit(1)
-          ).length > 0
-    return { ...toPublicTemplate(row as PublicTemplateRow, true), installable }
+    const releaseSummary =
+      row.sourceType === "managed"
+        ? (await getManagedTemplateReleaseSummaries([row.id])).get(row.id)
+        : undefined
+    return {
+      ...toPublicTemplate(row as PublicTemplateRow, true),
+      installable: row.sourceType === "github" || Boolean(releaseSummary),
+      ...(releaseSummary?.previewImageUrl
+        ? { previewImageUrl: releaseSummary.previewImageUrl }
+        : {}),
+    }
   })
 
 /** Resolve a catalog slug without loading its GitHub snapshot payload. */

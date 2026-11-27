@@ -5,10 +5,10 @@ import {
   OrganizationTemplatesListResponseV1,
 } from "@workspace/contracts/v1"
 import { hasManagingRole } from "@workspace/auth/organization/roles"
+import { hasOrganizationProEntitlement } from "@workspace/auth/organization/entitlement"
 import {
   db,
   member,
-  managedReleases,
   organization,
   templatePublications,
   templateRepositorySnapshots,
@@ -30,6 +30,7 @@ import { transitionPendingPublicationImageReference } from "../../core/templates
 import { base } from "../base.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
+import { getManagedTemplateReleaseSummaries } from "../../core/managed-releases/template-previews.js"
 
 const accessDeniedErrors = {
   ORGANIZATION_ACCESS_DENIED: {
@@ -114,20 +115,14 @@ export const list = base
     const managedIds = rows
       .filter((row) => row.sourceType === "managed")
       .map((row) => row.id)
-    const readyReleases = managedIds.length
-      ? await db
-          .select({ templateId: managedReleases.templateId })
-          .from(managedReleases)
-          .where(
-            and(
-              inArray(managedReleases.templateId, managedIds),
-              eq(managedReleases.kind, "template"),
-              eq(managedReleases.status, "ready")
-            )
-          )
-      : []
-    const readyTemplateIds = new Set(
-      readyReleases.map((release) => release.templateId)
+    const releaseSummaries = await getManagedTemplateReleaseSummaries(
+      managedIds,
+      {
+        includePreviews: await hasOrganizationProEntitlement(
+          context.user.id,
+          context.organization.id
+        ),
+      }
     )
     const currentlyPublished = new Set(
       currentPublications.map((publication) => publication.templateId)
@@ -172,7 +167,7 @@ export const list = base
           repo: row.repo,
           sourceType: row.sourceType,
           installable:
-            row.sourceType === "github" || readyTemplateIds.has(row.id),
+            row.sourceType === "github" || releaseSummaries.has(row.id),
           category: row.category,
           labels: row.labels,
           license: row.licenseFallback ?? row.snapshotLicense ?? "",
@@ -185,6 +180,8 @@ export const list = base
                 imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
               }
             : {}),
+          previewImageUrl:
+            releaseSummaries.get(row.id)?.previewImageUrl ?? null,
           currentlyPublished: currentlyPublished.has(row.id),
           publication: publication
             ? {

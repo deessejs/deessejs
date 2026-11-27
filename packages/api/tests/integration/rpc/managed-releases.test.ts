@@ -52,7 +52,9 @@ describe("managed release resolution", () => {
         const request = () => api.request("/api/v1/rpc/managedReleases/resolve", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ json: { kind: "template", slug }, path }) })
         const latest = await request()
         expect(latest.status).toBe(200)
-        expect((await latest.json()).json.release.version).toBe("1.2.0")
+        const latestJson = await latest.json()
+        expect(latestJson.json.release.version).toBe("1.2.0")
+        expect(latestJson.json.release.preview).toBeNull()
         const withdrawnId = ids[1]
         if (!withdrawnId) throw new Error("Expected a second seeded managed release.")
         await db.update(managedReleases).set({ status: "withdrawn", withdrawnAt: new Date() }).where(eq(managedReleases.id, withdrawnId))
@@ -90,12 +92,13 @@ describe("managed release resolution", () => {
         templateId = (await call(appRouter.admin.templates.create, { sourceType: "managed", slug, name: slug, category: "saas", labels: [] }, { context })).id
         const descriptor = {
           $schema: "https://app.deessejs.com/schema/template/v1.json", formatVersion: 1, name: slug, title: slug,
-          description: "API archive publication fixture", type: "template:starter", version: "1.0.0", excludes: [],
+          description: "API archive publication fixture", type: "template:starter", version: "1.0.0", excludes: [], previewImage: "preview.png",
         }
         await writeFile(join(root, "deesse-template.json"), JSON.stringify(descriptor))
         await writeFile(join(root, "README.md"), "fixture bytes")
+        await writeFile(join(root, "preview.png"), Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1]))
         const chunks: Buffer[] = []
-        for await (const chunk of c({ cwd: root, gzip: true, portable: true, mtime: new Date(0) }, ["deesse-template.json", "README.md"])) chunks.push(Buffer.from(chunk))
+        for await (const chunk of c({ cwd: root, gzip: true, portable: true, mtime: new Date(0) }, ["deesse-template.json", "README.md", "preview.png"])) chunks.push(Buffer.from(chunk))
         const archive = new Uint8Array(Buffer.concat(chunks))
         const digest = createHash("sha256").update(archive).digest("hex")
         setManagedReleaseStorageForTests({ staging: fakeStore, sealed: fakeStore })
@@ -125,6 +128,9 @@ describe("managed release resolution", () => {
         const resolved = await call(appRouter.managedReleases.resolve, { kind: "template", slug }, { context: { ...context, user: null, session: null } })
         expect(resolved.release?.version).toBe("1.0.0")
         expect(resolved.release?.downloadUrl).toContain("managed-releases/sealed/template/platform/deessejs/")
+        expect(resolved.release?.preview).toContain("managed-releases/previews/template/")
+        const adminTemplates = await call(appRouter.admin.templates.list, undefined, { context })
+        expect(adminTemplates.templates.find((item) => item.slug === slug)?.previewImageUrl).toContain("managed-releases/previews/template/")
         const retry = await call(appRouter.managedReleases.begin, { ...beginInput, idempotencyKey: randomUUID() }, { context })
         expect(retry.alreadyPublished).toBe(true)
         const idempotentRetry = await call(appRouter.managedReleases.begin, beginInput, { context })
@@ -167,8 +173,8 @@ describe("managed release resolution", () => {
       ])
       await db.insert(subscription).values({ id: `managed-sub-${suffix}`, plan: "pro", billingInterval: "month", referenceId: orgId, status: "active", seats: 1 })
       await db.insert(organizationProSeat).values({ id: `managed-seat-${suffix}`, organizationId: orgId, memberId: memberRowId })
-      await db.insert(templates).values({ id: templateId, slug, ownerType: "organization", organizationId: orgId, name: slug, owner: "fixture", repo: slug, category: "saas" })
-      await db.insert(managedReleases).values({ id: releaseId, kind: "template", ownerType: "organization", organizationId: orgId, templateId, slug, version: "1.0.0", archiveKey: `private/${suffix}`, digest: "a".repeat(64), descriptorDigest: "b".repeat(64), archiveSize: 10, publishedBy: memberId })
+      await db.insert(templates).values({ id: templateId, slug, ownerType: "organization", organizationId: orgId, name: slug, owner: null, repo: null, sourceType: "managed", category: "saas" })
+      await db.insert(managedReleases).values({ id: releaseId, kind: "template", ownerType: "organization", organizationId: orgId, templateId, slug, version: "1.0.0", archiveKey: `private/${suffix}`, previewKey: `private-preview/${suffix}`, digest: "a".repeat(64), descriptorDigest: "b".repeat(64), archiveSize: 10, publishedBy: memberId })
       await db.insert(blockPublications).values({ id: blockId, organizationId: orgId, organizationSlug: orgSlug, submittedBy: memberId, slug: blockSlug, name: blockSlug, category: "ui", repositoryUrl: "https://github.com/example/private-block", sourceCommit: "a".repeat(40), descriptor: "{}", reviewStatus: "draft", publicationState: "private" })
       await db.insert(managedReleases).values({ id: blockReleaseId, kind: "block", ownerType: "organization", organizationId: orgId, blockPublicationId: blockId, slug: blockSlug, version: "1.0.0", archiveKey: `private-block/${suffix}`, digest: "c".repeat(64), descriptorDigest: "d".repeat(64), archiveSize: 10, publishedBy: memberId })
       setManagedReleaseStorageForTests({ staging: fakeStore, sealed: fakeStore })
@@ -178,6 +184,11 @@ describe("managed release resolution", () => {
         await expect(call(appRouter.managedReleases.resolve, input, { context: contextFor(noSeatUserId) })).rejects.toMatchObject({ code: "FORBIDDEN" })
         const result = await call(appRouter.managedReleases.resolve, input, { context: contextFor(memberId) })
         expect(result.release?.downloadUrl).toContain(`private/${suffix}`)
+        expect(result.release?.preview).toContain(`private-preview/${suffix}`)
+        const organizationTemplates = await call(appRouter.organization.templates.list, { organizationSlug: orgSlug }, { context: contextFor(memberId) })
+        expect(organizationTemplates.templates.find((item) => item.slug === slug)?.previewImageUrl).toContain(`private-preview/${suffix}`)
+        const noSeatTemplates = await call(appRouter.organization.templates.list, { organizationSlug: orgSlug }, { context: contextFor(noSeatUserId) })
+        expect(noSeatTemplates.templates.find((item) => item.slug === slug)?.previewImageUrl).toBeNull()
         const blockInput = { kind: "block" as const, slug: blockSlug, organizationSlug: orgSlug }
         const resolvedBlock = await call(appRouter.managedReleases.resolve, blockInput, { context: contextFor(memberId) })
         expect(resolvedBlock.release?.downloadUrl).toContain(`private-block/${suffix}`)

@@ -18,6 +18,10 @@ import {
 } from "@workspace/ui/components/dialog"
 import { useForm } from "@tanstack/react-form"
 import { TemplateFormFields, templateFormSchema } from "./template-form-fields"
+import {
+  repositoryUrlForSource,
+  switchTemplateSource,
+} from "@/lib/template-source-form"
 import type {
   EditableTemplate,
   TemplateFormValues,
@@ -93,7 +97,7 @@ async function saveTemplate(
 
   await client.rpc.admin.templates.create({
     sourceType: value.sourceType,
-    ...(value.repositoryUrl ? { repositoryUrl: value.repositoryUrl } : {}),
+    ...repositoryUrlForSource(value.sourceType, value.repositoryUrl),
     slug: value.slug,
     name: value.name,
     descriptionOverride: value.descriptionOverride.trim() || null,
@@ -117,6 +121,7 @@ function getFailureMessage(error: unknown, isEditing: boolean) {
 function changeTemplateField(
   name: keyof TemplateFormValues,
   value: string,
+  values: TemplateFormValues,
   setFieldValue: (name: keyof TemplateFormValues, value: string) => void
 ) {
   switch (name) {
@@ -132,7 +137,9 @@ function changeTemplateField(
       return
     case "sourceType":
       if (value === "github" || value === "managed") {
-        setFieldValue("sourceType", value)
+        const next = switchTemplateSource(values, value)
+        setFieldValue("sourceType", next.sourceType)
+        setFieldValue("repositoryUrl", next.repositoryUrl)
       }
       return
     case "repositoryUrl":
@@ -219,7 +226,9 @@ export function CreateTemplateDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit template" : "Add a template"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Edit template" : "Add a template"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Update the catalog details. The GitHub repository snapshot and slug will stay unchanged."
@@ -241,7 +250,12 @@ export function CreateTemplateDialog({
             }}
             template={template}
             onChange={(name, value) =>
-              changeTemplateField(name, value, form.setFieldValue)
+              changeTemplateField(
+                name,
+                value,
+                form.state.values,
+                form.setFieldValue
+              )
             }
             allowManagedSource
           />

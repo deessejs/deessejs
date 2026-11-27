@@ -47,6 +47,7 @@ async function resolveInfoForTemplate(
     return {
       descriptor: managed.plan.descriptor,
       source: managed.plan.source,
+      preview: managed.preview,
     }
   }
 
@@ -56,10 +57,13 @@ async function resolveInfoForTemplate(
       "this template has no GitHub source"
     )
   }
-  return resolveTemplateDescriptorInfo(
-    `${resolved.template.owner}/${resolved.template.repo}`,
-    getTemplateRef(resolved.template, requestedRef)
-  )
+  return {
+    ...(await resolveTemplateDescriptorInfo(
+      `${resolved.template.owner}/${resolved.template.repo}`,
+      getTemplateRef(resolved.template, requestedRef)
+    )),
+    preview: null,
+  }
 }
 
 function reportInfoError(error: unknown, json: boolean): never {
@@ -126,9 +130,11 @@ export const infoCommand = new Command("info")
           printJson({
             descriptor: info.descriptor,
             source: info.source,
+            ...(info.preview ? { previewImageUrl: info.preview } : {}),
           })
         } else {
           printTemplateInfo(info.descriptor, info.source)
+          if (info.preview) console.log(`Preview: ${info.preview}`)
           console.log()
           console.log(`Install: ${installCommand}`)
         }

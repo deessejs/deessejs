@@ -114,9 +114,10 @@ export const TemplateDetail = ({
       </header>
 
       <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
-        {template.image ? (
+        {(template.previewImageUrl ?? template.image) ? (
           <Image
-            src={template.image}
+            src={template.previewImageUrl ?? template.image ?? ""}
+            unoptimized={Boolean(template.previewImageUrl)}
             alt={`${template.name} preview`}
             fill
             sizes="(max-width: 768px) 100vw, 896px"

@@ -7,7 +7,10 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
+const { selectMock, releaseSummariesMock } = vi.hoisted(() => ({
+  selectMock: vi.fn(),
+  releaseSummariesMock: vi.fn(),
+}))
 
 vi.mock("../../src/core/organization/entitlement.js", () => ({
   callerHasActiveOrganizationPro: vi.fn().mockResolvedValue(true),
@@ -17,6 +20,9 @@ vi.mock("@workspace/database", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@workspace/database")>()
   return { ...actual, db: { select: selectMock } }
 })
+vi.mock("../../src/core/managed-releases/template-previews.js", () => ({
+  getManagedTemplateReleaseSummaries: releaseSummariesMock,
+}))
 
 import { call } from "@orpc/server"
 import { appRouter } from "../../src/orpc/index.js"
@@ -81,6 +87,7 @@ function createQuery() {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  releaseSummariesMock.mockResolvedValue(new Map())
 })
 
 describe("templates.list", () => {
@@ -163,6 +170,42 @@ describe("templates.list", () => {
     expect(result.templates[0]).not.toHaveProperty("repo")
     expect(result.templates[0]).not.toHaveProperty("cloneUrl")
   })
+
+  it("projects the latest managed preview when present and omits it when absent", async () => {
+    const managedRow = {
+      ...templateRow,
+      owner: null,
+      repo: null,
+      sourceType: "managed",
+      canonicalUrl: null,
+      repositoryDescription: null,
+      license: null,
+      stars: null,
+      repositoryUpdatedAt: null,
+    }
+    const previewImageUrl = "https://private.invalid/preview?signature=short"
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[managedRow.id, { installable: true, previewImageUrl }]])
+    )
+    mockQuery([managedRow])
+    const withPreview = await call(appRouter.templates.list, undefined, {
+      context,
+    })
+    expect(withPreview.templates[0]).toMatchObject({
+      installable: true,
+      previewImageUrl,
+    })
+
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[managedRow.id, { installable: true, previewImageUrl: null }]])
+    )
+    mockQuery([managedRow])
+    const withoutPreview = await call(appRouter.templates.list, undefined, {
+      context,
+    })
+    expect(withoutPreview.templates[0]).toMatchObject({ installable: true })
+    expect(withoutPreview.templates[0]).not.toHaveProperty("previewImageUrl")
+  })
 })
 
 describe("templates.detail", () => {
@@ -199,6 +242,22 @@ describe("templates.detail", () => {
     )
 
     expect(result).toMatchObject({ requiresManaged: true })
+  })
+
+  it("includes the managed release preview in detail when available", async () => {
+    const previewImageUrl = "https://private.invalid/preview?signature=short"
+    mockQuery([
+      { ...templateRow, sourceType: "managed", owner: null, repo: null },
+    ])
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[templateRow.id, { installable: true, previewImageUrl }]])
+    )
+    const result = await call(
+      appRouter.templates.detail,
+      { slug: "saas-starter" },
+      { context }
+    )
+    expect(result).toMatchObject({ installable: true, previewImageUrl })
   })
 
   it("returns null for a missing official template", async () => {

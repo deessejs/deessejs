@@ -1,9 +1,8 @@
 import { ORPCError } from "@orpc/server"
-import { and, asc, eq, inArray, max } from "drizzle-orm"
+import { and, asc, eq, max } from "drizzle-orm"
 import { z } from "zod"
 import {
   db,
-  managedReleases,
   templateRepositorySnapshots,
   templates,
   user,
@@ -19,6 +18,7 @@ import {
 import { adminProcedure } from "../admin-middleware.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
 import { serverEnv } from "@workspace/env/server"
+import { getManagedTemplateReleaseSummaries } from "../../core/managed-releases/template-previews.js"
 
 const adminTemplate = z.object({
   id: z.string().uuid(),
@@ -35,6 +35,7 @@ const adminTemplate = z.object({
   access: z.enum(["free", "paid"]),
   imageName: z.string().nullable(),
   imageUrl: z.string().url().nullable(),
+  previewImageUrl: z.string().url().nullable(),
   repositoryName: z.string().nullable(),
   canonicalUrl: z.string().url().nullable(),
   stars: z.number().int().nonnegative().nullable(),
@@ -132,30 +133,18 @@ export const list = adminProcedure
     const managedIds = rows
       .filter((row) => row.sourceType === "managed")
       .map((row) => row.id)
-    const readyReleases = managedIds.length
-      ? await db
-          .select({ templateId: managedReleases.templateId })
-          .from(managedReleases)
-          .where(
-            and(
-              inArray(managedReleases.templateId, managedIds),
-              eq(managedReleases.kind, "template"),
-              eq(managedReleases.status, "ready")
-            )
-          )
-      : []
-    const readyTemplateIds = new Set(
-      readyReleases.map((release) => release.templateId)
-    )
+    const releaseSummaries =
+      await getManagedTemplateReleaseSummaries(managedIds)
     return {
       templates: rows.map((row) => ({
         ...row,
         installable:
-          row.sourceType === "github" || readyTemplateIds.has(row.id),
+          row.sourceType === "github" || releaseSummaries.has(row.id),
         fetchedAt: row.fetchedAt?.toISOString() ?? null,
         imageUrl: row.imageObjectId
           ? `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`
           : null,
+        previewImageUrl: releaseSummaries.get(row.id)?.previewImageUrl ?? null,
       })),
     }
   })

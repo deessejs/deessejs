@@ -133,24 +133,27 @@ const columns = column.columns([
   column.display({
     id: "presentation",
     header: "Presentation image",
-    cell: ({ row }) => (
-      <div className="flex min-w-56 items-center gap-3">
-        {row.original.imageUrl ? (
-          <Image
-            src={row.original.imageUrl}
-            alt={`${row.original.name} presentation image`}
-            width={64}
-            height={64}
-            unoptimized
-            className="size-16 rounded-md border object-cover"
-          />
-        ) : (
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
-            No image
-          </div>
-        )}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const imageUrl = row.original.previewImageUrl ?? row.original.imageUrl
+      return (
+        <div className="flex min-w-56 items-center gap-3">
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={`${row.original.name} presentation image`}
+              width={64}
+              height={64}
+              unoptimized
+              className="size-16 rounded-md border object-cover"
+            />
+          ) : (
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
+              No image
+            </div>
+          )}
+        </div>
+      )
+    },
   }),
 ])
 

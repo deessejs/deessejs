@@ -29,6 +29,10 @@ import {
 } from "@workspace/ui/components/select"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
+import {
+  repositoryUrlForSource,
+  switchTemplateSource,
+} from "@/lib/template-source-form"
 
 const formSchema = z
   .object({
@@ -123,11 +127,9 @@ export function CreateOrganizationTemplateDialog({
         await client.rpc.organization.templates.create({
           organizationSlug,
           sourceType: value.sourceType,
+          ...repositoryUrlForSource(value.sourceType, value.repositoryUrl),
           slug: value.slug,
           name: value.name,
-          ...(value.repositoryUrl
-            ? { repositoryUrl: value.repositoryUrl }
-            : {}),
           descriptionOverride: value.descriptionOverride.trim() || null,
           category: value.category,
           labels: value.labels
@@ -180,8 +182,17 @@ export function CreateOrganizationTemplateDialog({
               <Select
                 value={form.getFieldValue("sourceType")}
                 onValueChange={(value) => {
-                  if (value === "github" || value === "managed")
-                    form.setFieldValue("sourceType", value)
+                  if (value === "github" || value === "managed") {
+                    const next = switchTemplateSource(
+                      {
+                        sourceType: form.getFieldValue("sourceType"),
+                        repositoryUrl: form.getFieldValue("repositoryUrl"),
+                      },
+                      value
+                    )
+                    form.setFieldValue("sourceType", next.sourceType)
+                    form.setFieldValue("repositoryUrl", next.repositoryUrl)
+                  }
                 }}
               >
                 <SelectTrigger

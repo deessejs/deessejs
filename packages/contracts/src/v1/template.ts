@@ -35,6 +35,8 @@ export const TemplateV1 = z.object({
   category: z.string().min(1),
   labels: z.array(z.string()),
   image: z.string().optional(),
+  /** Short-lived signed URL for the latest managed release's validated preview image. */
+  previewImageUrl: z.string().url().optional(),
   /**
    * Optional override for the clone URL. Falls back to
    * `https://github.com/<owner>/<repo>` when absent.

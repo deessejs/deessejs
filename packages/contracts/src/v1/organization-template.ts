@@ -21,6 +21,7 @@ export const OrganizationTemplateV1 = z.object({
   stars: z.number().int().nonnegative().nullable(),
   fetchedAt: z.string().datetime().nullable(),
   imageUrl: z.string().url().optional(),
+  previewImageUrl: z.string().url().nullable().optional(),
   currentlyPublished: z.boolean(),
   publication: z
     .object({

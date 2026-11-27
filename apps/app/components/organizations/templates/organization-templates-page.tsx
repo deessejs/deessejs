@@ -320,9 +320,9 @@ function TemplateRows({
       {templates.map((template) => (
         <tr key={template.id}>
           <td className="max-w-sm px-4 py-3">
-            {template.imageUrl ? (
+            {(template.previewImageUrl ?? template.imageUrl) ? (
               <Image
-                src={template.imageUrl}
+                src={template.previewImageUrl ?? template.imageUrl ?? ""}
                 alt={`${template.name} presentation image`}
                 width={48}
                 height={48}
