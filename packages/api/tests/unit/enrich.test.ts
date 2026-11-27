@@ -47,16 +47,15 @@ describe("resolveLabels", () => {
     expect(resolveLabels([], [])).toEqual([])
   })
 
-  it("does not coerce non-array values (defensive against bad upstream)", () => {
-    // GitHub's `topics` field is typed `string[]` but JSON could
-    // theoretically carry anything. We rely on `Array.isArray` as
-    // the gate so a malformed payload still resolves to the entry
-    // labels rather than crashing the resolver.
-    // @ts-expect-error: Deliberately malformed input must be rejected.
+  it("falls back to entry labels for malformed repo topics", () => {
     expect(resolveLabels("not-an-array", ["nextjs"])).toEqual(["nextjs"])
-    // @ts-expect-error: This unsupported input is rejected by the runtime schema.
     expect(resolveLabels(null, ["nextjs"])).toEqual(["nextjs"])
-    // @ts-expect-error: This unsupported input is rejected by the runtime schema.
     expect(resolveLabels({ length: 0 }, ["nextjs"])).toEqual(["nextjs"])
+    expect(resolveLabels(["valid", 42], ["nextjs"])).toEqual(["nextjs"])
+  })
+
+  it("returns an empty array for malformed entry labels", () => {
+    expect(resolveLabels(undefined, "not-an-array")).toEqual([])
+    expect(resolveLabels(undefined, ["valid", 42])).toEqual([])
   })
 })

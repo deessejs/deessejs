@@ -34,6 +34,9 @@ import { fetchReadme, fetchRepo } from "../github/client.js"
 
 export type EnrichedTemplate = TemplateV1
 
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === "string")
+
 /**
  * Resolve the `labels` field to a guaranteed `string[]`.
  *
@@ -45,11 +48,11 @@ export type EnrichedTemplate = TemplateV1
  * Exported for unit testing — see `packages/api/tests/unit/enrich.test.ts`.
  */
 export const resolveLabels = (
-  repoTopics: string[] | undefined,
-  entryLabels: string[] | undefined
+  repoTopics: unknown,
+  entryLabels: unknown
 ): string[] => {
-  if (Array.isArray(repoTopics) && repoTopics.length > 0) return repoTopics
-  if (Array.isArray(entryLabels)) return entryLabels
+  if (isStringArray(repoTopics) && repoTopics.length > 0) return repoTopics
+  if (isStringArray(entryLabels)) return entryLabels
   return []
 }
 
