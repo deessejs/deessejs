@@ -41,6 +41,23 @@ export function BlogAdminPage() {
     }
   }, [])
 
+  async function handlePreviousPage() {
+    try {
+      await loadPosts(Math.max(0, offset - PAGE_SIZE))
+    } catch {
+      setMessage("Could not load posts. Check the database migration and your administrator access.")
+    }
+  }
+
+  async function handleNextPage() {
+    if (nextOffset === null) return
+    try {
+      await loadPosts(nextOffset)
+    } catch {
+      setMessage("Could not load posts. Check the database migration and your administrator access.")
+    }
+  }
+
   useEffect(() => {
     loadPosts(0).then(() => undefined, () => undefined)
   }, [loadPosts])
@@ -138,7 +155,7 @@ export function BlogAdminPage() {
           <button
             className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
             disabled={loadingPosts || offset === 0}
-            onClick={() => loadPosts(Math.max(0, offset - PAGE_SIZE)).then(() => undefined, () => undefined)}
+            onClick={handlePreviousPage}
             type="button"
           >
             Previous
@@ -147,7 +164,7 @@ export function BlogAdminPage() {
           <button
             className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
             disabled={loadingPosts || nextOffset === null}
-            onClick={() => { if (nextOffset !== null) loadPosts(nextOffset).then(() => undefined, () => undefined) }}
+            onClick={handleNextPage}
             type="button"
           >
             Next
