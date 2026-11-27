@@ -1,4 +1,4 @@
-import { AdminPage } from "@deessejs/admin/next"
+import { AdminPage } from "deesse/plugins/admin/next"
 import { deesse } from "@deesse-config"
 
 export default async function AdminRoute({

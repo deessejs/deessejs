@@ -38,7 +38,7 @@ jobs:
           # package.json. Require Changesets only after that package exists
           # on the target branch, so later changes to it cannot bypass the
           # regular version gate.
-          for PACKAGE_DIR in apps/deesse apps/deesse-drizzle-adapter apps/admin; do
+          for PACKAGE_DIR in apps/deesse apps/deesse-drizzle-adapter; do
             if git cat-file -e "origin/$BASE_REF:$PACKAGE_DIR/package.json" 2>/dev/null; then
               PACKAGE_TOUCHED=$(git diff --name-only "${DIFF_ARGS[@]}" -- "$PACKAGE_DIR")
               if [ -n "$PACKAGE_TOUCHED" ]; then
@@ -85,12 +85,12 @@ jobs:
             [ "$BASE_REF" = "main" ]; then
             PREPARATION=promotion
           elif [ "$BASE_REF" = "staging" ] && \
+            [ "$PR_HEAD_REF" = "chore/blog-plugin-version-prep" ]; then
+            PREPARATION=blog-admin
+          elif [ "$BASE_REF" = "staging" ] && \
             [ "$PR_NUMBER" = "437" ] && \
             [ "$PR_HEAD_REF" = "fix/cli-version-packages-release" ]; then
             PREPARATION=cli
-          elif [ "$BASE_REF" = "staging" ] && \
-            [ "$PR_HEAD_REF" = "chore/admin-version-prep-0.2.0" ]; then
-            PREPARATION=admin
           else
             echo "trusted=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -104,7 +104,7 @@ jobs:
             # work cannot ride this one-time exception into main.
             RELEASE_PREPARATION_COMMIT=47251af0bc16a56dd6689644f9ce80be130e0379
             if ! git merge-base --is-ancestor "$RELEASE_PREPARATION_COMMIT" "$HEAD_SHA"; then
-              echo "::error::The staging promotion does not contain the validated admin version-preparation commit."
+              echo "::error::The staging promotion does not contain the validated release-preparation commit."
               exit 1
             fi
             CHANGED_SINCE_PREPARATION=$(git diff --name-only \
@@ -117,7 +117,6 @@ jobs:
             node <<'NODE'
           const fs = require("node:fs")
           const expected = new Map([
-            ["apps/admin/package.json", ["0.2.0", "apps/admin/CHANGELOG.md"]],
             ["apps/deesse/package.json", ["0.4.0", "apps/deesse/CHANGELOG.md"]],
             ["apps/deesse-drizzle-adapter/package.json", ["1.0.0", "apps/deesse-drizzle-adapter/CHANGELOG.md"]],
           ])
@@ -137,21 +136,10 @@ jobs:
 
           BASE_SHA=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
           CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" | LC_ALL=C sort)
-          if [ "$PREPARATION" = "cli" ]; then
+          if [ "$PREPARATION" = "blog-admin" ]; then
             ALLOWED=$(printf '%s\n' \
-              .changeset/bright-org-templates.md \
-              .changeset/bright-pandas-config.md \
-              .changeset/clever-orgs-list.md \
+              .changeset/blog-plugin.md \
               .github/workflows/changesets-check.yml \
-              .github/workflows/release.yml \
-              apps/cli/CHANGELOG.md \
-              apps/cli/package.json | LC_ALL=C sort)
-          else
-            ALLOWED=$(printf '%s\n' \
-              .changeset/admin-dashboard.md \
-              .github/workflows/changesets-check.yml \
-              apps/admin/CHANGELOG.md \
-              apps/admin/package.json \
               apps/deesse-drizzle-adapter/CHANGELOG.md \
               apps/deesse-drizzle-adapter/package.json \
               apps/deesse/CHANGELOG.md \
@@ -160,6 +148,15 @@ jobs:
               examples/next-shadcn-admin/apps/web/package.json \
               examples/next-shadcn-monorepo/apps/web/CHANGELOG.md \
               examples/next-shadcn-monorepo/apps/web/package.json | LC_ALL=C sort)
+          else
+            ALLOWED=$(printf '%s\n' \
+              .changeset/bright-org-templates.md \
+              .changeset/bright-pandas-config.md \
+              .changeset/clever-orgs-list.md \
+              .github/workflows/changesets-check.yml \
+              .github/workflows/release.yml \
+              apps/cli/CHANGELOG.md \
+              apps/cli/package.json | LC_ALL=C sort)
           fi
           if [ "$CHANGED" != "$ALLOWED" ]; then
             echo "::error::Trusted release-preparation PR contains an unexpected file set."
@@ -168,25 +165,26 @@ jobs:
             exit 1
           fi
 
-          if [ "$PREPARATION" = "admin" ]; then
+          if [ "$PREPARATION" = "blog-admin" ]; then
             node <<'NODE'
           const fs = require("node:fs")
           const expected = new Map([
-            ["apps/admin/package.json", "0.2.0"],
-            ["apps/deesse/package.json", "0.4.0"],
-            ["apps/deesse-drizzle-adapter/package.json", "1.0.0"],
-            ["examples/next-shadcn-admin/apps/web/package.json", "0.0.1"],
-            ["examples/next-shadcn-monorepo/apps/web/package.json", "0.0.1"],
+            ["apps/deesse/package.json", ["1.0.0", "apps/deesse/CHANGELOG.md"]],
+            ["apps/deesse-drizzle-adapter/package.json", ["2.0.0", "apps/deesse-drizzle-adapter/CHANGELOG.md"]],
+            ["examples/next-shadcn-admin/apps/web/package.json", ["0.0.2", "examples/next-shadcn-admin/apps/web/CHANGELOG.md"]],
+            ["examples/next-shadcn-monorepo/apps/web/package.json", ["0.0.2", "examples/next-shadcn-monorepo/apps/web/CHANGELOG.md"]],
           ])
-          for (const [file, version] of expected) {
-            const actual = JSON.parse(fs.readFileSync(file, "utf8")).version
-            if (actual !== version) {
-              console.error(`Expected ${file} version ${version}, received ${actual}`)
+          for (const [manifest, [version, changelog]] of expected) {
+            const actual = JSON.parse(fs.readFileSync(manifest, "utf8")).version
+            const history = fs.readFileSync(changelog, "utf8")
+            if (actual !== version || !history.includes(`## ${version}`)) {
+              console.error(`The Blog/Admin release-preparation artifact is missing or has an unexpected version: ${manifest}`)
               process.exitCode = 1
             }
           }
           NODE
           fi
+
           echo "trusted=true" >> "$GITHUB_OUTPUT"
           echo "Recognized the narrowly scoped $PREPARATION release-preparation PR."
 

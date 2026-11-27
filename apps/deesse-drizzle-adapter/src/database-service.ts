@@ -211,6 +211,10 @@ function createOperations<TSchema extends DeesseDatabaseSchema>(
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
         return failure({ code: "VALIDATION", message: "Query limit must be an integer from 1 through 100.", model: modelName })
       }
+      const offset = options?.offset ?? 0
+      if (!Number.isSafeInteger(offset) || offset < 0) {
+        return failure({ code: "VALIDATION", message: "Query offset must be a non-negative safe integer.", model: modelName })
+      }
       const filter = whereClause(modelName, model.table, model.model, typeBoundary<Record<string, unknown> | undefined>(options?.where))
       if (filter.error) return failure({ code: "VALIDATION", message: filter.error, model: modelName })
       const sortColumns: SQL[] = []
@@ -224,7 +228,7 @@ function createOperations<TSchema extends DeesseDatabaseSchema>(
         const select = database.select().from(model.table)
         const filtered = filter.clause ? select.where(filter.clause) : select
         const ordered = sortColumns.length ? filtered.orderBy(...sortColumns) : filtered
-        const rows = await ordered.limit(limit)
+        const rows = await ordered.limit(limit).offset(offset)
         return ok(rows.map((row) => typeBoundary<DeesseModelRow<TSchema[TModel]>>(row)))
       } catch (cause) {
         return normalizeError(modelName, cause)

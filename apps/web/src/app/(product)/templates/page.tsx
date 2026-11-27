@@ -1,6 +1,6 @@
+import Link from "next/link"
 import type { Metadata } from "next"
 
-import Link from "next/link"
 import { ArrowRight, ChevronRight } from "lucide-react"
 
 import type { CatalogTemplate } from "@/lib/templates/catalog"
@@ -201,7 +201,7 @@ const TemplatesIndexPage = async ({
                   templates={visibleTemplates}
                   categoryLabel="the current filter"
                 />
-                <a
+                <Link
                   href={SUBMIT_TEMPLATE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -224,7 +224,7 @@ const TemplatesIndexPage = async ({
                       aria-hidden
                     />
                   </span>
-                </a>
+                </Link>
               </>
             )}
           </div>

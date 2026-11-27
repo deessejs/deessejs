@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useForm } from "@tanstack/react-form"
@@ -98,14 +99,14 @@ function OAuthConsentFormContent() {
           <span className="font-mono break-all">{request.redirectHost}</span>
         </p>
         {clientUrl && (
-          <a
+          <Link
             className="mt-2 inline-block text-sm underline"
             href={clientUrl}
             target="_blank"
             rel="noreferrer"
           >
             App details
-          </a>
+          </Link>
         )}
       </div>
 
@@ -145,28 +146,28 @@ function OAuthConsentFormContent() {
         {termsUrl && (
           <>
             {" "}
-            <a
+            <Link
               className="underline"
               href={termsUrl}
               target="_blank"
               rel="noreferrer"
             >
               Terms
-            </a>
+            </Link>
           </>
         )}
         {policyUrl && (
           <>
             {" "}
             ·{" "}
-            <a
+            <Link
               className="underline"
               href={policyUrl}
               target="_blank"
               rel="noreferrer"
             >
               Privacy policy
-            </a>
+            </Link>
           </>
         )}
       </p>

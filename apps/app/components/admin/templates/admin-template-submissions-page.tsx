@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -228,7 +229,7 @@ function SubmissionRow({
         </p>
       </td>
       <td className="px-4 py-3">
-        <a
+        <Link
           className="inline-flex items-center gap-1 font-mono text-xs underline-offset-4 hover:underline"
           href={`${submission.canonicalUrl}/tree/${submission.sourceCommit}`}
           target="_blank"
@@ -236,7 +237,7 @@ function SubmissionRow({
         >
           {submission.sourceCommit.slice(0, 12)}
           <ExternalLinkIcon className="size-3" aria-hidden />
-        </a>
+        </Link>
         <p className="mt-1 text-xs text-muted-foreground">
           {submission.owner}/{submission.repo}
         </p>
@@ -299,14 +300,14 @@ function SubmissionReviewDetails({ submission }: { submission: Submission }) {
       <div>
         <dt className="text-muted-foreground">GitHub repository</dt>
         <dd className="mt-1">
-          <a
+          <Link
             className="underline-offset-4 hover:underline"
             href={submission.canonicalUrl}
             target="_blank"
             rel="noreferrer"
           >
             {submission.repositoryName}
-          </a>
+          </Link>
         </dd>
       </div>
       <div>

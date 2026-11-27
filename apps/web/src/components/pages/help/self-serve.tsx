@@ -14,7 +14,7 @@ import { Card } from "@workspace/ui/components/card"
  * plain flat list which read as monotonous inside the rest of
  * the page.
  *
- * External link uses raw <a target="_blank" rel="noopener
+ * External link uses raw <Link target="_blank" rel="noopener
  * noreferrer">.
  */
 export function SelfServe() {
@@ -39,14 +39,14 @@ export function SelfServe() {
         </Card>
         <Card className="p-5">
           <div className="flex flex-col gap-1">
-            <a
+            <Link
               href="https://docs.deessejs.com"
               target="_blank"
               rel="noopener noreferrer"
               className="text-label-14 font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
             >
               Docs
-            </a>
+            </Link>
             <p className="text-copy-14 text-muted-foreground">
               The full DeesseJS reference. API, configuration, deployment.
             </p>

@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { ORPCError } from "@orpc/client"
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react"
 import { notFound } from "next/navigation"
@@ -80,7 +80,7 @@ export default async function ProjectHomePage({
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">{organization.name}</p>
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <a
+          <Link
             className="flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
             href={project.repositoryUrl}
             target="_blank"
@@ -88,7 +88,7 @@ export default async function ProjectHomePage({
           >
             {project.repositoryFullName}
             <ExternalLinkIcon className="size-3.5" aria-hidden />
-          </a>
+          </Link>
         </div>
         <Badge variant={status.variant}>{status.label}</Badge>
       </header>

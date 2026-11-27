@@ -67,7 +67,7 @@ async function expectDenied(path, cookie) {
     response.status !== 200 ||
     !body.includes("Admin access required") ||
     body.includes("Your admin dashboard is ready") ||
-    body.includes("Posts administration")
+    body.includes("Create post")
   ) {
     throw new Error(`expected server denial without protected content at ${path}: ${response.status}`)
   }
@@ -106,12 +106,14 @@ function runCreateAdmin(email) {
   return { result, password: adminPassword }
 }
 
+let paginationSlugPrefix
+
 try {
   const home = await fetch(baseURL)
   if (!home.ok) throw new Error(`home page failed: ${home.status}`)
 
   const anonymous = {}
-  for (const path of ["/admin", "/admin/posts"]) {
+  for (const path of ["/admin", "/admin/blog"]) {
     const response = await requestAdminPage(path)
     if (
       response.status !== 307 ||
@@ -138,7 +140,7 @@ try {
   }
   const ordinaryDenied = {
     "/admin": await expectDenied("/admin", ordinaryCookie),
-    "/admin/posts": await expectDenied("/admin/posts", ordinaryCookie),
+    "/admin/blog": await expectDenied("/admin/blog", ordinaryCookie),
   }
 
   // Better Auth must reject client-supplied privilege fields during signup.
@@ -232,14 +234,14 @@ try {
     throw new Error("Better Auth admin role assignment was not persisted")
   }
 
-  const adminCookie = await signIn(ordinaryEmail)
+  const adminCookie = ordinaryCookie
   const adminSession = await readSession(adminCookie)
   if (adminSession?.user?.id !== adminRow.id || adminSession?.user?.role !== "admin") {
-    throw new Error(`admin sign-in did not return the persisted admin role: ${adminSession?.user?.role}`)
+    throw new Error(`promoted user session did not return the persisted admin role: ${adminSession?.user?.role}`)
   }
   const adminAllowed = {
     "/admin": await expectAllowed("/admin", adminCookie, "Your admin dashboard is ready"),
-    "/admin/posts": await expectAllowed("/admin/posts", adminCookie, "Posts administration"),
+    "/admin/blog": await expectAllowed("/admin/blog", adminCookie, "Create post"),
   }
   const unknownAdminPage = await requestAdminPage("/admin/not-configured", adminCookie)
   if (unknownAdminPage.status !== 404) {
@@ -265,9 +267,9 @@ try {
     if (persisted?.role !== testCase.role) {
       throw new Error(`database role fixture did not persist the ${testCase.label} value`)
     }
-    for (const path of ["/admin", "/admin/posts"]) {
+    for (const path of ["/admin", "/admin/blog"]) {
       if (testCase.allowed) {
-        await expectAllowed(path, adminCookie, path === "/admin" ? "Your admin dashboard is ready" : "Posts administration")
+        await expectAllowed(path, adminCookie, path === "/admin" ? "Your admin dashboard is ready" : "Create post")
       } else {
         await expectDenied(path, adminCookie)
       }
@@ -276,27 +278,84 @@ try {
   }
   await sql`update "user" set role = 'admin' where id = ${adminRow.id}`
 
-  const client = createClient({
+  const blogReaderEmail = makeEmail("blog-reader")
+  await signUp(blogReaderEmail, "Blog Reader")
+  const [blogReaderRow] = await sql`
+    select id, role from "user" where email = ${blogReaderEmail}
+  `
+  if (!blogReaderRow || blogReaderRow.role !== "user") {
+    throw new Error(`Blog API reader did not persist the ordinary role: ${blogReaderRow?.role ?? "missing"}`)
+  }
+  const blogReaderCookie = await signIn(blogReaderEmail)
+  const blogReaderSession = await readSession(blogReaderCookie)
+  if (blogReaderSession?.user?.role !== "user") {
+    throw new Error(`Blog API reader sign-in returned an unexpected role: ${blogReaderSession?.user?.role}`)
+  }
+
+  const ordinaryClient = createClient({
     server: deesseServer(),
     baseURL,
     fetch: (input, init) => {
       const headers = new Headers(init?.headers)
-      headers.set("cookie", ordinaryCookie)
+      headers.set("cookie", blogReaderCookie)
       return fetch(input, { ...init, headers })
     },
   })
-  const health = await client.api.health()
+  const health = await ordinaryClient.api.health()
   if (health.status !== "ok") throw new Error("public health procedure returned an unexpected result")
-  const me = await client.api.posts.me()
-  if (me.id !== ordinarySignup.user.id) throw new Error("authenticated plugin route returned a different user")
+  const publishedPosts = await ordinaryClient.api.blog.published.list({ limit: 10 })
+  if (!Array.isArray(publishedPosts)) throw new Error("published posts route returned an invalid result")
+  let ordinaryManagementDenied = false
+  try {
+    await ordinaryClient.api.blog.management.list({ limit: 10 })
+  } catch (error) {
+    ordinaryManagementDenied = error?.code === "FORBIDDEN"
+  }
+  if (!ordinaryManagementDenied) throw new Error("ordinary user accessed the Blog management API")
+
+  const adminClient = createClient({
+    server: deesseServer(),
+    baseURL,
+    fetch: (input, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set("cookie", adminCookie)
+      return fetch(input, { ...init, headers })
+    },
+  })
+
+  paginationSlugPrefix = `pagination-smoke-${crypto.randomUUID()}`
+  await sql`
+    insert into "posts" ("title", "slug", "excerpt", "content", "status", "publishedAt", "createdAt", "updatedAt")
+    select ${paginationSlugPrefix} || '-' || series.number::text,
+      ${paginationSlugPrefix} || '-' || series.number::text,
+      null,
+      '# Pagination fixture',
+      'draft',
+      null,
+      now(),
+      '9999-12-31 23:59:59+00'::timestamptz
+    from generate_series(1, 105) as series(number)
+  `
+  const paginationPage = await adminClient.api.blog.management.list({ status: "draft", limit: 50, offset: 100 })
+  if (
+    paginationPage.offset !== 100 ||
+    paginationPage.nextOffset !== null ||
+    paginationPage.posts.length !== 5 ||
+    paginationPage.posts.some((post) => !post.slug.startsWith(paginationSlugPrefix))
+  ) {
+    throw new Error("Blog management API could not read the page beyond the first 100 posts")
+  }
 
   const title = `Persistent smoke post ${crypto.randomUUID()}`
-  const created = await client.api.posts.create({ title })
+  const created = await adminClient.api.blog.management.create({ title, content: `# ${title}` })
   if (created.title !== title) throw new Error("create route returned the wrong post")
-  const posts = await client.api.posts.list()
-  if (!posts.some((post) => post.id === created.id && post.title === title)) {
-    throw new Error("created post was not returned by list")
-  }
+  const published = await adminClient.api.blog.management.publish({ id: created.id })
+  if (published.status !== "published" || !published.publishedAt) throw new Error("publish transition failed")
+  const publicPost = await ordinaryClient.api.blog.published.getBySlug({ slug: created.slug })
+  if (publicPost.id !== created.id) throw new Error("published post was not readable by slug")
+  const unpublished = await adminClient.api.blog.management.unpublish({ id: created.id })
+  if (unpublished.status !== "draft" || unpublished.publishedAt !== null) throw new Error("unpublish transition failed")
+  await adminClient.api.blog.management.delete({ id: created.id })
 
   console.log(JSON.stringify({
     home: home.status,
@@ -313,9 +372,15 @@ try {
     unknownAdminPage: unknownAdminPage.status,
     malformedRoleResults,
     publicHealth: health.status,
-    authenticatedPostsApi: true,
-    createdPostReadBack: true,
+    ordinaryBlogManagementDenied: ordinaryManagementDenied,
+    blogPaginationBeyond100: true,
+    publishedBlogApi: true,
+    blogLifecycle: true,
   }))
 } finally {
-  await sql.end()
+  try {
+    if (paginationSlugPrefix) await sql`delete from "posts" where "slug" like ${`${paginationSlugPrefix}-%`}`
+  } finally {
+    await sql.end()
+  }
 }

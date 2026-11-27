@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -333,14 +334,14 @@ function TemplateRows({
                 No image
               </div>
             )}
-            <a
+            <Link
               className="font-medium underline-offset-4 hover:underline"
               href={template.canonicalUrl}
               target="_blank"
               rel="noreferrer"
             >
               {template.name}
-            </a>
+            </Link>
             <div className="mt-1 truncate text-xs text-muted-foreground">
               {template.slug} · {template.owner}/{template.repo}
             </div>

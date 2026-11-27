@@ -1,13 +1,8 @@
 "use client"
 
-import {
-  useDeferredValue,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react"
-import { usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Search, X } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -157,7 +152,7 @@ export function BlogSearch({
       )}
       {!isSearching && !showEmpty && visibleCount < filtered.length ? (
         <div className="flex justify-center border-x border-b border-border py-6">
-          <a
+          <Link
             href={nextHref}
             aria-label={`Show more posts, page ${nextPage}`}
             aria-busy={loading}
@@ -166,7 +161,7 @@ export function BlogSearch({
             className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             {loading ? "Loading posts…" : "Show more posts"}
-          </a>
+          </Link>
           {loadError ? (
             <span role="status">Could not load posts. Try again.</span>
           ) : null}
