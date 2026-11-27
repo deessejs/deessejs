@@ -26,6 +26,27 @@ export type TemplateDetailProps = {
   className?: string
 }
 
+const TemplateHeroPreview = ({ template }: { template: Template }) => {
+  const previewImageUrl =
+    "previewImageUrl" in template ? template.previewImageUrl : undefined
+  const imageUrl = previewImageUrl ?? template.image
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
+      {imageUrl ? (
+        <Image
+          src={imageUrl}
+          unoptimized={Boolean(previewImageUrl)}
+          alt={`${template.name} preview`}
+          fill
+          sizes="(max-width: 768px) 100vw, 896px"
+          className="object-cover"
+        />
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * Single-template detail view at /templates/[template_slug].
  *
@@ -113,18 +134,7 @@ export const TemplateDetail = ({
         </div>
       </header>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
-        {(template.previewImageUrl ?? template.image) ? (
-          <Image
-            src={template.previewImageUrl ?? template.image ?? ""}
-            unoptimized={Boolean(template.previewImageUrl)}
-            alt={`${template.name} preview`}
-            fill
-            sizes="(max-width: 768px) 100vw, 896px"
-            className="object-cover"
-          />
-        ) : null}
-      </div>
+      <TemplateHeroPreview template={template} />
 
       <Separator />
 
