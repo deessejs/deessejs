@@ -41,6 +41,16 @@ export {
   type OrganizationTemplateCreateInputV1 as OrganizationTemplateCreateInputV1Type,
 } from "./organization-template.js"
 export {
+  OrganizationProjectSummaryV1,
+  OrganizationProjectV1,
+  OrganizationProjectsListResponseV1,
+  OrganizationProjectDetailResponseV1,
+  type OrganizationProjectSummaryV1 as OrganizationProjectSummaryV1Type,
+  type OrganizationProjectV1 as OrganizationProjectV1Type,
+  type OrganizationProjectsListResponseV1 as OrganizationProjectsListResponseV1Type,
+  type OrganizationProjectDetailResponseV1 as OrganizationProjectDetailResponseV1Type,
+} from "./organization-project.js"
+export {
   AvatarCompleteRequestV1,
   AvatarCompleteResponseV1,
   AvatarImageV1,

@@ -38,6 +38,13 @@ export type OrganizationTemplateV1 = z.infer<typeof OrganizationTemplateV1>
 
 export const OrganizationTemplatesListResponseV1 = z.object({
   templates: z.array(OrganizationTemplateV1),
+  pagination: z
+    .object({
+      page: z.number().int().positive(),
+      pageSize: z.number().int().positive(),
+      hasMore: z.boolean(),
+    })
+    .optional(),
 })
 export type OrganizationTemplatesListResponseV1 = z.infer<
   typeof OrganizationTemplatesListResponseV1

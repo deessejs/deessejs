@@ -30,6 +30,15 @@ describe("organization template contracts", () => {
     ).toBeNull()
   })
 
+  it("parses pagination metadata for a bounded organization template page", () => {
+    expect(
+      OrganizationTemplatesListResponseV1.parse({
+        templates: [template],
+        pagination: { page: 2, pageSize: 1, hasMore: true },
+      }).pagination
+    ).toEqual({ page: 2, pageSize: 1, hasMore: true })
+  })
+
   it("accepts a pending publication independently of ownership", () => {
     const result = OrganizationTemplatesListResponseV1.parse({
       templates: [

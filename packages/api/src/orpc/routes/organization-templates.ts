@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import {
+  OrganizationTemplateV1,
   OrganizationTemplateCreateInputV1,
   OrganizationTemplatesListResponseV1,
 } from "@workspace/contracts/v1"
@@ -25,6 +26,7 @@ import {
 } from "../../core/templates/validate-publication-source.js"
 import { findOrganizationForMember } from "../../core/organization/membership.js"
 import { authGuard } from "../auth-middleware.js"
+import { memberReadGuard } from "../member-read-middleware.js"
 import { transitionPendingPublicationImageReference } from "../../core/templates/images.js"
 import { base } from "../base.js"
 import { API_BASE_PATH } from "../../constants/base-path.js"
@@ -37,7 +39,11 @@ const accessDeniedErrors = {
   },
 }
 
-const listInput = z.object({ organizationSlug: z.string().min(1) })
+const listInput = z.object({
+  organizationSlug: z.string().min(1),
+  page: z.number().int().min(1).max(10_000).optional(),
+  pageSize: z.number().int().min(1).max(50).optional(),
+})
 
 const resolveOrganizationForInput = async (
   userId: string,
@@ -47,10 +53,10 @@ const resolveOrganizationForInput = async (
 export const list = base
   .input(listInput)
   .errors(accessDeniedErrors)
-  .use(authGuard)
+  .use(memberReadGuard("organizations:templates:read"))
   .use(async (options, input) => {
     const org = await resolveOrganizationForInput(
-      options.context.user.id,
+      options.context.actorUserId,
       input.organizationSlug
     )
     if (!org) throw options.errors.ORGANIZATION_ACCESS_DENIED()
@@ -60,8 +66,11 @@ export const list = base
   })
 
   .output(OrganizationTemplatesListResponseV1)
-  .handler(async ({ context }) => {
-    const rows = await db
+  .handler(async ({ context, input }) => {
+    const paginated = input.page !== undefined || input.pageSize !== undefined
+    const page = input.page ?? 1
+    const pageSize = input.pageSize ?? 25
+    const templateQuery = db
       .select({
         id: templates.id,
         slug: templates.slug,
@@ -93,6 +102,11 @@ export const list = base
         )
       )
       .orderBy(asc(templates.name), asc(templates.slug))
+    const loadedRows = paginated
+      ? await templateQuery.limit(pageSize + 1).offset((page - 1) * pageSize)
+      : await templateQuery
+    const hasMore = paginated && loadedRows.length > pageSize
+    const rows = hasMore ? loadedRows.slice(0, pageSize) : loadedRows
 
     const currentPublications =
       rows.length > 0
@@ -158,7 +172,9 @@ export const list = base
           stars: row.stars,
           fetchedAt: row.fetchedAt.toISOString(),
           ...(row.imageObjectId
-            ? { imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}` }
+            ? {
+                imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+              }
             : {}),
           currentlyPublished: currentlyPublished.has(row.id),
           publication: publication
@@ -171,6 +187,119 @@ export const list = base
             : null,
         }
       }),
+      ...(paginated ? { pagination: { page, pageSize, hasMore } } : {}),
+    }
+  })
+
+const getOutput = z.object({ template: OrganizationTemplateV1 })
+
+export const get = base
+  .input(
+    z.object({
+      organizationSlug: z.string().min(1),
+      templateId: z.string().uuid(),
+    })
+  )
+  .errors(accessDeniedErrors)
+  .use(memberReadGuard("organizations:templates:read"))
+  .use(async (options, input) => {
+    const org = await resolveOrganizationForInput(
+      options.context.actorUserId,
+      input.organizationSlug
+    )
+    if (!org) throw options.errors.ORGANIZATION_ACCESS_DENIED()
+    return options.next({ context: { ...options.context, organization: org } })
+  })
+  .output(getOutput)
+  .handler(async ({ context, input, errors }) => {
+    const [row] = await db
+      .select({
+        id: templates.id,
+        slug: templates.slug,
+        name: templates.name,
+        descriptionOverride: templates.descriptionOverride,
+        owner: templates.owner,
+        repo: templates.repo,
+        category: templates.category,
+        labels: templates.labels,
+        imageObjectId: templates.imageObjectId,
+        licenseFallback: templates.licenseFallback,
+        canonicalUrl: templateRepositorySnapshots.canonicalUrl,
+        repositoryName: templateRepositorySnapshots.repositoryName,
+        repositoryDescription:
+          templateRepositorySnapshots.repositoryDescription,
+        snapshotLicense: templateRepositorySnapshots.license,
+        stars: templateRepositorySnapshots.stars,
+        fetchedAt: templateRepositorySnapshots.fetchedAt,
+      })
+      .from(templates)
+      .innerJoin(
+        templateRepositorySnapshots,
+        eq(templates.id, templateRepositorySnapshots.templateId)
+      )
+      .where(
+        and(
+          eq(templates.id, input.templateId),
+          eq(templates.ownerType, "organization"),
+          eq(templates.organizationId, context.organization.id)
+        )
+      )
+      .limit(1)
+
+    if (!row) throw errors.ORGANIZATION_ACCESS_DENIED()
+
+    const [currentPublication] = await db
+      .select({ id: templatePublications.id })
+      .from(templatePublications)
+      .where(
+        and(
+          eq(templatePublications.templateId, row.id),
+          eq(templatePublications.publicationState, "current")
+        )
+      )
+      .limit(1)
+    const [publication] = await db
+      .select({
+        reviewStatus: templatePublications.reviewStatus,
+        publicationState: templatePublications.publicationState,
+        submittedAt: templatePublications.submittedAt,
+        reviewReason: templatePublications.reviewReason,
+      })
+      .from(templatePublications)
+      .where(eq(templatePublications.templateId, row.id))
+      .orderBy(desc(templatePublications.submittedAt))
+      .limit(1)
+
+    return {
+      template: {
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        description: row.descriptionOverride ?? row.repositoryDescription ?? "",
+        owner: row.owner,
+        repo: row.repo,
+        category: row.category,
+        labels: row.labels,
+        license: row.licenseFallback ?? row.snapshotLicense ?? "",
+        canonicalUrl: row.canonicalUrl,
+        repositoryName: row.repositoryName,
+        stars: row.stars,
+        fetchedAt: row.fetchedAt.toISOString(),
+        ...(row.imageObjectId
+          ? {
+              imageUrl: `${serverEnv.API_BASE_URL}${API_BASE_PATH}/images/${row.imageObjectId}`,
+            }
+          : {}),
+        currentlyPublished: Boolean(currentPublication),
+        publication: publication
+          ? {
+              reviewStatus: publication.reviewStatus,
+              publicationState: publication.publicationState,
+              submittedAt: publication.submittedAt.toISOString(),
+              reviewReason: publication.reviewReason,
+            }
+          : null,
+      },
     }
   })
 
@@ -596,4 +725,10 @@ export const withdraw = base
     })
   })
 
-export const organizationTemplatesRouter = { list, create, submit, withdraw }
+export const organizationTemplatesRouter = {
+  list,
+  get,
+  create,
+  submit,
+  withdraw,
+}

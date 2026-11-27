@@ -310,6 +310,8 @@ const authConfig: BetterAuthOptions = {
         "offline_access",
         "templates:read",
         "organizations:read",
+        "organizations:projects:read",
+        "organizations:templates:read",
       ],
       refreshTokenReuseInterval: 0,
     }),
