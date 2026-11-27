@@ -85,6 +85,9 @@ jobs:
             [ "$BASE_REF" = "main" ]; then
             PREPARATION=promotion
           elif [ "$BASE_REF" = "staging" ] && \
+            [ "$PR_HEAD_REF" = "chore/blog-plugin-version-prep" ]; then
+            PREPARATION=blog-admin
+          elif [ "$BASE_REF" = "staging" ] && \
             [ "$PR_NUMBER" = "437" ] && \
             [ "$PR_HEAD_REF" = "fix/cli-version-packages-release" ]; then
             PREPARATION=cli
@@ -133,19 +136,53 @@ jobs:
 
           BASE_SHA=$(git merge-base "origin/$BASE_REF" "$HEAD_SHA")
           CHANGED=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" | LC_ALL=C sort)
-          ALLOWED=$(printf '%s\n' \
-            .changeset/bright-org-templates.md \
-            .changeset/bright-pandas-config.md \
-            .changeset/clever-orgs-list.md \
-            .github/workflows/changesets-check.yml \
-            .github/workflows/release.yml \
-            apps/cli/CHANGELOG.md \
-            apps/cli/package.json | LC_ALL=C sort)
+          if [ "$PREPARATION" = "blog-admin" ]; then
+            ALLOWED=$(printf '%s\n' \
+              .changeset/blog-plugin.md \
+              .github/workflows/changesets-check.yml \
+              apps/deesse-drizzle-adapter/CHANGELOG.md \
+              apps/deesse-drizzle-adapter/package.json \
+              apps/deesse/CHANGELOG.md \
+              apps/deesse/package.json \
+              examples/next-shadcn-admin/apps/web/CHANGELOG.md \
+              examples/next-shadcn-admin/apps/web/package.json \
+              examples/next-shadcn-monorepo/apps/web/CHANGELOG.md \
+              examples/next-shadcn-monorepo/apps/web/package.json | LC_ALL=C sort)
+          else
+            ALLOWED=$(printf '%s\n' \
+              .changeset/bright-org-templates.md \
+              .changeset/bright-pandas-config.md \
+              .changeset/clever-orgs-list.md \
+              .github/workflows/changesets-check.yml \
+              .github/workflows/release.yml \
+              apps/cli/CHANGELOG.md \
+              apps/cli/package.json | LC_ALL=C sort)
+          fi
           if [ "$CHANGED" != "$ALLOWED" ]; then
             echo "::error::Trusted release-preparation PR contains an unexpected file set."
             echo "Expected: $ALLOWED"
             echo "Found: $CHANGED"
             exit 1
+          fi
+
+          if [ "$PREPARATION" = "blog-admin" ]; then
+            node <<'NODE'
+          const fs = require("node:fs")
+          const expected = new Map([
+            ["apps/deesse/package.json", ["1.0.0", "apps/deesse/CHANGELOG.md"]],
+            ["apps/deesse-drizzle-adapter/package.json", ["2.0.0", "apps/deesse-drizzle-adapter/CHANGELOG.md"]],
+            ["examples/next-shadcn-admin/apps/web/package.json", ["0.0.2", "examples/next-shadcn-admin/apps/web/CHANGELOG.md"]],
+            ["examples/next-shadcn-monorepo/apps/web/package.json", ["0.0.2", "examples/next-shadcn-monorepo/apps/web/CHANGELOG.md"]],
+          ])
+          for (const [manifest, [version, changelog]] of expected) {
+            const actual = JSON.parse(fs.readFileSync(manifest, "utf8")).version
+            const history = fs.readFileSync(changelog, "utf8")
+            if (actual !== version || !history.includes(`## ${version}`)) {
+              console.error(`The Blog/Admin release-preparation artifact is missing or has an unexpected version: ${manifest}`)
+              process.exitCode = 1
+            }
+          }
+          NODE
           fi
 
           echo "trusted=true" >> "$GITHUB_OUTPUT"
