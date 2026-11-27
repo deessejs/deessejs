@@ -1,3 +1,4 @@
+import Link from "next/link"
 /**
  * /delivery page hero. Single column, centered, eyebrow + h1 +
  * lead + CTA. Same shape as `/enterprise` Hero but with delivery-
@@ -21,12 +22,12 @@ export function Hero() {
           production-ready codebase deployed on your own infrastructure.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <a
+          <Link
             href="#intake"
             className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Book an Engineering Scoping Call (20 min)
-          </a>
+          </Link>
         </div>
       </div>
     </div>

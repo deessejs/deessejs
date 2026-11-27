@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   ArrowUpRightIcon,
   BookOpenIcon,
@@ -14,7 +15,10 @@ import { DOCS_URL, WEB_URL } from "@/lib/app-config"
 const SUPPORT_EMAIL = "support@deessejs.com"
 const DISCUSSIONS_URL = "https://github.com/deessejs/deessejs/discussions"
 
-function getHttpUrl(base: string | undefined, path?: string): string | undefined {
+function getHttpUrl(
+  base: string | undefined,
+  path?: string
+): string | undefined {
   if (!base) return undefined
   try {
     const url = path ? new URL(path, base) : new URL(base)
@@ -55,7 +59,8 @@ const RESOURCE_LINKS: SupportLinkItem[] = [
     ? [
         {
           title: "Documentation",
-          description: "Read product guides, setup instructions, and references.",
+          description:
+            "Read product guides, setup instructions, and references.",
           href: DOCUMENTATION_URL,
           label: "Browse documentation",
           icon: BookOpenIcon,
@@ -93,22 +98,32 @@ function SupportLink({
   external,
 }: SupportLinkItem) {
   return (
-    <a
-      className="group flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    <Link
+      className="group flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
     >
-      <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+      <Icon
+        className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+        aria-hidden
+      />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1 font-medium">
           {title}
-          {external && <ArrowUpRightIcon className="size-3.5 text-muted-foreground" aria-hidden />}
+          {external && (
+            <ArrowUpRightIcon
+              className="size-3.5 text-muted-foreground"
+              aria-hidden
+            />
+          )}
         </span>
-        <span className="mt-1 block text-sm text-muted-foreground">{description}</span>
+        <span className="mt-1 block text-sm text-muted-foreground">
+          {description}
+        </span>
         <span className="mt-2 block text-sm text-primary">{label}</span>
       </span>
-    </a>
+    </Link>
   )
 }
 

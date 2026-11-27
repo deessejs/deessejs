@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import {
@@ -57,7 +58,7 @@ type Props = {
  * `<CatalogCode>` depending on the active tab.
  *
  * Pre-refactor: this was duplicated as
- * `component-preview-tabs.tsx` (raw `<a>` for the Source button)
+ * `component-preview-tabs.tsx` (raw `<Link>` for the Source button)
  * and `block-preview-tabs.tsx` (`<Button asChild>` for the Source
  * button). The block pattern is the one preserved here — wrapping
  * the source link in `<Button asChild>` keeps focus rings, hover
@@ -100,7 +101,7 @@ export function CatalogPreviewTabs({
             </div>
           )}
           <Button asChild variant="outline" size="sm" className="shrink-0">
-            <a
+            <Link
               href={sourceRepoUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -109,7 +110,7 @@ export function CatalogPreviewTabs({
             >
               <GitHubIcon className="size-4" />
               <span className="hidden sm:inline">Source</span>
-            </a>
+            </Link>
           </Button>
         </div>
       </div>

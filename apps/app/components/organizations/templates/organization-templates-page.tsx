@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -334,14 +335,14 @@ function TemplateRows({
               </div>
             )}
             {template.canonicalUrl ? (
-              <a
+              <Link
                 className="font-medium underline-offset-4 hover:underline"
                 href={template.canonicalUrl}
                 target="_blank"
                 rel="noreferrer"
               >
                 {template.name}
-              </a>
+              </Link>
             ) : (
               <span className="font-medium">{template.name}</span>
             )}

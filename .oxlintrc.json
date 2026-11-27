@@ -552,6 +552,16 @@
         "apps/web/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
         "apps/docs/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
       ],
+      "rules": {
+        "project/no-raw-jsx-anchor": "error"
+      }
+    },
+    {
+      "files": [
+        "apps/app/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "apps/web/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}",
+        "apps/docs/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+      ],
       "plugins": ["typescript", "react", "nextjs"],
       "rules": {
         "nextjs/google-font-display": "warn",

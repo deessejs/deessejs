@@ -1,6 +1,6 @@
+import Link from "next/link"
 import * as React from "react"
 import { ArrowRight } from "lucide-react"
-import Link from "next/link"
 
 import { Button } from "@workspace/ui/components/button"
 
@@ -47,13 +47,13 @@ export default function ComponentsLayout({
             </Link>
           </Button>
           <Button variant="outline" size="lg" asChild>
-            <a
+            <Link
               href="https://github.com/deessejs/deessejs"
               target="_blank"
               rel="noopener noreferrer"
             >
               View on GitHub
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
