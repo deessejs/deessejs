@@ -4,11 +4,14 @@ import Link from "next/link"
 import { client } from "@/lib/client"
 import { FolderGit2Icon, PlusIcon } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
 import type { UseQueryResult } from "@tanstack/react-query"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { CardGridSkeleton } from "@/components/loading/page-skeleton"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group"
+import { SearchIcon } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -189,9 +192,39 @@ function ProjectList({
   organizationSlug: string
   projects: OrganizationProject[]
 }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | "attention" | "valid">("all")
+  const [search, setSearch] = useState("")
+  const counts = useMemo(() => ({
+    all: projects.length,
+    attention: projects.filter((project) => project.status !== "valid").length,
+    valid: projects.filter((project) => project.status === "valid").length,
+  }), [projects])
+  const visibleProjects = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase()
+    return projects.filter((project) => {
+      const matchesStatus = statusFilter === "all" || (statusFilter === "valid" ? project.status === "valid" : project.status !== "valid")
+      const matchesSearch = !term || `${project.name} ${project.repositoryFullName}`.toLocaleLowerCase().includes(term)
+      return matchesStatus && matchesSearch
+    })
+  }, [projects, search, statusFilter])
+
   return (
-    <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {projects.map((project) => {
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
+        <div role="tablist" aria-label="Filter projects by status" className="flex gap-5 overflow-x-auto">
+          {(["all", "attention", "valid"] as const).map((filter) => (
+            <button key={filter} type="button" role="tab" aria-selected={statusFilter === filter} onClick={() => setStatusFilter(filter)} className={`flex shrink-0 items-center gap-2 border-b-2 px-1 pb-3 text-sm ${statusFilter === filter ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              {filter === "all" ? "All projects" : filter === "attention" ? "Needs attention" : "Valid"}<span className="font-mono text-xs tabular-nums">{counts[filter]}</span>
+            </button>
+          ))}
+        </div>
+        <InputGroup className="mb-2 w-full sm:mb-2 sm:max-w-sm">
+          <InputGroupAddon><SearchIcon aria-hidden /></InputGroupAddon>
+          <InputGroupInput aria-label="Search projects" placeholder="Search by project or repository" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </InputGroup>
+      </div>
+      {visibleProjects.length === 0 ? <p className="rounded-md border px-5 py-10 text-center text-sm text-muted-foreground">No projects match these filters.</p> : <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {visibleProjects.map((project) => {
         const status = projectStatus[project.status]
         return (
           <li key={project.id}>
@@ -253,6 +286,7 @@ function ProjectList({
           </li>
         )
       })}
-    </ul>
+    </ul>}
+    </div>
   )
 }
