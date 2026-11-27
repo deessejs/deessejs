@@ -44,6 +44,8 @@ plugins: [blogPlugin(), admin({ pages: [...blogAdminPages] })]
 
 `admin({ pages })` is opt-in and adds the Better Auth Admin plugin plus a default Overview page. `deesse/plugins/admin/next` exports the Next.js `AdminPage`, and `deesse/plugins/admin/styles.css` registers its Tailwind utility usage. The Blog plugin stores Markdown source in one `posts` model, exposes published reads and administrator-only management procedures at `client.api.blog`, and contributes one page at `/admin/blog` through the optional subpath. The host owns schema generation and migrations. The plugin never runs DDL during runtime composition. `deesse/plugins/blog` has no React or Next.js runtime import.
 
+Blog management list queries accept a bounded `limit` from 1 through 99 and a non-negative safe-integer `offset`. They return `{ posts, offset, nextOffset }`, where `nextOffset` is `null` when no next page exists. The Admin page uses 50 posts per page and previous/next navigation. The underlying database query remains capped at 100 rows because the API fetches one extra row to determine whether another page is available.
+
 Install the optional peers only when using the React or Admin UI subpaths:
 
 ```sh

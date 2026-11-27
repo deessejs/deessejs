@@ -79,6 +79,14 @@ describePostgres("PostgreSQL Deesse adapter integration", () => {
       expect(ordered.value).toHaveLength(2)
       expect(ordered.value[0]?.title).toBe("draft-a-" + suffix)
     }
+    const nextPage = await app.database.findMany("posts", {
+      where: { title: { in: [first.value.title, second.value.title] } },
+      orderBy: { title: "asc" },
+      limit: 1,
+      offset: 1,
+    })
+    expect(nextPage._tag).toBe("Ok")
+    if (nextPage._tag === "Ok") expect(nextPage.value.map(({ title }) => title)).toEqual([second.value.title])
     const emptyIn = await app.database.findMany("posts", { where: { status: { in: [] } } })
     expect(emptyIn._tag).toBe("Ok")
     if (emptyIn._tag === "Ok") expect(emptyIn.value).toHaveLength(0)
@@ -144,12 +152,15 @@ describePostgres("PostgreSQL Deesse adapter integration", () => {
 
     const zeroLimit = await app.database.findMany("posts", { limit: 0 as never })
     const oversizedLimit = await app.database.findMany("posts", { limit: 101 as never })
+    const negativeOffset = await app.database.findMany("posts", { offset: -1 as never })
+    const fractionalOffset = await app.database.findMany("posts", { offset: 1.5 as never })
+    const unsafeOffset = await app.database.findMany("posts", { offset: Number.MAX_SAFE_INTEGER + 1 })
     const unknownField = await app.database.insert("posts", { title: "unknown-" + suffix, status: "draft", missing: true } as never)
     const unknownUpdate = await app.database.updateById("posts", inserted.value.id, { missing: true } as never)
     const unknownFilter = await app.database.findMany("posts", { where: { missing: "value" } as never })
     const unknownOrder = await app.database.findMany("posts", { orderBy: { missing: "asc" } as never })
     const invalidOrder = await app.database.findMany("posts", { orderBy: { title: "sideways" } as never })
-    for (const result of [zeroLimit, oversizedLimit, unknownField, unknownUpdate, unknownFilter, unknownOrder, invalidOrder]) {
+    for (const result of [zeroLimit, oversizedLimit, negativeOffset, fractionalOffset, unsafeOffset, unknownField, unknownUpdate, unknownFilter, unknownOrder, invalidOrder]) {
       expect(result._tag).toBe("Err")
       if (result._tag === "Err") expect(result.error.fields.code).toBe("VALIDATION")
     }

@@ -9,7 +9,9 @@ type BlogServer = {
 }
 
 const client = createClient({ server: deesseServer<BlogServer>() })
-type BlogPost = Awaited<ReturnType<typeof client.api.blog.management.list>>[number]
+const PAGE_SIZE = 50
+type BlogListPage = Awaited<ReturnType<typeof client.api.blog.management.list>>
+type BlogPost = BlogListPage["posts"][number]
 type PostDraft = { title: string; slug: string; excerpt: string; content: string }
 const emptyDraft: PostDraft = { title: "", slug: "", excerpt: "", content: "" }
 
@@ -20,19 +22,27 @@ export function BlogAdminPage() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [message, setMessage] = useState("Loading posts…")
   const [busy, setBusy] = useState(false)
+  const [loadingPosts, setLoadingPosts] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const [nextOffset, setNextOffset] = useState<number | null>(null)
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (requestedOffset = 0) => {
+    setLoadingPosts(true)
     try {
-      const rows = await client.api.blog.management.list({ limit: 100 })
-      setPosts(rows)
-      setMessage(`${rows.length} post${rows.length === 1 ? "" : "s"}`)
+      const page = await client.api.blog.management.list({ limit: PAGE_SIZE, offset: requestedOffset })
+      setPosts(page.posts)
+      setOffset(page.offset)
+      setNextOffset(page.nextOffset)
+      setMessage(`${page.posts.length} post${page.posts.length === 1 ? "" : "s"} on page ${Math.floor(page.offset / PAGE_SIZE) + 1}.`)
     } catch {
       setMessage("Could not load posts. Check the database migration and your administrator access.")
+    } finally {
+      setLoadingPosts(false)
     }
   }, [])
 
   useEffect(() => {
-    loadPosts().then(() => undefined, () => undefined)
+    loadPosts(0).then(() => undefined, () => undefined)
   }, [loadPosts])
 
   function beginEdit(post: BlogPost) {
@@ -59,7 +69,7 @@ export function BlogAdminPage() {
       else await client.api.blog.management.create(input)
       resetForm()
       setMessage("Post saved.")
-      await loadPosts()
+      await loadPosts(0)
     } catch {
       setMessage("Could not save the post. Check the fields and whether the slug is already in use.")
     } finally {
@@ -71,7 +81,7 @@ export function BlogAdminPage() {
     try {
       if (post.status === "published") await client.api.blog.management.unpublish({ id: post.id })
       else await client.api.blog.management.publish({ id: post.id })
-      await loadPosts()
+      await loadPosts(0)
     } catch {
       setMessage("Could not update the post publication status.")
     }
@@ -86,7 +96,7 @@ export function BlogAdminPage() {
       await client.api.blog.management.delete({ id: post.id })
       if (editingId === post.id) resetForm()
       setPendingDelete(null)
-      await loadPosts()
+      await loadPosts(0)
     } catch {
       setMessage("Could not delete the post.")
     }
@@ -120,10 +130,29 @@ export function BlogAdminPage() {
                   </div></td>
                 </tr>
               ))}
-              {posts.length === 0 && <tr><td className="p-4 text-muted-foreground" colSpan={4}>No posts yet.</td></tr>}
+              {posts.length === 0 && <tr><td className="p-4 text-muted-foreground" colSpan={4}>{offset === 0 ? "No posts yet." : "No posts on this page."}</td></tr>}
             </tbody>
           </table>
         </div>
+        <nav className="flex items-center justify-end gap-3" aria-label="Post list pagination">
+          <button
+            className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+            disabled={loadingPosts || offset === 0}
+            onClick={() => loadPosts(Math.max(0, offset - PAGE_SIZE)).then(() => undefined, () => undefined)}
+            type="button"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-muted-foreground">Page {Math.floor(offset / PAGE_SIZE) + 1}</span>
+          <button
+            className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+            disabled={loadingPosts || nextOffset === null}
+            onClick={() => { if (nextOffset !== null) loadPosts(nextOffset).then(() => undefined, () => undefined) }}
+            type="button"
+          >
+            Next
+          </button>
+        </nav>
       </section>
 
       <section className="grid gap-4" aria-labelledby="blog-editor-heading">

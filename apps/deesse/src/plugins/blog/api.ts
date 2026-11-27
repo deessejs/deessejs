@@ -13,7 +13,7 @@ const editablePost = z.object({
   title: z.string().trim().min(1).max(120),
   slug: slugSchema.optional(),
   excerpt: z.string().trim().max(280).nullable().optional(),
-  content: z.string().trim().min(1).max(100_000),
+  content: z.string().max(100_000).refine((value) => value.trim().length > 0, "Markdown content cannot be empty."),
 })
 
 function requireAdministrator(context: Pick<DeesseRequestContext<typeof blogSchema>, "user">): void {
@@ -74,14 +74,22 @@ const published = blogRpc.router({
 const management = blogRpc.router({
   list: blogRpc.input(z.object({
     status: z.enum(["draft", "published"]).optional(),
-    limit: z.number().int().min(1).max(100).optional(),
-  }).default({})).handler(async ({ context, input }) => {
+    limit: z.number().int().min(1).max(99).default(50),
+    offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER - 99).default(0),
+  }).default({ limit: 50, offset: 0 })).handler(async ({ context, input }) => {
     requireAdministrator(context)
-    return unwrap(await context.database.findMany("posts", {
+    const rows = unwrap(await context.database.findMany("posts", {
       ...(input.status ? { where: { status: input.status } } : {}),
-      orderBy: { updatedAt: "desc" },
-      limit: (input.limit ?? 50) as import("../../types.js").BoundedLimit,
+      orderBy: { updatedAt: "desc", id: "desc" },
+      limit: (input.limit + 1) as import("../../types.js").BoundedLimit,
+      offset: input.offset,
     }))
+    const hasMore = rows.length > input.limit
+    return {
+      posts: hasMore ? rows.slice(0, input.limit) : rows,
+      offset: input.offset,
+      nextOffset: hasMore ? input.offset + input.limit : null,
+    }
   }),
   get: blogRpc.input(z.object({ id: z.string().uuid() })).handler(async ({ context, input }) => {
     requireAdministrator(context)

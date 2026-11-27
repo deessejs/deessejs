@@ -106,6 +106,8 @@ function runCreateAdmin(email) {
   return { result, password: adminPassword }
 }
 
+let paginationSlugPrefix
+
 try {
   const home = await fetch(baseURL)
   if (!home.ok) throw new Error(`home page failed: ${home.status}`)
@@ -321,6 +323,29 @@ try {
     },
   })
 
+  paginationSlugPrefix = `pagination-smoke-${crypto.randomUUID()}`
+  await sql`
+    insert into "posts" ("title", "slug", "excerpt", "content", "status", "publishedAt", "createdAt", "updatedAt")
+    select ${paginationSlugPrefix} || '-' || series.number::text,
+      ${paginationSlugPrefix} || '-' || series.number::text,
+      null,
+      '# Pagination fixture',
+      'draft',
+      null,
+      now(),
+      '9999-12-31 23:59:59+00'::timestamptz
+    from generate_series(1, 105) as series(number)
+  `
+  const paginationPage = await adminClient.api.blog.management.list({ status: "draft", limit: 50, offset: 100 })
+  if (
+    paginationPage.offset !== 100 ||
+    paginationPage.nextOffset !== null ||
+    paginationPage.posts.length !== 5 ||
+    paginationPage.posts.some((post) => !post.slug.startsWith(paginationSlugPrefix))
+  ) {
+    throw new Error("Blog management API could not read the page beyond the first 100 posts")
+  }
+
   const title = `Persistent smoke post ${crypto.randomUUID()}`
   const created = await adminClient.api.blog.management.create({ title, content: `# ${title}` })
   if (created.title !== title) throw new Error("create route returned the wrong post")
@@ -348,9 +373,14 @@ try {
     malformedRoleResults,
     publicHealth: health.status,
     ordinaryBlogManagementDenied: ordinaryManagementDenied,
+    blogPaginationBeyond100: true,
     publishedBlogApi: true,
     blogLifecycle: true,
   }))
 } finally {
-  await sql.end()
+  try {
+    if (paginationSlugPrefix) await sql`delete from "posts" where "slug" like ${`${paginationSlugPrefix}-%`}`
+  } finally {
+    await sql.end()
+  }
 }

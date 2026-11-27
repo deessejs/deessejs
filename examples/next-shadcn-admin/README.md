@@ -44,7 +44,7 @@ With the server running and the example database migrated, exercise the protecte
 pnpm --filter @deesse-admin-example/web smoke
 ```
 
-The smoke script checks anonymous redirects and authenticated non-admin denial on the root and Blog admin routes. It exercises Better Auth's `create-admin` CLI against the isolated PostgreSQL database, verifies the persisted admin role and sign-in, confirms duplicate-email creation is refused without changing the account, then checks published reads, admin API authorization, and the post draft/publish/unpublish/delete lifecycle. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
+The smoke script checks anonymous redirects and authenticated non-admin denial on the root and Blog admin routes. It exercises Better Auth's `create-admin` CLI against the isolated PostgreSQL database, verifies the persisted admin role and sign-in, confirms duplicate-email creation is refused without changing the account, then checks published reads, admin API authorization, access to a page beyond the first 100 posts, and the post draft/publish/unpublish/delete lifecycle. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
 
 ## Environment
 
