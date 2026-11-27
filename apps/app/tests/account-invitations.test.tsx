@@ -83,6 +83,7 @@ describe("account invitations", () => {
     expect(screen.getByText(/verify your email address/i)).toBeTruthy()
     expect(screen.queryByText(invitation.organizationName)).toBeNull()
     expect(mocks.accountInvitations).not.toHaveBeenCalled()
+    expect(mocks.useSession).toHaveBeenCalledTimes(1)
   })
 
   it("renders loading, empty, and retryable load-error states", async () => {

@@ -16,13 +16,12 @@ export type AccountInvitation = Awaited<
 
 export type InvitationAction = "accept" | "decline"
 
-export function useAccountInvitations() {
+export function useAccountInvitations(isEmailVerified: boolean) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const session = client.auth.useSession()
   const query = useQuery({
     ...accountInvitationsQuery,
-    enabled: session.data?.user.emailVerified === true,
+    enabled: isEmailVerified,
   })
   const activeActionRef = useRef<{
     invitationId: string
@@ -81,7 +80,6 @@ export function useAccountInvitations() {
   }
 
   return {
-    session,
     query,
     activeAction,
     status,

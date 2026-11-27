@@ -3,14 +3,17 @@
 import { Button } from "@workspace/ui/components/button"
 
 import { useAccountInvitations } from "@/hooks/organizations/use-account-invitations"
+import { client } from "@/lib/client"
 
 import { AccountInvitationList } from "./account-invitation-list"
 
 function AccountInvitations() {
-  const { session, query, activeAction, status, error, respond } =
-    useAccountInvitations()
+  const session = client.auth.useSession()
+  const isEmailVerified = session.data?.user.emailVerified === true
+  const { query, activeAction, status, error, respond } =
+    useAccountInvitations(isEmailVerified)
 
-  if (!session.data?.user.emailVerified) {
+  if (!isEmailVerified) {
     return (
       <p className="text-sm text-muted-foreground">
         Verify your email address to view invitations sent to your account.
