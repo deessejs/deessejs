@@ -88,7 +88,8 @@ export function OrganizationProjectsPage({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Projects</h1>
           <p className="text-sm text-muted-foreground">
             Projects imported from GitHub for {organizationName}.
           </p>

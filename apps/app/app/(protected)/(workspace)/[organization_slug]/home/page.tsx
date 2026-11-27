@@ -37,9 +37,10 @@ export default async function WorkspaceHomePage({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
+      <header className="flex flex-col gap-2 border-b pb-6">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Workspace</p>
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           {organization.name}
         </h1>
         <p className="text-sm text-muted-foreground">
