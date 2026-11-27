@@ -1,6 +1,6 @@
 {
   "name": "@deessejs/drizzle-adapter",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "PostgreSQL postgres-js and Drizzle adapter for DeesseJS.",
   "license": "MIT",
   "keywords": [
