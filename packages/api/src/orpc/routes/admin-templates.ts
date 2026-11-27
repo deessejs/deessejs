@@ -62,6 +62,17 @@ const createTemplateOutput = z.object({
   name: z.string(),
 })
 
+const updateTemplateInput = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(200),
+  descriptionOverride: z.string().trim().max(10000).nullable(),
+  category: z.enum(CATEGORY_SLUGS),
+  labels: z.array(z.string().trim().min(1).max(64)).max(50),
+  licenseFallback: z.string().trim().max(128).nullable(),
+  access: z.enum(["free", "paid"]),
+  imageName: z.enum(TEMPLATE_IMAGE_FILENAMES).nullable(),
+})
+
 const templateErrors = {
   TEMPLATE_SLUG_CONFLICT: {
     status: 409,
@@ -252,4 +263,42 @@ export const create = adminProcedure
     }
   })
 
-export const adminTemplatesRouter = { list, create }
+export const update = adminProcedure
+  .input(updateTemplateInput)
+  .output(createTemplateOutput)
+  .handler(async ({ context, input }) => {
+    return db.transaction(async (tx) => {
+      const [actor] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.id, context.user.id), eq(user.role, "admin")))
+        .limit(1)
+
+      if (!actor) throw new ORPCError("FORBIDDEN")
+
+      const [template] = await tx
+        .update(templates)
+        .set({
+          name: input.name,
+          descriptionOverride: input.descriptionOverride || null,
+          category: input.category,
+          labels: input.labels,
+          licenseFallback: input.licenseFallback || null,
+          access: input.access,
+          imageName: input.imageName,
+        })
+        .where(
+          and(eq(templates.id, input.id), eq(templates.ownerType, "platform"))
+        )
+        .returning({
+          id: templates.id,
+          slug: templates.slug,
+          name: templates.name,
+        })
+
+      if (!template) throw new ORPCError("NOT_FOUND")
+      return template
+    })
+  })
+
+export const adminTemplatesRouter = { list, create, update }

@@ -25,6 +25,7 @@ import {
   ArrowUpIcon,
   PlusIcon,
   SearchIcon,
+  PencilIcon,
 } from "lucide-react"
 import { CreateTemplateDialog } from "./create-template-dialog"
 
@@ -159,6 +160,9 @@ export function AdminTemplatesPage({
 }) {
   const [query, setQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<AdminTemplate | null>(
+    null
+  )
   const [sorting, setSorting] = useState<{ id: string; desc: boolean }[]>([])
   const needle = query.trim().toLocaleLowerCase()
   const filtered = useMemo(
@@ -190,7 +194,12 @@ export function AdminTemplatesPage({
             Manage the official catalog and its GitHub repository snapshots.
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button
+          onClick={() => {
+            setEditingTemplate(null)
+            setDialogOpen(true)
+          }}
+        >
           <PlusIcon aria-hidden />
           Add template
         </Button>
@@ -220,7 +229,12 @@ export function AdminTemplatesPage({
             Add a public GitHub repository to start building the official
             template catalog.
           </p>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button
+            onClick={() => {
+              setEditingTemplate(null)
+              setDialogOpen(true)
+            }}
+          >
             <PlusIcon aria-hidden />
             Add your first template
           </Button>
@@ -266,6 +280,9 @@ export function AdminTemplatesPage({
                       )}
                     </th>
                   ))}
+                  <th scope="col" className="h-11 px-4 text-right font-medium">
+                    Actions
+                  </th>
                 </tr>
               ))}
             </thead>
@@ -277,6 +294,20 @@ export function AdminTemplatesPage({
                       <table.FlexRender cell={cell} />
                     </td>
                   ))}
+                  <td className="px-4 py-3 text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingTemplate(row.original)
+                        setDialogOpen(true)
+                      }}
+                    >
+                      <PencilIcon aria-hidden />
+                      Edit
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -284,7 +315,12 @@ export function AdminTemplatesPage({
         </div>
       )}
 
-      <CreateTemplateDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <CreateTemplateDialog
+        key={editingTemplate?.id ?? "create"}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        template={editingTemplate}
+      />
     </div>
   )
 }
