@@ -243,10 +243,7 @@ export function CreateTemplateDialog({
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void form.handleSubmit()
-          }}
+          action={async () => form.handleSubmit()}
         >
           <form.Subscribe
             selector={(state) => ({
