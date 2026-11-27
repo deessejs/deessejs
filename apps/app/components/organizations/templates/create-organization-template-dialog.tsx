@@ -148,6 +148,7 @@ export function CreateOrganizationTemplateDialog({
       }
     },
   })
+  const repositoryError = form.state.fieldMeta.repositoryUrl?.errors[0]
 
   function handleOpenChange(next: boolean) {
     if (!next && !form.state.isSubmitting) {
@@ -202,9 +203,9 @@ export function CreateOrganizationTemplateDialog({
                 label="GitHub repository URL"
                 controlId="organization-template-repository-url"
                 error={
-                  form.state.fieldMeta.repositoryUrl?.errors[0] as
-                    | string
-                    | undefined
+                  typeof repositoryError === "string"
+                    ? repositoryError
+                    : undefined
                 }
               >
                 <form.Field name="repositoryUrl">
