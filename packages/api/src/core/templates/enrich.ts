@@ -65,6 +65,10 @@ export async function enrich(
 
   const enriched = await Promise.all(
     registry.map(async (entry): Promise<EnrichedTemplate> => {
+      if (!entry.owner || !entry.repo)
+        throw new Error(
+          `GitHub registry entry "${entry.slug}" is missing its repository identity.`
+        )
       const [repo, readme] = await Promise.all([
         fetchRepo(entry.owner, entry.repo, token),
         fetchReadme(entry.owner, entry.repo, token),

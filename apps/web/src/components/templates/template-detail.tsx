@@ -26,6 +26,27 @@ export type TemplateDetailProps = {
   className?: string
 }
 
+const TemplateHeroPreview = ({ template }: { template: Template }) => {
+  const previewImageUrl =
+    "previewImageUrl" in template ? template.previewImageUrl : undefined
+  const imageUrl = previewImageUrl ?? template.image
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
+      {imageUrl ? (
+        <Image
+          src={imageUrl}
+          unoptimized={Boolean(previewImageUrl)}
+          alt={`${template.name} preview`}
+          fill
+          sizes="(max-width: 768px) 100vw, 896px"
+          className="object-cover"
+        />
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * Single-template detail view at /templates/[template_slug].
  *
@@ -60,7 +81,9 @@ export const TemplateDetail = ({
 }: TemplateDetailProps) => {
   const isCommunity = isCommunityTemplate(template)
   const installCommand = `deessejs init ${template.slug}`
-  const sourceUrl = `https://github.com/${template.owner}/${template.repo}`
+  const sourceUrl = template.cloneUrl
+  const installable =
+    !("installable" in template) || template.installable !== false
   // Demo URL is derived from the template slug. Each template ships
   // its own preview deployment under {slug}.deessejs.com. The URL is
   // computed here (not stored on the contract) so the convention
@@ -101,36 +124,37 @@ export const TemplateDetail = ({
               </Link>
             </Button>
           ) : null}
-          <Button variant="outline" asChild>
-            <Link href={sourceUrl} target="_blank" rel="noopener noreferrer">
-              View source
-            </Link>
-          </Button>
+          {sourceUrl ? (
+            <Button variant="outline" asChild>
+              <Link href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                View source
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </header>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-muted/40">
-        {template.image ? (
-          <Image
-            src={template.image}
-            alt={`${template.name} preview`}
-            fill
-            sizes="(max-width: 768px) 100vw, 896px"
-            className="object-cover"
-          />
-        ) : null}
-      </div>
+      <TemplateHeroPreview template={template} />
 
       <Separator />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_14rem]">
         <div className="flex min-w-0 flex-col gap-8">
-          <section className="flex flex-col gap-3">
-            <h2 className="text-label-14 text-muted-foreground">About</h2>
-            <p className="text-copy-16 text-foreground">
-              {template.description}
-            </p>
-          </section>
+          {installable ? (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-label-14 text-muted-foreground">About</h2>
+              <p className="text-copy-16 text-foreground">
+                {template.description}
+              </p>
+            </section>
+          ) : (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-label-14 text-muted-foreground">Install</h2>
+              <p className="text-copy-14 text-muted-foreground">
+                The first managed release has not been published yet.
+              </p>
+            </section>
+          )}
 
           <TemplateReadme readme={template.readme} />
 
@@ -150,14 +174,20 @@ export const TemplateDetail = ({
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">Source</h2>
             <p className="text-copy-14">
-              <Link
-                href={sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground underline-offset-4 hover:underline"
-              >
-                github.com/{template.owner}/{template.repo}
-              </Link>
+              {sourceUrl ? (
+                <Link
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-foreground underline-offset-4 hover:underline"
+                >
+                  {sourceUrl.replace(/^https:\/\/github\.com\//, "github.com/")}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground">
+                  Managed release archive
+                </span>
+              )}
             </p>
           </section>
 
@@ -224,32 +254,36 @@ export const TemplateDetail = ({
                   </dd>
                 </div>
               ) : null}
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Owner</dt>
-                <dd className="truncate text-foreground">
-                  <Link
-                    href={`https://github.com/${template.owner}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
-                  >
-                    {template.owner}
-                  </Link>
-                </dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Repo</dt>
-                <dd className="truncate text-foreground">
-                  <Link
-                    href={sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
-                  >
-                    {template.repo}
-                  </Link>
-                </dd>
-              </div>
+              {template.owner ? (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Owner</dt>
+                  <dd className="truncate text-foreground">
+                    <Link
+                      href={`https://github.com/${template.owner}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
+                    >
+                      {template.owner}
+                    </Link>
+                  </dd>
+                </div>
+              ) : null}
+              {template.repo && sourceUrl ? (
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">Repo</dt>
+                  <dd className="truncate text-foreground">
+                    <Link
+                      href={sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
+                    >
+                      {template.repo}
+                    </Link>
+                  </dd>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">License</dt>
                 <dd className="truncate text-foreground">{template.license}</dd>

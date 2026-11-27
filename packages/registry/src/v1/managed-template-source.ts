@@ -21,11 +21,11 @@ export async function createManagedTemplateSourceAdapter(input: {
   }
   return {
     async resolve(source) {
-      if (source.repository.toLowerCase() !== input.repository.toLowerCase()) throw new Error("Managed release repository mismatch.")
+      if (source.repository.toLowerCase() !== input.repository.toLowerCase()) throw new Error("Managed release identity mismatch.")
       return { repository: input.repository, revision, entries, readFile }
     },
     async resolveDescriptor(source) {
-      if (source.repository.toLowerCase() !== input.repository.toLowerCase()) throw new Error("Managed release repository mismatch.")
+      if (source.repository.toLowerCase() !== input.repository.toLowerCase()) throw new Error("Managed release identity mismatch.")
       return { repository: input.repository, contents: descriptor }
     },
     async resolveRevision(repository, ref) {

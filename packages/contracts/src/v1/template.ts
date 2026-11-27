@@ -29,12 +29,14 @@ export const TemplateV1 = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
-  owner: z.string().min(1),
-  repo: z.string().min(1),
+  owner: z.string().min(1).nullable().optional(),
+  repo: z.string().min(1).nullable().optional(),
   license: z.string(),
   category: z.string().min(1),
   labels: z.array(z.string()),
   image: z.string().optional(),
+  /** Short-lived signed URL for the latest managed release's validated preview image. */
+  previewImageUrl: z.string().url().optional(),
   /**
    * Optional override for the clone URL. Falls back to
    * `https://github.com/<owner>/<repo>` when absent.
@@ -60,6 +62,8 @@ export const TemplateV1 = z.object({
   stars: z.number().int().nonnegative().optional(),
   /** API-authoritative marker for templates that must resolve through managed releases. */
   requiresManaged: z.boolean().optional(),
+  sourceType: z.enum(["github", "managed"]).optional(),
+  installable: z.boolean().optional(),
 })
 
 export type TemplateV1 = z.infer<typeof TemplateV1>

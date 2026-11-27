@@ -332,24 +332,48 @@ organizationTemplateCommand
 
 organizationTemplateCommand
   .command("request-listing")
-  .description("Request review for an organization template in the public catalog")
+  .description(
+    "Request review for an organization template in the public catalog"
+  )
   .argument("<organization-slug>", "organization slug")
   .argument("<template-slug>", "template slug")
-  .requiredOption("--confirm-distribution-rights", "confirm that the organization may distribute this template")
+  .requiredOption(
+    "--confirm-distribution-rights",
+    "confirm that the organization may distribute this template"
+  )
   .option("--json", "JSON output for scripting")
   .option("--verbose", "show human-readable output")
-  .action(async (organizationSlug: string, slug: string, options: JsonOption) => {
-    await runOrganizationTemplateAction(options, "Submitting catalog listing request...", async (client, complete) => {
-      const { templates } = await client.organization.templates.list({ organizationSlug })
-      const template = templates.find((item) => item.slug === slug)
-      if (!template) throw new CliError("organization_api_error", `Template "${slug}" not found in organization "${organizationSlug}".`)
-      const submission = await client.organization.templates.submit({ organizationSlug, templateId: template.id, distributionRightsConfirmed: true })
-      completeBeforePrint(complete, () => {
-        if (isJsonOutput(options)) printJson({ submission })
-        else console.log(`Catalog listing request submitted for ${slug} at ${submission.sourceCommit}.`)
-      })
-    })
-  })
+  .action(
+    async (organizationSlug: string, slug: string, options: JsonOption) => {
+      await runOrganizationTemplateAction(
+        options,
+        "Submitting catalog listing request...",
+        async (client, complete) => {
+          const { templates } = await client.organization.templates.list({
+            organizationSlug,
+          })
+          const template = templates.find((item) => item.slug === slug)
+          if (!template)
+            throw new CliError(
+              "organization_api_error",
+              `Template "${slug}" not found in organization "${organizationSlug}".`
+            )
+          const submission = await client.organization.templates.submit({
+            organizationSlug,
+            templateId: template.id,
+            distributionRightsConfirmed: true,
+          })
+          completeBeforePrint(complete, () => {
+            if (isJsonOutput(options)) printJson({ submission })
+            else
+              console.log(
+                `Catalog listing request submitted for ${slug} at ${submission.sourceCommit}.`
+              )
+          })
+        }
+      )
+    }
+  )
 
 organizationTemplateCommand
   .command("add")
@@ -357,7 +381,8 @@ organizationTemplateCommand
   .argument("<organization-slug>", "organization slug")
   .requiredOption("--slug <slug>", "template slug")
   .requiredOption("--name <name>", "display name")
-  .requiredOption("--repository <url>", "public GitHub repository URL")
+  .option("--repository <url>", "public GitHub repository URL")
+  .option("--source <source>", "github or managed", "github")
   .option("--description <text>", "template description")
   .requiredOption("--category <category>", "template category")
   .option(
@@ -375,7 +400,8 @@ organizationTemplateCommand
       options: JsonOption & {
         slug: string
         name: string
-        repository: string
+        repository?: string
+        source: "github" | "managed"
         description?: string
         category: OrganizationTemplateCategory
         label?: string[]
@@ -394,7 +420,10 @@ organizationTemplateCommand
               organizationSlug,
               slug: options.slug,
               name: options.name,
-              repositoryUrl: options.repository,
+              sourceType: options.source,
+              ...(options.repository
+                ? { repositoryUrl: options.repository }
+                : {}),
               category: options.category,
               labels: options.label ?? [],
               ...(options.description === undefined
@@ -457,7 +486,11 @@ function printOrganizationTemplateInfo(template: OrganizationTemplate): void {
   console.log(
     `Organization-owned template: ${template.name} (${template.slug})`
   )
-  console.log(`Repository: ${template.canonicalUrl}`)
+  console.log(
+    template.canonicalUrl
+      ? `Repository: ${template.canonicalUrl}`
+      : `Source: managed archive${template.installable ? " (release ready)" : " (not installable until first release)"}`
+  )
   console.log(
     `Publication state: ${template.currentlyPublished ? "current" : (template.publication?.publicationState ?? "unpublished")}`
   )

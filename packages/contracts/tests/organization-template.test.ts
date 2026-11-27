@@ -11,6 +11,8 @@ const template = {
   description: "",
   owner: "acme",
   repo: "starter",
+  sourceType: "github",
+  installable: true,
   category: "saas",
   labels: [],
   license: "MIT",

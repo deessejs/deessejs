@@ -67,13 +67,16 @@ deessejs organization list --json
 deessejs organization template list acme --json
 deessejs organization template info acme starter-kit
 deessejs organization template add acme --slug starter-kit --name "Starter Kit" --repository https://github.com/acme/starter-kit --category saas
+deessejs organization template add acme --source managed --slug internal-starter --name "Internal Starter" --category saas
 ```
 
 `init` accepts a catalog slug or an HTTPS URL to a GitHub repository root. Both forms use the repository's root `deesse-template.json` to select the files to create. The descriptor must be present and valid; there is no Git clone fallback. `--ref` selects a branch or other Git ref. `--force` allows an existing empty target directory; it never removes existing files.
 
 If the selected files include a root `deesse.json`, `init` validates it against project config V1 and preserves its contents. If the template does not include one, `init` creates a default config with the project schema URL and `formatVersion: 1`.
 
-`info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. Slugs are mapped to repositories through a lightweight catalog lookup; `info` does not fetch the GitHub-enriched listing. It then reads only the root `deesse-template.json` through GitHub's Contents API, without downloading or inventorying the full repository. `--ref` inspects a specific branch or other Git ref. With `--json`, the result contains the validated `descriptor` and source repository.
+`info` accepts a catalog slug or GitHub repository URL and shows the same descriptor fields for both. GitHub-backed slugs read the root `deesse-template.json` through GitHub's Contents API. Managed-only entries read the descriptor from their latest published archive and report a clear error before the first release. `--ref` applies to GitHub sources only. With `--json`, the result contains the validated `descriptor` and source identity.
+
+Organization templates may use `--source managed` and omit `--repository`. Publish their first archive from a clean local template project with `deessejs template publish --slug <slug> --destination <organization>`. A managed template appears as not installable until that first release is sealed. GitHub-backed initialization and community listing review remain separate flows.
 
 `deessejs template version patch|minor|major` reads `deesse-template.json` in the current directory and updates only its `version` field. It accepts canonical stable `MAJOR.MINOR.PATCH` versions with no prefix, prerelease, build metadata, or leading zeroes. Overflow beyond JavaScript's safe integer limit is rejected without changing the descriptor. The command is local-only and does not publish a release.
 

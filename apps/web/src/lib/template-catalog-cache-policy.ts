@@ -1,7 +1,9 @@
+// Managed preview URLs expire after five minutes, so the platform catalog
+// refreshes them slightly sooner than that.
 export const TEMPLATE_CATALOG_REVALIDATE_SECONDS = {
-  platform: 300,
+  platform: 240,
   community: 60,
-  platformDetail: 300,
+  platformDetail: 240,
   communityDetail: 60,
 } as const
 

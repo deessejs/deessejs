@@ -5,18 +5,18 @@
  *
  * - `templates` is the editorial record. Official fields are platform-owned;
  *   organization records are private to the organization that owns them.
- *   Both store display fields, category, labels and license fallback here.
+ *   GitHub source identity and managed-artifact delivery are distinct from
+ *   owner, visibility and paid entitlement.
  * - `template_repository_snapshots` is the current GitHub observation. It
- *   holds one row per template and is replaced wholesale on a successful
- *   refresh.
+ *   exists only for GitHub-backed templates and is replaced wholesale on a
+ *   successful refresh.
  *
  * The split is what keeps a refresh from overwriting editorial fields. A
  * refresh only ever writes the snapshot table.
  *
- * A template is readable only through a route authorized for its owner and
- * when both rows exist. The snapshot's primary key is the foreign key, so
- * there is at most one current snapshot per template. Foreign keys preserve
- * template records and snapshots until an explicit deletion policy exists.
+ * A GitHub-backed template has at most one current repository snapshot. A
+ * managed-only template has no snapshot and becomes installable only after a
+ * ready managed release exists. Routes enforce each template's owner scope.
  *
  * The shape deliberately departs from `auth.ts`, which is Better Auth
  * generated output with text IDs and naive timestamps. This table is
@@ -50,6 +50,10 @@ export const templateOwnerType = pgEnum("template_owner_type", [
   "platform",
   "organization",
 ])
+export const templateSourceType = pgEnum("template_source_type", [
+  "github",
+  "managed",
+])
 
 export const templates = pgTable(
   "templates",
@@ -62,8 +66,9 @@ export const templates = pgTable(
     }),
     name: text("name").notNull(),
     descriptionOverride: text("description_override"),
-    owner: text("owner").notNull(),
-    repo: text("repo").notNull(),
+    owner: text("owner"),
+    repo: text("repo"),
+    sourceType: templateSourceType("source_type").notNull().default("github"),
     category: text("category").notNull(),
     labels: text("labels")
       .array()
@@ -87,10 +92,12 @@ export const templates = pgTable(
       sql`(${table.ownerType} = 'platform' AND ${table.organizationId} IS NULL) OR (${table.ownerType} = 'organization' AND ${table.organizationId} IS NOT NULL)`
     ),
     check("templates_name_nonempty", sql`length(btrim(${table.name})) > 0`),
-    // The acquisition locator. Both halves are needed to resolve a
-    // repository, so neither may be blank.
-    check("templates_owner_nonempty", sql`length(btrim(${table.owner})) > 0`),
-    check("templates_repo_nonempty", sql`length(btrim(${table.repo})) > 0`),
+    // GitHub source identity is present only for GitHub-backed entries. A
+    // managed source has no owner/repository locator.
+    check(
+      "templates_source_identity_check",
+      sql`(${table.sourceType} = 'github' AND ${table.owner} IS NOT NULL AND length(btrim(${table.owner})) > 0 AND ${table.repo} IS NOT NULL AND length(btrim(${table.repo})) > 0) OR (${table.sourceType} = 'managed' AND ${table.owner} IS NULL AND ${table.repo} IS NULL)`
+    ),
     check(
       "templates_category_nonempty",
       sql`length(btrim(${table.category})) > 0`
@@ -156,15 +163,26 @@ export const templateRepositorySnapshots = pgTable(
 /** Pending template-image transfers, scoped to one server-selected template. */
 export const templateImageUploads = pgTable("template_image_uploads", {
   id: uuid("id").defaultRandom().primaryKey(),
-  templateId: uuid("template_id").notNull().references(() => templates.id, { onDelete: "cascade" }),
-  objectId: uuid("object_id").notNull().unique().references(() => storageObjects.id, { onDelete: "cascade" }),
+  templateId: uuid("template_id")
+    .notNull()
+    .references(() => templates.id, { onDelete: "cascade" }),
+  objectId: uuid("object_id")
+    .notNull()
+    .unique()
+    .references(() => storageObjects.id, { onDelete: "cascade" }),
   stagedKey: text("staged_key").notNull().unique(),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").references(() => organization.id, {
+    onDelete: "cascade",
+  }),
   expectedContentType: text("expected_content_type").notNull(),
   expectedByteSize: integer("expected_byte_size").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 export const templateRelations = relations(templates, ({ one }) => ({

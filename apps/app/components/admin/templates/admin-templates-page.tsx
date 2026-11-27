@@ -55,17 +55,31 @@ const columns = column.columns([
     sortFn: "alphanumeric",
     cell: ({ row }) => (
       <>
-        <Link
-          className="font-medium underline-offset-4 hover:underline"
-          href={row.original.canonicalUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {row.original.name}
-        </Link>
+        {row.original.canonicalUrl ? (
+          <Link
+            className="font-medium underline-offset-4 hover:underline"
+            href={row.original.canonicalUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {row.original.name}
+          </Link>
+        ) : (
+          <span className="font-medium">{row.original.name}</span>
+        )}
         <div className="mt-1 truncate text-xs text-muted-foreground">
-          {row.original.slug} · {row.original.owner}/{row.original.repo}
+          {row.original.slug} ·{" "}
+          {row.original.sourceType === "managed"
+            ? "managed archive"
+            : `${row.original.owner}/${row.original.repo}`}
         </div>
+        {row.original.sourceType === "managed" ? (
+          <div className="text-xs text-muted-foreground">
+            {row.original.installable
+              ? "Release ready to install"
+              : "Not installable until the first release is published"}
+          </div>
+        ) : null}
       </>
     ),
   }),
@@ -102,36 +116,44 @@ const columns = column.columns([
   column.accessor("fetchedAt", {
     header: "Last fetched",
     sortFn: "alphanumeric",
-    cell: ({ getValue }) => (
-      <time
-        className="whitespace-nowrap text-muted-foreground"
-        dateTime={getValue()}
-      >
-        {fetchedAtFormatter.format(new Date(getValue()))}
-      </time>
-    ),
+    cell: ({ getValue }) => {
+      const fetchedAt = getValue()
+      return fetchedAt ? (
+        <time
+          className="whitespace-nowrap text-muted-foreground"
+          dateTime={fetchedAt}
+        >
+          {fetchedAtFormatter.format(new Date(fetchedAt))}
+        </time>
+      ) : (
+        <span className="text-muted-foreground">Not fetched</span>
+      )
+    },
   }),
   column.display({
     id: "presentation",
     header: "Presentation image",
-    cell: ({ row }) => (
-      <div className="flex min-w-56 items-center gap-3">
-        {row.original.imageUrl ? (
-          <Image
-            src={row.original.imageUrl}
-            alt={`${row.original.name} presentation image`}
-            width={64}
-            height={64}
-            unoptimized
-            className="size-16 rounded-md border object-cover"
-          />
-        ) : (
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
-            No image
-          </div>
-        )}
-      </div>
-    ),
+    cell: ({ row }) => {
+      const imageUrl = row.original.previewImageUrl ?? row.original.imageUrl
+      return (
+        <div className="flex min-w-56 items-center gap-3">
+          {imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt={`${row.original.name} presentation image`}
+              width={64}
+              height={64}
+              unoptimized
+              className="size-16 rounded-md border object-cover"
+            />
+          ) : (
+            <div className="flex size-16 shrink-0 items-center justify-center rounded-md border border-dashed text-center text-xs text-muted-foreground">
+              No image
+            </div>
+          )}
+        </div>
+      )
+    },
   }),
 ])
 

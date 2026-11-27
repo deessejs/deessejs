@@ -88,9 +88,10 @@ export const TemplateCard = ({ template, className }: TemplateCardProps) => {
               "relative aspect-video overflow-hidden rounded-md border border-border bg-background"
             )}
           >
-            {template.image ? (
+            {(template.previewImageUrl ?? template.image) ? (
               <Image
-                src={template.image}
+                src={template.previewImageUrl ?? template.image ?? ""}
+                unoptimized={Boolean(template.previewImageUrl)}
                 alt={`${template.name} preview`}
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"

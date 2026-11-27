@@ -48,11 +48,12 @@ export const printOrganizationTemplatesTable = (
     process.stdout.write(pc.dim("No organization templates found.\n"))
     return
   }
-  const headers = ["slug", "name", "ownership", "publication", "review"]
+  const headers = ["slug", "name", "source", "release", "publication", "review"]
   const rows = templates.map((template) => [
     template.slug,
     template.name,
-    "organization-owned",
+    template.sourceType === "managed" ? "managed" : "GitHub",
+    template.installable ? "ready" : "not published",
     template.currentlyPublished
       ? "current"
       : (template.publication?.publicationState ?? "unpublished"),

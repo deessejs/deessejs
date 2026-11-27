@@ -7,7 +7,10 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { selectMock } = vi.hoisted(() => ({ selectMock: vi.fn() }))
+const { selectMock, releaseSummariesMock } = vi.hoisted(() => ({
+  selectMock: vi.fn(),
+  releaseSummariesMock: vi.fn(),
+}))
 
 vi.mock("../../src/core/organization/entitlement.js", () => ({
   callerHasActiveOrganizationPro: vi.fn().mockResolvedValue(true),
@@ -17,6 +20,9 @@ vi.mock("@workspace/database", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@workspace/database")>()
   return { ...actual, db: { select: selectMock } }
 })
+vi.mock("../../src/core/managed-releases/template-previews.js", () => ({
+  getManagedTemplateReleaseSummaries: releaseSummariesMock,
+}))
 
 import { call } from "@orpc/server"
 import { appRouter } from "../../src/orpc/index.js"
@@ -29,6 +35,8 @@ const context = {
 }
 
 const templateRow = {
+  id: "d355d22f-7eb9-4e14-9658-95170c2e1790",
+  sourceType: "github" as const,
   slug: "saas-starter",
   name: "SaaS Starter",
   descriptionOverride: null,
@@ -47,24 +55,39 @@ const templateRow = {
   access: "free" as const,
 }
 
-const mockQuery = (rows: unknown[]) => {
+const mockQuery = (...resultSets: unknown[][]) => {
+  selectMock.mockReset()
+  let lastQuery: ReturnType<typeof createQuery> | undefined
+  for (const rows of resultSets) {
+    const query = createQuery()
+    query.orderBy.mockResolvedValue(rows)
+    query.limit.mockResolvedValue(rows)
+    query.where.mockReturnValue(query)
+    selectMock.mockReturnValueOnce(query)
+    lastQuery = query
+  }
+  if (lastQuery) selectMock.mockReturnValue(lastQuery)
+}
+
+function createQuery() {
   const query = {
     from: vi.fn(),
     innerJoin: vi.fn(),
+    leftJoin: vi.fn(),
     orderBy: vi.fn(),
     where: vi.fn(),
     limit: vi.fn(),
   }
   query.from.mockReturnValue(query)
   query.innerJoin.mockReturnValue(query)
-  query.orderBy.mockResolvedValue(rows)
+  query.leftJoin.mockReturnValue(query)
   query.where.mockReturnValue(query)
-  query.limit.mockResolvedValue(rows)
-  selectMock.mockReturnValue(query)
+  return query
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  releaseSummariesMock.mockResolvedValue(new Map())
 })
 
 describe("templates.list", () => {
@@ -92,6 +115,7 @@ describe("templates.list", () => {
           cloneUrl: "https://github.com/deessejs/saas-template",
           updatedAt: "2026-01-02T03:04:05.000Z",
           stars: 42,
+          sourceType: "github",
         },
       ],
     })
@@ -117,6 +141,71 @@ describe("templates.list", () => {
       call(appRouter.templates.list, undefined, { context })
     ).resolves.toEqual({ templates: [] })
   })
+
+  it("lists a managed-only entry without a repository and marks it non-installable before its first release", async () => {
+    mockQuery(
+      [
+        {
+          ...templateRow,
+          owner: null,
+          repo: null,
+          sourceType: "managed",
+          canonicalUrl: null,
+          repositoryDescription: null,
+          license: null,
+          stars: null,
+          repositoryUpdatedAt: null,
+        },
+      ],
+      []
+    )
+    const result = await call(appRouter.templates.list, undefined, { context })
+    expect(result.templates[0]).toMatchObject({
+      slug: "saas-starter",
+      sourceType: "managed",
+      requiresManaged: true,
+      installable: false,
+    })
+    expect(result.templates[0]).not.toHaveProperty("owner")
+    expect(result.templates[0]).not.toHaveProperty("repo")
+    expect(result.templates[0]).not.toHaveProperty("cloneUrl")
+  })
+
+  it("projects the latest managed preview when present and omits it when absent", async () => {
+    const managedRow = {
+      ...templateRow,
+      owner: null,
+      repo: null,
+      sourceType: "managed",
+      canonicalUrl: null,
+      repositoryDescription: null,
+      license: null,
+      stars: null,
+      repositoryUpdatedAt: null,
+    }
+    const previewImageUrl = "https://private.invalid/preview?signature=short"
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[managedRow.id, { installable: true, previewImageUrl }]])
+    )
+    mockQuery([managedRow])
+    const withPreview = await call(appRouter.templates.list, undefined, {
+      context,
+    })
+    expect(withPreview.templates[0]).toMatchObject({
+      installable: true,
+      previewImageUrl,
+    })
+
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[managedRow.id, { installable: true, previewImageUrl: null }]])
+    )
+    mockQuery([managedRow])
+    const withoutPreview = await call(appRouter.templates.list, undefined, {
+      context,
+    })
+    expect(withoutPreview.templates[0]).toMatchObject({ installable: true })
+    expect(withoutPreview.templates[0]).not.toHaveProperty("previewImageUrl")
+  })
 })
 
 describe("templates.detail", () => {
@@ -126,7 +215,11 @@ describe("templates.detail", () => {
       call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
     ).resolves.toMatchObject({ slug: "saas-starter", readme: "# SaaS Starter" })
     expect(
-      await call(appRouter.templates.detail, { slug: "saas-starter" }, { context })
+      await call(
+        appRouter.templates.detail,
+        { slug: "saas-starter" },
+        { context }
+      )
     ).not.toHaveProperty("requiresManaged")
     expect(selectMock).toHaveBeenCalledWith(
       expect.objectContaining({ readme: expect.anything() })
@@ -149,6 +242,22 @@ describe("templates.detail", () => {
     )
 
     expect(result).toMatchObject({ requiresManaged: true })
+  })
+
+  it("includes the managed release preview in detail when available", async () => {
+    const previewImageUrl = "https://private.invalid/preview?signature=short"
+    mockQuery([
+      { ...templateRow, sourceType: "managed", owner: null, repo: null },
+    ])
+    releaseSummariesMock.mockResolvedValueOnce(
+      new Map([[templateRow.id, { installable: true, previewImageUrl }]])
+    )
+    const result = await call(
+      appRouter.templates.detail,
+      { slug: "saas-starter" },
+      { context }
+    )
+    expect(result).toMatchObject({ installable: true, previewImageUrl })
   })
 
   it("returns null for a missing official template", async () => {
@@ -189,11 +298,9 @@ describe("templates.community public list and detail", () => {
 
   it("maps public list rows without README and detail with README", async () => {
     mockQuery([publication])
-    const list = await call(
-      appRouter.templates.community.list,
-      undefined,
-      { context }
-    )
+    const list = await call(appRouter.templates.community.list, undefined, {
+      context,
+    })
     expect(list.templates[0]).toMatchObject({
       slug: "@acme/starter",
       community: true,
@@ -247,6 +354,8 @@ describe("templates.resolve", () => {
       slug: "saas-starter",
       owner: "deessejs",
       repo: "saas-template",
+      sourceType: "github",
+      requiresManaged: false,
     })
   })
 

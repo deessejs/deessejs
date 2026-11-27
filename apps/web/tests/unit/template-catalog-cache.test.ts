@@ -19,10 +19,10 @@ describe("public template cache policy", () => {
     )
   })
 
-  it("bounds catalog visibility freshness more tightly for community templates", () => {
-    expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.platform).toBe(300)
+  it("refreshes signed platform previews before expiry and bounds community freshness", () => {
+    expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.platform).toBe(240)
     expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.community).toBe(60)
-    expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.platformDetail).toBe(300)
+    expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.platformDetail).toBe(240)
     expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.communityDetail).toBe(60)
     expect(TEMPLATE_CATALOG_REVALIDATE_SECONDS.community).toBeLessThanOrEqual(
       TEMPLATE_CATALOG_REVALIDATE_SECONDS.platform

@@ -127,6 +127,13 @@
       "when": 1795610576745,
       "tag": "0018_managed_releases",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795712096204,
+      "tag": "0019_minor_rictor",
+      "breakpoints": true
     }
   ]
 }

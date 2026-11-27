@@ -18,12 +18,17 @@ import {
 } from "@workspace/ui/components/dialog"
 import { useForm } from "@tanstack/react-form"
 import { TemplateFormFields, templateFormSchema } from "./template-form-fields"
+import {
+  repositoryUrlForSource,
+  switchTemplateSource,
+} from "@/lib/template-source-form"
 import type {
   EditableTemplate,
   TemplateFormValues,
 } from "./template-form-fields"
 
 const defaults: TemplateFormValues = {
+  sourceType: "github",
   repositoryUrl: "",
   slug: "",
   name: "",
@@ -44,6 +49,134 @@ const REFUSALS: Record<string, string> = {
     "GitHub data could not be fetched. Check the URL and try again.",
 }
 
+function getDefaultValues(template: EditableTemplate | null) {
+  if (!template) return defaults
+  return {
+    ...defaults,
+    repositoryUrl: template.canonicalUrl ?? "",
+    slug: template.slug,
+    name: template.name,
+    descriptionOverride: template.descriptionOverride ?? "",
+    category:
+      CATEGORY_SLUGS.find((category) => category === template.category) ??
+      "saas",
+    labels: template.labels.join(", "),
+    licenseFallback: template.licenseFallback ?? "",
+    access: template.access,
+    imageName: template.imageName ?? "none",
+  }
+}
+
+async function saveTemplate(
+  value: TemplateFormValues,
+  template: EditableTemplate | null
+) {
+  const labels = value.labels
+    .split(",")
+    .map((label) => label.trim())
+    .filter(Boolean)
+  const imageName =
+    TEMPLATE_IMAGE_FILENAMES.find(
+      (candidate) => candidate === value.imageName
+    ) ?? null
+
+  if (template) {
+    await client.rpc.admin.templates.update({
+      id: template.id,
+      name: value.name,
+      descriptionOverride: value.descriptionOverride.trim() || null,
+      category: value.category,
+      labels,
+      licenseFallback: value.licenseFallback.trim() || null,
+      access: value.access,
+      imageName,
+    })
+    toast.success("Template updated")
+    return
+  }
+
+  await client.rpc.admin.templates.create({
+    sourceType: value.sourceType,
+    ...repositoryUrlForSource(value.sourceType, value.repositoryUrl),
+    slug: value.slug,
+    name: value.name,
+    descriptionOverride: value.descriptionOverride.trim() || null,
+    category: value.category,
+    labels,
+    licenseFallback: value.licenseFallback.trim() || null,
+    access: value.access,
+    imageName,
+  })
+}
+
+function getFailureMessage(error: unknown, isEditing: boolean) {
+  const fallbackMessage = isEditing
+    ? "The template could not be updated. Refresh and try again."
+    : FAILURE_MESSAGE
+  return error instanceof ORPCError
+    ? (REFUSALS[error.code] ?? fallbackMessage)
+    : fallbackMessage
+}
+
+function changeTemplateField(
+  name: keyof TemplateFormValues,
+  value: string,
+  values: TemplateFormValues,
+  setFieldValue: (name: keyof TemplateFormValues, value: string) => void
+) {
+  switch (name) {
+    case "category": {
+      const category = CATEGORY_SLUGS.find((item) => item === value)
+      if (category) setFieldValue("category", category)
+      return
+    }
+    case "access":
+      if (value === "free" || value === "paid") {
+        setFieldValue("access", value)
+      }
+      return
+    case "sourceType":
+      if (value === "github" || value === "managed") {
+        const next = switchTemplateSource(values, value)
+        setFieldValue("sourceType", next.sourceType)
+        setFieldValue("repositoryUrl", next.repositoryUrl)
+      }
+      return
+    case "repositoryUrl":
+    case "slug":
+    case "name":
+    case "descriptionOverride":
+    case "labels":
+    case "licenseFallback":
+    case "imageName":
+      setFieldValue(name, value)
+  }
+}
+
+function closeTemplateDialog(
+  next: boolean,
+  isSubmitting: boolean,
+  reset: () => void,
+  clearFailure: () => void,
+  onOpenChange: (open: boolean) => void
+) {
+  if (!next && !isSubmitting) {
+    clearFailure()
+    reset()
+  }
+  onOpenChange(next)
+}
+
+function getSubmitLabel(
+  isSubmitting: boolean,
+  isEditing: boolean,
+  isGitHubSource: boolean
+) {
+  if (!isSubmitting) return isEditing ? "Save changes" : "Add template"
+  if (isEditing) return "Saving…"
+  return isGitHubSource ? "Fetching from GitHub…" : "Creating entry…"
+}
+
 export function CreateTemplateDialog({
   open,
   onOpenChange,
@@ -56,118 +189,50 @@ export function CreateTemplateDialog({
   const router = useRouter()
   const [failure, setFailure] = useState<string | null>(null)
   const form = useForm({
-    defaultValues: template
-      ? {
-          ...defaults,
-          repositoryUrl: template.canonicalUrl,
-          slug: template.slug,
-          name: template.name,
-          descriptionOverride: template.descriptionOverride ?? "",
-          category:
-            CATEGORY_SLUGS.find((category) => category === template.category) ??
-            "saas",
-          labels: template.labels.join(", "),
-          licenseFallback: template.licenseFallback ?? "",
-          access: template.access,
-          imageName: template.imageName ?? "none",
-        }
-      : defaults,
+    defaultValues: getDefaultValues(template),
     validators: { onSubmit: templateFormSchema },
     onSubmit: async ({ value }) => {
       setFailure(null)
       try {
-        const labels = value.labels
-          .split(",")
-          .map((label) => label.trim())
-          .filter(Boolean)
-        const imageName =
-          TEMPLATE_IMAGE_FILENAMES.find(
-            (imageName) => imageName === value.imageName
-          ) ?? null
-
-        if (template) {
-          await client.rpc.admin.templates.update({
-            id: template.id,
-            name: value.name,
-            descriptionOverride: value.descriptionOverride.trim() || null,
-            category: value.category,
-            labels,
-            licenseFallback: value.licenseFallback.trim() || null,
-            access: value.access,
-            imageName,
-          })
-          toast.success("Template updated")
-        } else {
-          await client.rpc.admin.templates.create({
-            repositoryUrl: value.repositoryUrl,
-            slug: value.slug,
-            name: value.name,
-            descriptionOverride: value.descriptionOverride.trim() || null,
-            category: value.category,
-            labels,
-            licenseFallback: value.licenseFallback.trim() || null,
-            access: value.access,
-            imageName,
-          })
-        }
+        await saveTemplate(value, template)
         form.reset()
         onOpenChange(false)
         router.refresh()
       } catch (error) {
-        const failureMessage = template
-          ? "The template could not be updated. Refresh and try again."
-          : FAILURE_MESSAGE
-        setFailure(
-          error instanceof ORPCError
-            ? (REFUSALS[error.code] ?? failureMessage)
-            : failureMessage
-        )
+        setFailure(getFailureMessage(error, Boolean(template)))
       }
     },
   })
 
   function handleOpenChange(next: boolean) {
-    if (!next && !form.state.isSubmitting) {
-      setFailure(null)
-      form.reset()
-    }
-    onOpenChange(next)
+    closeTemplateDialog(
+      next,
+      form.state.isSubmitting,
+      form.reset,
+      () => setFailure(null),
+      onOpenChange
+    )
   }
 
-  function handleFieldChange(name: keyof TemplateFormValues, value: string) {
-    switch (name) {
-      case "category": {
-        const category = CATEGORY_SLUGS.find((item) => item === value)
-        if (category) form.setFieldValue("category", category)
-        return
-      }
-      case "access":
-        if (value === "free" || value === "paid") {
-          form.setFieldValue("access", value)
-        }
-        return
-      case "repositoryUrl":
-      case "slug":
-      case "name":
-      case "descriptionOverride":
-      case "labels":
-      case "licenseFallback":
-      case "imageName":
-        form.setFieldValue(name, value)
-    }
-  }
+  const isEditing = Boolean(template)
+  const isGitHubSource = form.state.values.sourceType === "github"
+  const submitLabel = getSubmitLabel(
+    form.state.isSubmitting,
+    isEditing,
+    isGitHubSource
+  )
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {template ? "Edit template" : "Add a template"}
+            {isEditing ? "Edit template" : "Add a template"}
           </DialogTitle>
           <DialogDescription>
-            {template
+            {isEditing
               ? "Update the catalog details. The GitHub repository snapshot and slug will stay unchanged."
-              : "Enter a public GitHub repository. Its repository details and README will be fetched and saved with your catalog entry."}
+              : "Add a public GitHub template or create a managed entry for publishing from a validated archive."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -184,7 +249,15 @@ export function CreateTemplateDialog({
               name: form.state.fieldMeta.name?.errors[0] as string | undefined,
             }}
             template={template}
-            onChange={handleFieldChange}
+            onChange={(name, value) =>
+              changeTemplateField(
+                name,
+                value,
+                form.state.values,
+                form.setFieldValue
+              )
+            }
+            allowManagedSource
           />
           {failure && (
             <p className="text-sm text-destructive" role="alert">
@@ -201,13 +274,7 @@ export function CreateTemplateDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={form.state.isSubmitting}>
-              {form.state.isSubmitting
-                ? template
-                  ? "Saving…"
-                  : "Fetching from GitHub…"
-                : template
-                  ? "Save changes"
-                  : "Add template"}
+              {submitLabel}
             </Button>
           </DialogFooter>
         </form>

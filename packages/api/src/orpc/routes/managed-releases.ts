@@ -268,11 +268,17 @@ async function resolveOrganizationScope(organizationSlug: string | undefined, ca
 
 async function managedResolutionRequired(kind: "template" | "block", slug: string, ownerType: "platform" | "organization", organizationId?: string) {
   if (kind === "template") {
-    const [target] = await db.select({ access: templates.access }).from(templates).where(and(eq(templates.slug, slug), eq(templates.ownerType, ownerType), organizationId ? eq(templates.organizationId, organizationId) : undefined)).limit(1)
-    return ownerType === "organization" || target?.access === "paid"
+    const [target] = await db.select({ access: templates.access, sourceType: templates.sourceType }).from(templates).where(and(eq(templates.slug, slug), eq(templates.ownerType, ownerType), organizationId ? eq(templates.organizationId, organizationId) : undefined)).limit(1)
+    return {
+      required: ownerType === "organization" || target?.access === "paid" || target?.sourceType === "managed",
+      paid: ownerType === "platform" && target?.access === "paid",
+    }
   }
   const [target] = await db.select({ access: blockPublications.access }).from(blockPublications).where(and(eq(blockPublications.slug, slug), eq(blockPublications.ownerType, ownerType), organizationId ? eq(blockPublications.organizationId, organizationId) : undefined, ownerType === "platform" ? eq(blockPublications.publicationState, "current") : undefined)).orderBy(desc(blockPublications.submittedAt)).limit(1)
-  return ownerType === "organization" || target?.access === "paid"
+  return {
+    required: ownerType === "organization" || target?.access === "paid",
+    paid: ownerType === "platform" && target?.access === "paid",
+  }
 }
 
 async function findEligibleRelease(input: { kind: "template" | "block"; slug: string; version?: string }, ownerType: "platform" | "organization", organizationId?: string) {
@@ -303,15 +309,15 @@ async function authorizeResolvedRelease(release: typeof managedReleases.$inferSe
 const resolve = base.input(z.object({ kind: z.enum(["template", "block"]), slug: z.string().min(1), organizationSlug: z.string().optional(), version: z.string().regex(stableVersion).optional() })).handler(async ({ input, context }) => {
   const ownerType = input.organizationSlug ? "organization" : "platform"
   const orgId = await resolveOrganizationScope(input.organizationSlug, context.user)
-  const requiresManaged = await managedResolutionRequired(input.kind, input.slug, ownerType, orgId)
-  if (!orgId && requiresManaged && !(await callerHasActiveOrganizationPro(context))) {
+  const resolution = await managedResolutionRequired(input.kind, input.slug, ownerType, orgId)
+  if (!orgId && resolution.paid && !(await callerHasActiveOrganizationPro(context))) {
     throw new ORPCError("FORBIDDEN", { message: "An active Pro seat is required to access this protected release." })
   }
   const release = await findEligibleRelease({ kind: input.kind, slug: input.slug, ...(input.version ? { version: input.version } : {}) }, ownerType, orgId)
-  if (!release) return { release: null, requiresManaged }
+  if (!release) return { release: null, requiresManaged: resolution.required }
   await authorizeResolvedRelease(release, context)
   const { sealed } = getManagedReleaseStorage()
-  return { release: { id: release.id, kind: release.kind, slug: release.slug, version: release.version, digest: release.digest, downloadUrl: await sealed.createDownloadUrl({ key: release.archiveKey, expiresInSeconds: 300 }), preview: release.previewKey ? await sealed.createDownloadUrl({ key: release.previewKey, expiresInSeconds: 300 }) : null }, requiresManaged }
+  return { release: { id: release.id, kind: release.kind, slug: release.slug, version: release.version, digest: release.digest, downloadUrl: await sealed.createDownloadUrl({ key: release.archiveKey, expiresInSeconds: 300 }), preview: release.previewKey ? await sealed.createDownloadUrl({ key: release.previewKey, expiresInSeconds: 300 }) : null }, requiresManaged: resolution.required }
 })
 
 const withdraw = base.input(z.object({ releaseId: z.string().uuid() })).use(authGuard).handler(async ({ input, context }) => {
