@@ -1,6 +1,6 @@
 {
   "name": "deesse",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "DeesseJS server framework core and typed React client.",
   "license": "MIT",
   "keywords": [
@@ -89,10 +89,18 @@
     "react-dom": "catalog:"
   },
   "peerDependenciesMeta": {
-    "@deessejs/ui": { "optional": true },
-    "next": { "optional": true },
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "@deessejs/ui": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@better-auth/memory-adapter": "catalog:",
