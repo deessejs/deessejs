@@ -42,7 +42,7 @@ export default async function WorkspaceLayout({
       <WorkspaceSidebar />
       <SidebarInset>
         <AppHeader leading={<SidebarTrigger />} user={false} />
-        <div className="flex-1 p-6">
+        <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {/* The organization layout can await an access check. Keep the
               shared chrome visible while that request resolves. */}
           <Suspense

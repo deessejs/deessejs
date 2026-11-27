@@ -68,7 +68,7 @@ export default async function ProjectHomePage({
   const status = projectStatus[project.status]
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <Button asChild variant="ghost" className="w-fit px-0">
         <Link href={workspaceProjectsPath(organization_slug)}>
           <ArrowLeftIcon aria-hidden />
@@ -79,7 +79,7 @@ export default async function ProjectHomePage({
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">{organization.name}</p>
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{project.name}</h1>
           <Link
             className="flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
             href={project.repositoryUrl}
