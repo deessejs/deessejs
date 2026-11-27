@@ -1,5 +1,25 @@
 # @deessejs/cli
 
+## 3.4.0
+
+### Minor Changes
+
+- dfdb3cd: Add the `deessejs add` command for planning and installing block sources into an explicitly selected package target.
+- a601dff: Add `deessejs update` and `deessejs upgrade` commands for checking and applying CLI updates.
+- db1f259: Make JSON the default output for operational CLI commands and retain human-readable output with `--verbose`.
+- b4e0a58: Add `auth login --no-open` for device approval in managed browsers and accept relative verification URLs returned by the API.
+- 468e6be: Add source-neutral managed templates that can be created without a public GitHub repository, published from a clean local project, and initialized from private managed archives.
+- af0ebd2: Prepare the 3.1.0 CLI release with the staged `add`, `templates`, catalog-cache, and `-v` improvements.
+
+### Patch Changes
+
+- 6cf45ec: Expose platform-owned official blocks through the Blocks registry contract.
+- 7fd561f: Fix CLI logout to send valid JSON to Better Auth and report local credential cleanup separately from server revocation.
+- 1706a8b: Enforce organization Pro entitlements when listing or resolving official templates and blocks.
+- 4a9bb9c: Add `-v` as a short alias for `--version` in the CLI.
+- 8830199: Use `deessejs template` as the canonical command group and keep `templates` as a backward-compatible alias.
+- e4dcd7b: Sort CLI help commands alphabetically.
+
 ## 3.3.0
 
 ### Minor Changes
@@ -72,7 +92,7 @@
     as a runtime dependency, but `@workspace/*` packages are workspace-only
     and never published to npm. `npx @deessejs/cli@1.1.1` would install
     the tarball successfully but then fail with `404 Not Found - GET
-    https://registry.npmjs.org/@workspace%2fcontracts` when npm tried
+https://registry.npmjs.org/@workspace%2fcontracts` when npm tried
     to resolve that dependency. The CLI itself was unused because the
     install errored out.
   - `apps/cli/tsup.config.ts` now sets `noExternal: [/^@workspace\//]`,
@@ -111,12 +131,12 @@
     `@workspace/contracts`) between the version bump and the
     `pnpm changeset publish` step. The 1.1.0 release shipped without
     the `dist/` directory in the published tarball, so `npx
-    @deessejs/cli` and `pnpm dlx @deessejs/cli` both failed with
+@deessejs/cli` and `pnpm dlx @deessejs/cli` both failed with
     "'deessejs' is not recognized" — the bin target pointed at a
     file that didn't exist in the package.
   - The version-check warning (`apps/cli/src/version-check.ts`) now
     prints `pnpm dlx @deessejs/cli@latest` instead of `pnpm dlx
-    deessejs@latest`. The unscoped `deessejs` name on npm belongs to
+deessejs@latest`. The unscoped `deessejs` name on npm belongs to
     an unrelated package, so the old hint pointed users at the
     wrong install command.
 
