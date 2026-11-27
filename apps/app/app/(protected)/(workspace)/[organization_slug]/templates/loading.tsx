@@ -3,7 +3,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 export default function OrganizationTemplatesLoading() {
   return (
     <div
-      className="mx-auto flex w-full max-w-7xl flex-col gap-6"
+      className="flex w-full flex-col gap-6"
       aria-busy="true"
     >
       <header className="flex flex-col gap-2">

@@ -18,6 +18,9 @@ import type { RouterClient } from "@orpc/server"
 import type { appRouter } from "@workspace/api/router"
 import { CreateOrganizationTemplateDialog } from "./create-organization-template-dialog"
 import { RequestTemplatePublicationDialog } from "./request-template-publication-dialog"
+import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select"
+import { XIcon } from "lucide-react"
 
 type OrganizationTemplate = Awaited<
   ReturnType<
@@ -29,6 +32,14 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeZone: "UTC",
 })
+
+const templateStateLabels = {
+  all: "All templates",
+  attention: "Needs attention",
+  "in-review": "In review",
+  published: "Published",
+  private: "Private",
+} as const
 
 export function OrganizationTemplatesPage({
   organizationSlug,
@@ -68,7 +79,7 @@ export function OrganizationTemplatesPage({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <TemplatesHeader
         organizationName={organizationName}
         canManage={canManage}
@@ -226,25 +237,42 @@ function OrganizationTemplateTable({
   actionError: string | null
 }) {
   const [query, setQuery] = useState("")
+  const [category, setCategory] = useState("all")
+  const [state, setState] = useState("all")
   const needle = query.trim().toLocaleLowerCase()
-  const filtered = needle
-    ? templates.filter((template) =>
-        [template.name, template.slug, template.owner, template.repo]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(needle)
-      )
-    : templates
+  const categories = [...new Set(templates.map((template) => template.category))].sort()
+  const getState = (template: OrganizationTemplate) => {
+    if (template.publication?.reviewStatus === "pending") return "in-review"
+    if (template.publication?.reviewStatus === "rejected") return "attention"
+    return template.currentlyPublished ? "published" : "private"
+  }
+  const filtered = templates.filter((template) => {
+    const matchesSearch = needle.length === 0 || [template.name, template.slug, template.owner, template.repo, ...template.labels].join(" ").toLocaleLowerCase().includes(needle)
+    const matchesCategory = category === "all" || template.category === category
+    const matchesState = state === "all" || getState(template) === state
+    return matchesSearch && matchesCategory && matchesState
+  })
+  const activeFilters = Number(category !== "all") + Number(state !== "all") + Number(needle.length > 0)
+  const resetFilters = () => { setQuery(""); setCategory("all"); setState("all") }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {actionError ? (
         <p className="text-sm text-destructive" role="alert">
           {actionError}
         </p>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <InputGroup className="w-full sm:max-w-sm">
+      <Tabs value={state} onValueChange={setState}>
+        <TabsList variant="line" aria-label="Filter templates by publication status" className="h-auto w-full justify-start gap-5 overflow-x-auto rounded-none border-b p-0">
+          {(["all", "attention", "in-review", "published", "private"] as const).map((value) => {
+            const count = templates.filter((template) => value === "all" || getState(template) === value).length
+            const label = templateStateLabels[value]
+            return <TabsTrigger key={value} value={value} className="h-auto flex-none gap-2 rounded-none px-1 pb-3">{label}<span className="font-mono text-xs tabular-nums text-muted-foreground">{count}</span></TabsTrigger>
+          })}
+        </TabsList>
+      </Tabs>
+      <div className="flex flex-wrap items-center gap-2">
+        <InputGroup className="min-w-56 flex-1 sm:max-w-md">
           <InputGroupAddon>
             <SearchIcon aria-hidden />
           </InputGroupAddon>
@@ -255,15 +283,16 @@ function OrganizationTemplateTable({
             onChange={(event) => setQuery(event.target.value)}
           />
         </InputGroup>
-        <p className="text-sm text-muted-foreground">
-          {templates.length} {templates.length === 1 ? "template" : "templates"}
-        </p>
+        <Select value={category} onValueChange={(value) => setCategory(value ?? "all")}>
+          <SelectTrigger className="w-full sm:w-48" aria-label="Filter by category"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">All categories</SelectItem>{categories.map((item) => <SelectItem key={item} value={item} className="capitalize">{item}</SelectItem>)}</SelectContent>
+        </Select>
+        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} of {templates.length}</span>
+        {activeFilters > 0 ? <Button variant="ghost" size="sm" onClick={resetFilters}><XIcon aria-hidden />Clear filters</Button> : null}
       </div>
 
       {filtered.length === 0 ? (
-        <p className="rounded-lg border px-6 py-12 text-center text-sm text-muted-foreground">
-          No templates match your search.
-        </p>
+        <section className="flex flex-col items-center gap-3 rounded-md border border-dashed px-6 py-14 text-center"><h2 className="font-medium">No templates match these filters</h2><p className="text-sm text-muted-foreground">Try another search or clear the selected filters.</p><Button variant="outline" onClick={resetFilters}>Clear filters</Button></section>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full caption-bottom text-sm">
