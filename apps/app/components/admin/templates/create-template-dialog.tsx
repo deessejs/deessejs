@@ -177,6 +177,19 @@ function getSubmitLabel(
   return isGitHubSource ? "Fetching from GitHub…" : "Creating entry…"
 }
 
+function getFieldError(error: unknown): string | undefined {
+  if (typeof error === "string") return error
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message
+  }
+  return undefined
+}
+
 export function CreateTemplateDialog({
   open,
   onOpenChange,
@@ -215,13 +228,6 @@ export function CreateTemplateDialog({
   }
 
   const isEditing = Boolean(template)
-  const isGitHubSource = form.state.values.sourceType === "github"
-  const submitLabel = getSubmitLabel(
-    form.state.isSubmitting,
-    isEditing,
-    isGitHubSource
-  )
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
@@ -237,46 +243,69 @@ export function CreateTemplateDialog({
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
-          action={async () => form.handleSubmit()}
+          onSubmit={(event) => {
+            event.preventDefault()
+            void form.handleSubmit()
+          }}
         >
-          <TemplateFormFields
-            values={form.state.values}
-            errors={{
-              repositoryUrl: form.state.fieldMeta.repositoryUrl?.errors[0] as
-                | string
-                | undefined,
-              slug: form.state.fieldMeta.slug?.errors[0] as string | undefined,
-              name: form.state.fieldMeta.name?.errors[0] as string | undefined,
-            }}
-            template={template}
-            onChange={(name, value) =>
-              changeTemplateField(
-                name,
-                value,
-                form.state.values,
-                form.setFieldValue
+          <form.Subscribe
+            selector={(state) => ({
+              values: state.values,
+              fieldMeta: state.fieldMeta,
+              isSubmitting: state.isSubmitting,
+            })}
+          >
+            {({ values, fieldMeta, isSubmitting }) => {
+              const submitLabel = getSubmitLabel(
+                isSubmitting,
+                isEditing,
+                values.sourceType === "github"
               )
-            }
-            allowManagedSource
-          />
-          {failure && (
-            <p className="text-sm text-destructive" role="alert">
-              {failure}
-            </p>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={form.state.isSubmitting}
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={form.state.isSubmitting}>
-              {submitLabel}
-            </Button>
-          </DialogFooter>
+
+              return (
+                <>
+                  <TemplateFormFields
+                    values={values}
+                    errors={{
+                      repositoryUrl: getFieldError(
+                        fieldMeta.repositoryUrl?.errors[0]
+                      ),
+                      slug: getFieldError(fieldMeta.slug?.errors[0]),
+                      name: getFieldError(fieldMeta.name?.errors[0]),
+                    }}
+                    template={template}
+                    onChange={(name, value) =>
+                      changeTemplateField(
+                        name,
+                        value,
+                        values,
+                        form.setFieldValue
+                      )
+                    }
+                    allowManagedSource
+                  />
+                  {failure && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {failure}
+                    </p>
+                  )}
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSubmitting}
+                      onClick={() => handleOpenChange(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {submitLabel}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )
+            }}
+          </form.Subscribe>
         </form>
       </DialogContent>
     </Dialog>
