@@ -26,12 +26,12 @@ export function Email() {
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
             <strong>General:</strong>{" "}
-            <a
+            <Link
               href="mailto:support@deessejs.com"
               className="text-foreground underline underline-offset-4 hover:text-foreground"
             >
               support@deessejs.com
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               questions, sales, anything else.
@@ -41,12 +41,12 @@ export function Email() {
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
             <strong>Security:</strong>{" "}
-            <a
+            <Link
               href="mailto:support@deessejs.com"
               className="text-foreground underline underline-offset-4 hover:text-foreground"
             >
               support@deessejs.com
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               vulnerability reports. See{" "}
@@ -63,12 +63,12 @@ export function Email() {
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
             <strong>Pro Education:</strong>{" "}
-            <a
+            <Link
               href="mailto:support@deessejs.com"
               className="text-foreground underline underline-offset-4 hover:text-foreground"
             >
               support@deessejs.com
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               student or OSS verification.
@@ -78,12 +78,12 @@ export function Email() {
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
             <strong>Enterprise:</strong>{" "}
-            <a
+            <Link
               href="mailto:support@deessejs.com"
               className="text-foreground underline underline-offset-4 hover:text-foreground"
             >
               support@deessejs.com
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               custom engagements, procurement.

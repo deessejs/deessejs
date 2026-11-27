@@ -1,3 +1,4 @@
+import Link from "next/link"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -95,15 +96,15 @@ export const TemplateDetail = ({
         <div className="flex flex-wrap items-center gap-3 lg:shrink-0">
           {demoUrl ? (
             <Button asChild>
-              <a href={demoUrl} target="_blank" rel="noopener noreferrer">
+              <Link href={demoUrl} target="_blank" rel="noopener noreferrer">
                 View demo
-              </a>
+              </Link>
             </Button>
           ) : null}
           <Button variant="outline" asChild>
-            <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+            <Link href={sourceUrl} target="_blank" rel="noopener noreferrer">
               View source
-            </a>
+            </Link>
           </Button>
         </div>
       </header>
@@ -149,14 +150,14 @@ export const TemplateDetail = ({
           <section className="flex flex-col gap-3">
             <h2 className="text-label-14 text-muted-foreground">Source</h2>
             <p className="text-copy-14">
-              <a
+              <Link
                 href={sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-foreground underline-offset-4 hover:underline"
               >
                 github.com/{template.owner}/{template.repo}
-              </a>
+              </Link>
             </p>
           </section>
 
@@ -173,7 +174,7 @@ export const TemplateDetail = ({
               right on sm+, hover state). The whole surface is the
               link target, not just the trailing label. */}
           {!isCommunity ? (
-            <a
+            <Link
               href={SUBMIT_TEMPLATE_URL}
               target="_blank"
               rel="noopener noreferrer"
@@ -192,7 +193,7 @@ export const TemplateDetail = ({
               <span className="text-label-14 whitespace-nowrap text-foreground underline-offset-4 group-hover:underline">
                 Submit your template →
               </span>
-            </a>
+            </Link>
           ) : null}
         </div>
 
@@ -226,27 +227,27 @@ export const TemplateDetail = ({
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Owner</dt>
                 <dd className="truncate text-foreground">
-                  <a
+                  <Link
                     href={`https://github.com/${template.owner}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                   >
                     {template.owner}
-                  </a>
+                  </Link>
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">Repo</dt>
                 <dd className="truncate text-foreground">
-                  <a
+                  <Link
                     href={sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
                   >
                     {template.repo}
-                  </a>
+                  </Link>
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">

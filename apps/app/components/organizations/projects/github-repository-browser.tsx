@@ -1,9 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
 import type { Dispatch, SetStateAction } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   queryOptions,
@@ -30,7 +30,7 @@ import { organizationProjectsQueryKey } from "@/lib/github-projects-query"
 import { workspaceProjectsPath } from "@/lib/workspace-paths"
 
 type GitHubRepositoryPage = Awaited<
-  ReturnType<typeof client.rpc["githubApp"]["repositories"]["list"]>
+  ReturnType<(typeof client.rpc)["githubApp"]["repositories"]["list"]>
 >
 
 type GitHubRepository = GitHubRepositoryPage["repositories"][number]
@@ -349,7 +349,7 @@ function RepositoryListItem({
     <li>
       <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
-          <a
+          <Link
             className="flex w-fit max-w-full items-center gap-2 font-medium underline-offset-4 hover:underline"
             href={repository.htmlUrl}
             target="_blank"
@@ -357,7 +357,7 @@ function RepositoryListItem({
           >
             <span className="truncate">{repository.fullName}</span>
             <ExternalLinkIcon className="size-4 shrink-0" aria-hidden />
-          </a>
+          </Link>
           {repository.description ? (
             <p className="text-sm text-muted-foreground">
               {repository.description}

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 import {
   createColumnHelper,
@@ -54,14 +55,14 @@ const columns = column.columns([
     sortFn: "alphanumeric",
     cell: ({ row }) => (
       <>
-        <a
+        <Link
           className="font-medium underline-offset-4 hover:underline"
           href={row.original.canonicalUrl}
           target="_blank"
           rel="noreferrer"
         >
           {row.original.name}
-        </a>
+        </Link>
         <div className="mt-1 truncate text-xs text-muted-foreground">
           {row.original.slug} · {row.original.owner}/{row.original.repo}
         </div>

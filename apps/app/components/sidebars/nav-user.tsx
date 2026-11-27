@@ -1,8 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { client } from "@/lib/client"
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   Avatar,
@@ -174,28 +174,28 @@ export function NavUser() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <a href={DOCS_URL} target="_blank" rel="noreferrer">
+                  <Link href={DOCS_URL} target="_blank" rel="noreferrer">
                     <BookOpenIcon />
                     Docs
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <a href={HELP_URL} target="_blank" rel="noreferrer">
+                  <Link href={HELP_URL} target="_blank" rel="noreferrer">
                     <CircleHelpIcon />
                     Help
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <a href={CHANGELOG_URL} target="_blank" rel="noreferrer">
+                  <Link href={CHANGELOG_URL} target="_blank" rel="noreferrer">
                     <HistoryIcon />
                     Changelog
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <a href={APP_URL} target="_blank" rel="noreferrer">
+                  <Link href={APP_URL} target="_blank" rel="noreferrer">
                     <HouseIcon />
                     Homepage
-                  </a>
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

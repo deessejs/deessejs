@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@workspace/ui/components/button"
 import {
   useAuthorizedOAuthClients,
@@ -76,14 +77,14 @@ export function AuthorizedOAuthClients() {
                   {consent.clientId}
                 </p>
                 {clientUrl && (
-                  <a
+                  <Link
                     className="text-sm underline"
                     href={clientUrl}
                     target="_blank"
                     rel="noreferrer"
                   >
                     App details
-                  </a>
+                  </Link>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Connected {formatDate(consent.createdAt)}

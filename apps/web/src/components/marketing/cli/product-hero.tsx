@@ -1,5 +1,5 @@
-import * as React from "react"
 import Link from "next/link"
+import * as React from "react"
 import { ChevronRight } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
@@ -65,14 +65,14 @@ export function ProductHero({
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Button asChild size="lg">
             {primaryCta.external ? (
-              <a
+              <Link
                 href={primaryCta.href}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {primaryCta.label}
                 <ChevronRight className="size-3.5" aria-hidden />
-              </a>
+              </Link>
             ) : (
               <Link href={primaryCta.href}>
                 {primaryCta.label}
@@ -83,13 +83,13 @@ export function ProductHero({
           {secondaryCta ? (
             <Button asChild size="lg" variant="outline">
               {secondaryCta.external ? (
-                <a
+                <Link
                   href={secondaryCta.href}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   {secondaryCta.label}
-                </a>
+                </Link>
               ) : (
                 <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
               )}

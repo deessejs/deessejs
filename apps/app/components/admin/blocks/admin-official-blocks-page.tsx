@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import type { RouterClient } from "@orpc/server"
@@ -150,14 +151,14 @@ export function AdminOfficialBlocksPage({
                       </td>
                       <td className="px-4 py-3 capitalize">{block.category}</td>
                       <td className="px-4 py-3">
-                        <a
+                        <Link
                           className="font-mono text-xs underline-offset-4 hover:underline"
                           href={`${block.repositoryUrl}/tree/${block.sourceCommit}`}
                           target="_blank"
                           rel="noreferrer"
                         >
                           {block.sourceCommit.slice(0, 12)}
-                        </a>
+                        </Link>
                       </td>
                       <td className="px-4 py-3">
                         <Badge>Official</Badge>

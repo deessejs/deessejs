@@ -1,3 +1,4 @@
+import Link from "next/link"
 import Image from "next/image"
 import { CodingAgentsDemo } from "@/components/marketing/coding-agents-demo"
 import { Section } from "@/components/marketing/section"
@@ -48,7 +49,7 @@ export function CodingAgents() {
                 "border-l border-border first:border-l-0"
               )}
             >
-              <a
+              <Link
                 href={`https://docs.deessejs.com/agents/${agent.docsSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -64,7 +65,7 @@ export function CodingAgents() {
                   aria-hidden
                 />
                 {agent.name}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

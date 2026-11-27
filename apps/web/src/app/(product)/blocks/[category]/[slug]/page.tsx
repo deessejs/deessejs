@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { orpc } from "@/lib/orpc"
 export default async function BlockDetailPage({
@@ -31,13 +32,13 @@ export default async function BlockDetailPage({
       </p>
       <h1 className="mt-2 text-4xl font-bold">{block.name}</h1>
       <p className="mt-4 text-lg text-muted-foreground">{block.description}</p>
-      <a
+      <Link
         className="mt-6 inline-block underline"
         href={`${block.repositoryUrl}/tree/${block.sourceCommit}`}
         rel="noreferrer"
       >
         View pinned GitHub source
-      </a>
+      </Link>
       <section className="mt-10">
         <h2 className="text-xl font-semibold">Block descriptor</h2>
         <pre className="mt-3 overflow-auto rounded-lg border bg-muted p-5 text-sm">

@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Card } from "@workspace/ui/components/card"
 
 /**
@@ -21,14 +22,14 @@ export function Community() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
-            <a
+            <Link
               href="https://github.com/deessejs/deessejs/discussions"
               target="_blank"
               rel="noopener noreferrer"
               className="text-label-14 font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
             >
               GitHub discussions
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               for questions, ideas, and show-and-tell.
@@ -37,14 +38,14 @@ export function Community() {
         </Card>
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
-            <a
+            <Link
               href="https://github.com/deessejs/deessejs/issues"
               target="_blank"
               rel="noopener noreferrer"
               className="text-label-14 font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
             >
               GitHub issues
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               for confirmed bugs only.
@@ -53,23 +54,23 @@ export function Community() {
         </Card>
         <Card className="p-5">
           <p className="text-copy-16 text-foreground">
-            <a
+            <Link
               href="https://x.com/deessejs"
               target="_blank"
               rel="noopener noreferrer"
               className="text-label-14 font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
             >
               X
-            </a>{" "}
+            </Link>{" "}
             <span className="text-muted-foreground">and </span>
-            <a
+            <Link
               href="https://www.linkedin.com/company/deessejs"
               target="_blank"
               rel="noopener noreferrer"
               className="text-label-14 font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
             >
               LinkedIn
-            </a>
+            </Link>
             <span className="text-muted-foreground">
               <br />
               for announcements.
