@@ -1,3 +1,12 @@
+import type { RouterClient } from "@orpc/server"
+import type { appRouter } from "@workspace/api/router"
+
+export type OrganizationTemplate = Awaited<
+  ReturnType<
+    RouterClient<typeof appRouter>["organization"]["templates"]["list"]
+  >
+>["templates"][number]
+
 export type TemplateTableRecord = {
   name: string
   slug: string
@@ -83,6 +92,8 @@ export function filterAndSortTemplates<T extends TemplateTableRecord>(
 ): T[] {
   const needle = filters.query.trim().toLocaleLowerCase("en-US")
   const filtered = templates.filter((template) => {
+    const labelSet = new Set(template.labels)
+    const statusSet = new Set(getTemplateStatuses(template))
     const searchText = [
       template.name,
       template.slug,
@@ -101,13 +112,10 @@ export function filterAndSortTemplates<T extends TemplateTableRecord>(
     if (filters.category !== "all" && template.category !== filters.category) {
       return false
     }
-    if (filters.label !== "all" && !template.labels.includes(filters.label)) {
+    if (filters.label !== "all" && !labelSet.has(filters.label)) {
       return false
     }
-    if (
-      filters.status !== "all" &&
-      !getTemplateStatuses(template).includes(filters.status)
-    ) {
+    if (filters.status !== "all" && !statusSet.has(filters.status)) {
       return false
     }
     if (filters.source !== "all" && template.sourceType !== filters.source) {
