@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server"
 import { createPluginApi } from "../../plugin-api.js"
-import { resolveAdminAccess } from "../../internal/authorization/admin-access.js"
 import type { DeesseDatabaseResult, DeesseDatabaseService, DeesseRequestContext } from "../../types.js"
+import { resolveBlogManagementAccess } from "./access.js"
 import { blogSchema, type BlogPostStatus } from "./schema.js"
 import { z } from "zod"
 
@@ -17,7 +17,7 @@ const editablePost = z.object({
 })
 
 function requireAdministrator(context: Pick<DeesseRequestContext<typeof blogSchema>, "user">): void {
-  const access = resolveAdminAccess(context.user ? { role: context.user.role } : null)
+  const access = resolveBlogManagementAccess(context.user ? { role: context.user.role } : null)
   if (access === "unauthenticated") throw new ORPCError("UNAUTHORIZED")
   if (access === "forbidden") throw new ORPCError("FORBIDDEN")
 }

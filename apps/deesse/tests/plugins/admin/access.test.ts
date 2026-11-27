@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { resolveAdminAccess } from "../src/internal/authorization/admin-access.js"
+import { resolveAdminAccess } from "../../../src/plugins/admin/access.js"
 
-describe("admin dashboard access", () => {
+describe("Admin plugin access", () => {
   it("requires a session", () => {
     expect(resolveAdminAccess(null)).toBe("unauthenticated")
   })

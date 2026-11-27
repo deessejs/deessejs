@@ -11,6 +11,9 @@ describe("admin integration ownership", () => {
     const sources = await Promise.all(files.map((file) => readFile(resolve(repositoryRoot, file), "utf8")))
 
     expect(sources.join("\n")).not.toMatch(/admin/i)
+
+    const internalFiles = await readFile(resolve(repositoryRoot, "apps/deesse/src/internal/authorization/admin-access.ts"), "utf8").catch(() => null)
+    expect(internalFiles).toBeNull()
   })
 
   it("keeps the Deesse core and server-only Blog export free of UI runtime imports", async () => {
