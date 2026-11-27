@@ -12,6 +12,7 @@ import { Button } from "@workspace/ui/components/button"
 import { CardGridSkeleton } from "@/components/loading/page-skeleton"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workspace/ui/components/input-group"
 import { SearchIcon } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs"
 import {
   Card,
   CardContent,
@@ -211,13 +212,15 @@ function ProjectList({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between">
-        <div role="tablist" aria-label="Filter projects by status" className="flex gap-5 overflow-x-auto">
-          {(["all", "attention", "valid"] as const).map((filter) => (
-            <button key={filter} type="button" role="tab" aria-selected={statusFilter === filter} onClick={() => setStatusFilter(filter)} className={`flex shrink-0 items-center gap-2 border-b-2 px-1 pb-3 text-sm ${statusFilter === filter ? "border-foreground font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
-              {filter === "all" ? "All projects" : filter === "attention" ? "Needs attention" : "Valid"}<span className="font-mono text-xs tabular-nums">{counts[filter]}</span>
-            </button>
-          ))}
-        </div>
+        <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+          <TabsList variant="line" aria-label="Filter projects by status" className="h-auto w-full justify-start gap-5 rounded-none p-0 sm:w-fit">
+            {(["all", "attention", "valid"] as const).map((filter) => (
+              <TabsTrigger key={filter} value={filter} className="h-auto flex-none justify-start gap-2 rounded-none px-1 pb-3 pt-1">
+                {filter === "all" ? "All projects" : filter === "attention" ? "Needs attention" : "Valid"}<span className="font-mono text-xs tabular-nums">{counts[filter]}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
         <InputGroup className="mb-2 w-full sm:mb-2 sm:max-w-sm">
           <InputGroupAddon><SearchIcon aria-hidden /></InputGroupAddon>
           <InputGroupInput aria-label="Search projects" placeholder="Search by project or repository" value={search} onChange={(event) => setSearch(event.target.value)} />
