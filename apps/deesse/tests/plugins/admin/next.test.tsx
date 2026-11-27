@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { admin, normalizeAdminPath, resolveAdminPage } from "../src/index.js"
-import { AdminPage, type AdminPageProps } from "../src/next.js"
+import { admin, normalizeAdminPath, resolveAdminPage } from "../../../src/plugins/admin/index.js"
+import { AdminPage, type AdminPageProps } from "../../../src/plugins/admin/next.js"
 
 vi.mock("next/headers", () => ({
   headers: vi.fn(async () => new Headers({ host: "localhost" })),

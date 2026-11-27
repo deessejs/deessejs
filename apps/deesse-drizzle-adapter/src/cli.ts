@@ -12,6 +12,7 @@ interface CliOptions {
   pluginsPath?: string | undefined
   outputPath: string
   authConfigOutputPath?: string | undefined
+  authConfigSourcePath?: string | undefined
   authSchemaPlaceholderPath?: string | undefined
 }
 
@@ -53,8 +54,9 @@ function readCliOptions(): CliOptions {
   if (!configPath && !pluginsPath) throw new Error("Provide --config or --plugins.")
 
   const authConfigOutputPath = readOptionalFlag("--auth-config-output")
-  if (authConfigOutputPath && !configPath) {
-    throw new Error("--auth-config-output requires --config.")
+  const authConfigSourcePath = readOptionalFlag("--auth-config-source")
+  if (authConfigOutputPath && !configPath && !authConfigSourcePath) {
+    throw new Error("--auth-config-output requires --config or --auth-config-source.")
   }
 
   return {
@@ -62,6 +64,7 @@ function readCliOptions(): CliOptions {
     pluginsPath,
     outputPath: resolve(readFlag("--output")),
     authConfigOutputPath,
+    authConfigSourcePath,
     authSchemaPlaceholderPath: readOptionalFlag("--auth-schema-placeholder-output"),
   }
 }
@@ -150,9 +153,10 @@ async function writeAuthSchemaPlaceholder(path: string | undefined): Promise<voi
 
 async function writeAuthConfig(options: CliOptions): Promise<void> {
   if (!options.authConfigOutputPath) return
-  if (!options.configPath) throw new Error("--auth-config-output requires --config.")
+  const sourcePath = options.authConfigSourcePath ?? options.configPath
+  if (!sourcePath) throw new Error("--auth-config-output requires --config or --auth-config-source.")
 
-  const configImport = relative(dirname(options.authConfigOutputPath), options.configPath).split(sep).join("/")
+  const configImport = relative(dirname(options.authConfigOutputPath), sourcePath).split(sep).join("/")
   const configSpecifier = configImport.startsWith(".") ? configImport : `./${configImport}`
   await mkdir(dirname(options.authConfigOutputPath), { recursive: true })
   await writeFile(options.authConfigOutputPath, generateAuthCliConfigSource(configSpecifier), "utf8")

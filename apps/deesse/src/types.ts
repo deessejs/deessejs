@@ -52,6 +52,7 @@ export type DeesseFindManyOptions<TRow extends object> = {
   where?: { [TKey in keyof TRow]?: FilterValue<TRow[TKey]> }
   orderBy?: Partial<Record<keyof TRow, "asc" | "desc">>
   limit?: BoundedLimit
+  offset?: number
 }
 type BuildNumericRange<TEnd extends number, TValues extends number[] = []> =
   TValues["length"] extends TEnd ? TValues[number] : BuildNumericRange<TEnd, [...TValues, TValues["length"]]>

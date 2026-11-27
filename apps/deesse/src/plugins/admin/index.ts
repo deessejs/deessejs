@@ -1,6 +1,6 @@
 import { admin as betterAuthAdmin } from "better-auth/plugins"
 import type { ComponentType } from "react"
-import { plugin, type PluginContribution, type PluginDefinition } from "deesse"
+import { plugin, type PluginContribution, type PluginDefinition } from "../../index.js"
 import { z } from "zod"
 import { AdminOverview } from "./overview.js"
 

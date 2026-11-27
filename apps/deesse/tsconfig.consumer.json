@@ -2,10 +2,11 @@
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
     "types": ["node"],
+    "jsx": "react-jsx",
     "isolatedDeclarations": false,
     "declaration": false,
     "declarationMap": false,
     "noEmit": true
   },
-  "include": ["consumer-tests/**/*.ts"]
+  "include": ["consumer-tests/**/*.ts", "consumer-tests/**/*.tsx"]
 }

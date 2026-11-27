@@ -1,6 +1,6 @@
 # Changesets
 
-Changesets record the intended version bump and consumer-facing summary for a public package. The current stable `release.yml` workflow publishes `@deessejs/cli`, `deesse`, `@deessejs/drizzle-adapter`, `@deessejs/ui`, and `@deessejs/admin` from the versions committed in their package manifests. The staging canary channel currently publishes the CLI only.
+Changesets record the intended version bump and consumer-facing summary for a public package. The current stable `release.yml` workflow publishes `@deessejs/cli`, `deesse`, `@deessejs/drizzle-adapter`, and `@deessejs/ui` from the versions committed in their package manifests. The staging canary channel currently publishes the CLI only.
 
 `create-deesse-app` is an existing npm package, but it is not part of `release.yml` in this release-process change. Its release path should not be inferred from the workflows described here.
 
@@ -12,10 +12,9 @@ Add one when a pull request changes the published behavior, public API, runtime 
 - `apps/deesse` changes that affect `deesse`.
 - `apps/deesse-drizzle-adapter` changes that affect `@deessejs/drizzle-adapter`.
 - `apps/ui` changes that affect `@deessejs/ui`.
-- `apps/admin` changes that affect `@deessejs/admin`.
 - Existing CLI surfaces in `apps/create-deesse-app`, `packages/contracts`, or `packages/api` that affect the CLI.
 
-The first PR that introduces `deesse` or `@deessejs/drizzle-adapter` sets each package's baseline version directly in its `package.json`; that initial addition does not need a Changeset bump. Later PRs touching those packages require Changesets. `@deessejs/ui` and `@deessejs/admin` already exist on npm, so their manifests must follow the published version lines during version preparation.
+The first PR that introduces `deesse` or `@deessejs/drizzle-adapter` sets each package's baseline version directly in its `package.json`; that initial addition does not need a Changeset bump. Later PRs touching those packages require Changesets. `@deessejs/ui` already exists on npm, so its manifest must follow the published version line during version preparation. Admin is an optional built-in Deesse plugin and is released as part of `deesse`.
 
 Skip a Changeset for internal-only changes, tests, documentation, formatting, or dependency updates that do not change consumer behavior. Template catalog content changes do not bump the CLI because templates are served by the API and the CLI is their client.
 
@@ -49,7 +48,7 @@ The first `@deessejs/drizzle-adapter` publication uses two manual workflow dispa
 
 Add Trusted Publishing for `release.yml` on the npm package before the next real adapter release. Configure it close to that release so npm can validate the first trusted publish within its two-day window. Trusted Publishing for `deesse` should likewise be used by a successful `main` release shortly after its configuration is added.
 
-`@deessejs/ui` and `@deessejs/admin` are existing npm packages. Stable releases use each package's GitHub Actions Trusted Publisher configured for `deessejs/deessejs` and `release.yml`; the workflow publishes versions ahead of npm with provenance and creates package-specific GitHub tags and Releases. The admin package publishes after `deesse` and `@deessejs/ui`, matching its peer and runtime dependencies. No npm write token is used for these Trusted Publisher releases.
+`@deessejs/ui` is an existing npm package. Stable releases use its GitHub Actions Trusted Publisher configured for `deessejs/deessejs` and `release.yml`; the workflow publishes versions ahead of npm with provenance and creates a package-specific GitHub tag and Release. No npm write token is used for this Trusted Publisher release.
 
 ## Examples
 

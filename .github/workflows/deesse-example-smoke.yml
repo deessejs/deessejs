@@ -6,7 +6,6 @@ on:
     paths:
       - "apps/deesse/**"
       - "apps/deesse-drizzle-adapter/**"
-      - "apps/admin/**"
       - "examples/next-shadcn-monorepo/**"
       - "examples/next-shadcn-admin/**"
       - ".github/workflows/deesse-example-smoke.yml"
@@ -150,10 +149,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build the admin package and workspace dependencies before schema generation
-        run: pnpm turbo build --filter=@deessejs/admin...
-      - name: Build the Deesse adapter CLI before schema generation
-        run: pnpm turbo build --filter=@deessejs/drizzle-adapter
+      - name: Build Deesse and adapter packages before schema generation
+        run: pnpm turbo build --filter=deesse --filter=@deessejs/drizzle-adapter --filter=@deessejs/ui
       - name: Generate admin example schemas without a reachable database
         working-directory: examples/next-shadcn-admin/apps/web
         env:

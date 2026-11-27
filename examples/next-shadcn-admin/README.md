@@ -1,8 +1,8 @@
 # DeesseJS Next.js shadcn admin example
 
-This private example keeps the existing `next-shadcn-monorepo` example intact and adds the `@deessejs/admin` package to a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
+This private example keeps the existing `next-shadcn-monorepo` example intact and opts into Deesse's built-in Admin plugin from a separate Next.js App Router host. It uses the repository's root pnpm workspace, dependency catalog, lockfile, and Turbo configuration. The shared UI workspace is named `@deesse-admin-example/ui` to avoid a workspace name collision.
 
-The app composes `postsPlugin()` and `admin({ pages: [...postsAdminPages] })` into one Deesse runtime. The posts feature plugin stays admin-agnostic; its optional adapter at `plugins/posts/admin/page.tsx` exports statically included page definitions. The optional catch-all Server Component passes only the runtime to `AdminPage`, which reads the pages from the admin plugin's processed runtime output and serves `/admin` and `/admin/posts`. The admin package owns page matching, navigation, unknown-path not-found behavior, and server-side session and role checks. The normal app shell still demonstrates sign-up, sign-in, and the typed posts API.
+The app imports `admin` from `deesse/plugins/admin`, `AdminPage` from `deesse/plugins/admin/next`, and `blogAdminPages` from `deesse/plugins/blog/admin`, then explicitly passes the page definitions to `admin({ pages })`. The Blog plugin contributes one static `/admin/blog` management page and typed published and administrator-only procedures. The optional catch-all Server Component passes only the runtime to `AdminPage`, which reads the pages from the admin plugin's processed runtime output. The built-in Admin plugin owns page matching, navigation, unknown-path not-found behavior, and dashboard access checks; Blog independently enforces administrator authorization in its server procedures.
 
 ## Requirements
 
@@ -44,7 +44,7 @@ With the server running and the example database migrated, exercise the protecte
 pnpm --filter @deesse-admin-example/web smoke
 ```
 
-The smoke script checks anonymous redirects and authenticated non-admin denial on both the root and nested admin routes. It exercises Better Auth's `create-admin` CLI against the isolated PostgreSQL database, verifies the persisted admin role and sign-in, confirms duplicate-email creation is refused without changing the account, then checks the Better Auth session and authenticated Deesse posts API path. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
+The smoke script checks anonymous redirects and authenticated non-admin denial on the root and Blog admin routes. It exercises Better Auth's `create-admin` CLI against the isolated PostgreSQL database, verifies the persisted admin role and sign-in, confirms duplicate-email creation is refused without changing the account, then checks published reads, admin API authorization, access to a page beyond the first 100 posts, and the post draft/publish/unpublish/delete lifecycle. Package tests cover nested page rendering and the unknown-path `notFound()` response. No migration runs during server startup.
 
 ## Environment
 
